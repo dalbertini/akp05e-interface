@@ -230,18 +230,24 @@ def set_icon(device, button, name, fg="#e0e0e0", bg="#101010", label=None):
 # ---------------------------------------------------------------------------
 # Bandeau tactile (800x112) : une zone de 200px par encodeur
 # ---------------------------------------------------------------------------
-def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3")):
+def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
+               pages=None, page_icon=None, page_color=None):
     """Redessine le bandeau sous les 4 knobs : zone 1 = volume système
     (temps réel, + barre + %, "Muet" si coupé), zone 4 = luminosité
-    avec barre + %. Zones 2-3 libres (libellés extras)."""
+    avec barre + %. Zone 2 = carrousel de pages si pages=(prev, cur, next) :
+    pages précédente/suivante en grisé avec flèches, page courante dans
+    une pilule arrondie colorée avec mini-icône Material (optionnelle).
+    Sinon libellé libre. Zone 3 : libellé libre."""
     w, h = STRIP_IMAGE_SIZE
     img = Image.new("RGB", (w, h), (16, 16, 16))
     d = ImageDraw.Draw(img)
     try:
         font = ImageFont.truetype("arial.ttf", 17)
         font_big = ImageFont.truetype("arial.ttf", 26)
+        font_mid = ImageFont.truetype("arial.ttf", 20)
+        font_small = ImageFont.truetype("arial.ttf", 15)
     except OSError:
-        font = font_big = ImageFont.load_default()
+        font = font_big = font_mid = font_small = ImageFont.load_default()
 
     def level_zone(x_center, name, pct, is_muted, name_color):
         d.text((x_center, 28), name, font=font, fill=name_color, anchor="mm")
@@ -270,10 +276,46 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"))
         level_zone(100, "Vol", volume, muted, (129, 212, 250))
     else:
         d.text((100, 34), "K1", font=font, fill=(120, 120, 120), anchor="mm")
-    # zones 2..3 : libellés libres
-    for i, lab in enumerate(extras):
-        d.text((i * 200 + 300, 34), lab, font=font,
+    # zone 2 : carrousel de pages (◄ page préc. | PAGE COURANTE | page suiv. ►)
+    x0 = 200
+    if pages:
+        prev_lab, cur_lab, next_lab = pages
+        gray = (112, 117, 126)
+        # rangée du haut : page précédente (grisée) à gauche
+        d.polygon([(x0 + 8, 32), (x0 + 20, 24), (x0 + 20, 40)], fill=gray)
+        d.text((x0 + 26, 32), prev_lab[:8], font=font_small,
+               fill=gray, anchor="lm")
+        # page suivante (grisée) à droite
+        d.text((x0 + 174, 32), next_lab[:8], font=font_small,
+               fill=gray, anchor="rm")
+        d.polygon([(x0 + 192, 32), (x0 + 180, 24), (x0 + 180, 40)], fill=gray)
+        # pilule arrondie : page courante (couleur d'accent + mini-icône)
+        accent = tuple(page_color) if page_color else (129, 212, 250)
+        glyph = None
+        if page_icon:
+            try:
+                ifont = ImageFont.truetype(
+                    os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"), 24)
+                glyph = _icon_char(page_icon)
+            except Exception:
+                glyph = None  # police d'icônes pas encore en cache : sans logo
+        if glyph:
+            d.rounded_rectangle([x0 + 40, 48, x0 + 162, 98], radius=14,
+                                fill=(40, 44, 52), outline=accent, width=2)
+            d.text((x0 + 62, 74), glyph, font=ifont, fill=accent, anchor="mm")
+            d.text((x0 + 116, 73), cur_lab[:7], font=font_mid,
+                   fill=(235, 238, 242), anchor="mm")
+        else:
+            d.rounded_rectangle([x0 + 48, 48, x0 + 152, 98], radius=14,
+                                fill=(40, 44, 52), outline=accent, width=2)
+            d.text((x0 + 100, 73), cur_lab[:9], font=font_mid,
+                   fill=(235, 238, 242), anchor="mm")
+    else:
+        d.text((x0 + 100, 34), extras[0], font=font,
                fill=(120, 120, 120), anchor="mm")
+    # zone 3 : libellé libre
+    d.text((500, 34), extras[1], font=font,
+           fill=(120, 120, 120), anchor="mm")
     # zone 4 : luminosité
     level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
                (240, 220, 130))
@@ -800,9 +842,14 @@ DEFAULT_CONFIG = {
             "page": "prev"
           }
         }
-      }
+      },
+      "icon": "music_note",
+      "color": "#81D4FA"
     }
-  }
+  },
+  "label": "Accueil",
+  "icon": "home",
+  "color": "#80CBC4"
 }
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -908,9 +955,26 @@ def main():
             except Exception:
                 pass
         extras = (getattr(device, "_page_label", None) or "K2", "K3")
+        # carrousel : pages précédente / courante / suivante (zone 2)
+        i = (page_names.index(current["name"])
+             if current["name"] in page_names else 0)
+        def _plabel(n):
+            return (pages.get(n, {}).get("label")
+                    or ("Accueil" if n == "accueil" else n))[:9]
+        pages_tri = (
+            _plabel(page_names[(i - 1) % len(page_names)]),
+            _plabel(page_names[i]),
+            _plabel(page_names[(i + 1) % len(page_names)]),
+        )
+        # icône + couleur d'accent de la page courante
+        meta = (pages.get(current["name"])
+                if current["name"] in pages else config)
+        p_icon = meta.get("icon")
+        p_color = parse_color(meta.get("color"), default=(129, 212, 250))
         try:
             show_strip(device, device.brightness, volume=vol, muted=muted,
-                       extras=extras)
+                       extras=extras, pages=pages_tri,
+                       page_icon=p_icon, page_color=p_color)
         except Exception as e:
             print(f"Bandeau non redessiné : {e}")
 
