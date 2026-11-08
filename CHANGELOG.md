@@ -3,6 +3,16 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.2.0] — 2026-11-08
+
+### Ajouté
+- **Pages de profils** : la config classique forme la page « accueil » ; des pages supplémentaires se définissent dans la clé `pages` (chacune avec ses touches, ses encodeurs et son libellé). Nouvelle action `{"type": "page", "page": "nom"}` pour basculer ; la zone 2 du bandeau affiche le nom de la page courante.
+- **Page « Qobuz » par défaut** : Play/Pause, Stop, Suivant, Précédent, Mute (volume système) + retour accueil — pilotée par les touches média système, compatible Qobuz, Spotify, VLC, etc.
+- Sur la page accueil, la touche 10 ouvre la page Qobuz (icône music_note), la touche 9 utilise le vrai volume système (muet).
+
+### Corrigé
+- **Les touches média ne fonctionnaient pas** (Play/Stop/Suiv./Préc., volume) : les codes envoyés étaient des codes d'usage HID (0xE8…) et non les codes virtuels Windows officiels (`VK_MEDIA_PLAY_PAUSE` 0xB3, `VK_MEDIA_NEXT_TRACK` 0xB0, `VK_VOLUME_MUTE` 0xAD…) — Windows ignorait les événements. Le presse-bouton média envoie désormais les bons VK down/up, visibles par toutes les applications.
+
 ## [1.1.2] — 2026-11-08
 
 ### Corrigé
@@ -47,6 +57,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Protocole HID rétro-ingénieré (VID `0x0300` / PID `0x3004`, paquets 1024 octets, commandes `CRT`, images JPEG 112×112 / 800×112 pivotées de 180°)
 - Licence MIT, `README.md`, `.gitignore`
 
+[1.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

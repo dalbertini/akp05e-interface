@@ -43,6 +43,15 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "mediaplay"} {"type": "medianext"} {"type": "mediaprev"} {"type": "mediastop"}
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
+  {"type": "page", "page": "qobuz"}                         # changer de page
+PAGES DE PROFILS : la config classique ("buttons"/"encoders") forme la page
+"accueil". Des pages supplémentaires se définissent dans la clé "pages" :
+  {"pages": {"qobuz": {"label": "Qobuz", "buttons": {...}, "encoders": {...}}}}
+Chaque page a ses touches et encodeurs propres ; la zone 2 du bandeau affiche
+le nom de la page courante. Bascule via l'action {"type": "page", ...}.
+Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
+prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
+fonctionne avec Qobuz, Spotify, VLC, etc.
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
 appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
 (pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
@@ -443,8 +452,10 @@ user32 = ctypes.WinDLL("user32", use_last_error=True)
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
 # codes virtuels / scan codes média (usage HID 0x7C+)
-MEDIA = {"volume_up": 0xED, "volume_down": 0xEE, "volume_mute": 0xE2,
-         "play_pause": 0xE8, "stop": 0xE9, "next": 0xEA, "prev": 0xEB}
+# touches média : codes virtuels Windows officiels (VK_MEDIA_* / VK_VOLUME_*)
+# — seuls ces codes-là sont vus par les applications (Qobuz, Spotify, etc.)
+MEDIA = {"volume_up": 0xAF, "volume_down": 0xAE, "volume_mute": 0xAD,
+         "play_pause": 0xB3, "stop": 0xB2, "next": 0xB0, "prev": 0xB1}
 MODIFIERS = {"ctrl": 0x11, "menu": 0x12, "alt": 0x12, "shift": 0x10,
              "win": 0x5B, "lwin": 0x5B, "rwin": 0x5C}
 
@@ -490,8 +501,8 @@ def send_keys(keys):
         _key_event(m)
     if final:
         _key_event(final); _key_event(final, flags=KEYEVENTF_KEYUP)
-    elif scan:  # touche média : scan code + KEYEVENTF_EXTENDEDKEY
-        _key_event(0, scan, 0x0001); _key_event(0, scan, 0x0001 | KEYEVENTF_KEYUP)
+    elif scan:  # touche média : VK direct down/up (VK_MEDIA_* / VK_VOLUME_*)
+        _key_event(scan); _key_event(scan, flags=KEYEVENTF_KEYUP)
     for m in reversed(mods):
         _key_event(m, flags=KEYEVENTF_KEYUP)
 
@@ -539,6 +550,13 @@ def run_action(action, device):
         send_keys(["prev"])
     elif t == "mediastop":
         send_keys(["stop"])
+    elif t == "page":
+        # bascule vers une autre page de profils (voir "pages" dans la config)
+        cb = getattr(device, "on_page_change", None)
+        if cb:
+            cb(action.get("page"))
+        else:
+            print("Pas de \"pages\" dans la config : action page ignorée.")
     elif t == "sysvolume":
         # volume système Windows réel (pycaw) ; retombe sur les touches média
         d = action.get("dir", "up")
@@ -592,9 +610,9 @@ DEFAULT_CONFIG = {
         "8": {"icon": "skip_previous", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Prec.",
               "action": {"type": "mediaprev"}},
         "9": {"icon": "volume_off", "color": "#EF9A9A", "bg": "#331b1b", "label": "Mute",
-              "action": {"type": "volume", "dir": "mute"}},
-        "10": {"icon": "stop", "color": "#EF9A9A", "bg": "#331b1b", "label": "Stop",
-              "action": {"type": "mediastop"}}
+              "action": {"type": "sysvolume", "dir": "mute"}},
+        "10": {"icon": "music_note", "color": "#81D4FA", "bg": "#101d2b", "label": "Qobuz",
+               "action": {"type": "page", "page": "qobuz"}}
     },
     "encoders": {
         "encoder_1_cw":   {"action": {"type": "sysvolume", "dir": "up", "step": 5}},
@@ -603,6 +621,33 @@ DEFAULT_CONFIG = {
         "encoder_4_cw":   {"action": {"type": "brightness", "dir": "up", "step": 10}},
         "encoder_4_ccw":  {"action": {"type": "brightness", "dir": "down", "step": 10}},
         "encoder_4_button": {"action": {"type": "brightness_toggle"}}
+    },
+    "pages": {
+        "qobuz": {
+            "label": "Qobuz",
+            "buttons": {
+                "1": {"icon": "play_arrow", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Play",
+                      "action": {"type": "mediaplay"}},
+                "2": {"icon": "stop", "color": "#EF9A9A", "bg": "#331b1b", "label": "Stop",
+                      "action": {"type": "mediastop"}},
+                "3": {"icon": "skip_next", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Suiv.",
+                      "action": {"type": "medianext"}},
+                "4": {"icon": "skip_previous", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Prec.",
+                      "action": {"type": "mediaprev"}},
+                "5": {"icon": "volume_off", "color": "#EF9A9A", "bg": "#331b1b", "label": "Mute",
+                      "action": {"type": "sysvolume", "dir": "mute"}},
+                "10": {"icon": "home", "color": "#80CBC4", "label": "Accueil",
+                       "action": {"type": "page", "page": "accueil"}}
+            },
+            "encoders": {
+                "encoder_1_cw":   {"action": {"type": "sysvolume", "dir": "up", "step": 5}},
+                "encoder_1_ccw":  {"action": {"type": "sysvolume", "dir": "down", "step": 5}},
+                "encoder_1_button": {"action": {"type": "sysvolume", "dir": "mute"}},
+                "encoder_4_cw":   {"action": {"type": "brightness", "dir": "up", "step": 10}},
+                "encoder_4_ccw":  {"action": {"type": "brightness", "dir": "down", "step": 10}},
+                "encoder_4_button": {"action": {"type": "brightness_toggle"}}
+            }
+        }
     }
 }
 
@@ -625,15 +670,66 @@ def main():
     config = load_config()
     device = Akp05Device(brightness=config.get("brightness", DEFAULT_BRIGHTNESS))
 
+    # --- pages de profils : "accueil" = la config classique, les pages
+    #     supplémentaires sont définies dans la clé "pages" de la config.
+    pages = config.get("pages") or {}
+    page_names = ["accueil"] + [n for n in pages if n != "accueil"]
+    current = {"name": config.get("page", "accueil")}
+
+    def page_cfg():
+        if current["name"] == "accueil" or current["name"] not in pages:
+            return config
+        return pages.get(current["name"], {})
+
+    def paint_page():
+        """(Re)peint les 10 touches et le bandeau pour la page courante."""
+        buttons = page_cfg().get("buttons") or {}
+        for n in range(1, 11):
+            entry = buttons.get(str(n))
+            try:
+                if not entry:
+                    device.set_image(n, Image.new("RGB", BUTTON_IMAGE_SIZE,
+                                                  (12, 12, 12)))
+                    continue
+                icon = entry.get("icon")
+                if icon and os.path.exists(icon):
+                    # chemin vers une image perso (png/jpg)
+                    device.set_image(n, Image.open(icon))
+                elif icon:
+                    # nom d'icône Material (+ couleurs CSS)
+                    set_icon(device, n, icon,
+                             fg=entry.get("color", "#e0e0e0"),
+                             bg=entry.get("bg", "#101010"),
+                             label=entry.get("label"))
+                elif "label" in entry:
+                    device.set_label(n, entry["label"], sub=entry.get("sub"))
+            except Exception as e:
+                print(f"Icône touche {n} ignorée : {e}")
+
+    def switch_page(name):
+        if not name:
+            return
+        if name == "accueil" or name in pages:
+            current["name"] = name
+            print(f"[page] {name}")
+            device._page_label = (page_cfg().get("label") or name)[:9]
+            paint_page()
+            refresh_strip()
+        else:
+            print(f"Page inconnue : {name} (disponibles : {page_names})")
+
+    device.on_page_change = switch_page
+
     def handle(ev):
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
+        cfg = page_cfg()
         action = None
         if ev.name.startswith("button_"):
-            entry = config.get("buttons", {}).get(ev.name.split("_")[1])
+            entry = cfg.get("buttons", {}).get(ev.name.split("_")[1])
             action = entry and entry.get("action")
         else:
-            action = config.get("encoders", {}).get(ev.name, {}).get("action")
+            action = cfg.get("encoders", {}).get(ev.name, {}).get("action")
         if action:
             print(f"[action] {ev.name} -> {action.get('type')}")
             threading.Thread(target=run_action, args=(action, device),
@@ -643,15 +739,18 @@ def main():
     device.on_disconnect = lambda: print("Deck débranché — relance l'application.")
 
     def refresh_strip():
-        """Redessine le bandeau : volume système + luminosité en direct."""
+        """Redessine le bandeau : volume système + luminosité en direct,
+        et nom de la page courante dans la zone 2."""
         vol, muted = None, None
         if _HAS_PYCAW:
             try:
                 vol, muted = get_volume_pct(), get_mute()
             except Exception:
                 pass
+        extras = (getattr(device, "_page_label", None) or "K2", "K3")
         try:
-            show_strip(device, device.brightness, volume=vol, muted=muted)
+            show_strip(device, device.brightness, volume=vol, muted=muted,
+                       extras=extras)
         except Exception as e:
             print(f"Bandeau non redessiné : {e}")
 
@@ -691,27 +790,12 @@ def main():
     device.open()
     print("AKP05E connecté. Ctrl+C pour quitter.")
 
-    # bandeau tactile : zones Vol (temps réel) et Lum
+    # bandeau tactile : zones Vol (temps réel), page courante (zone 2) et Lum
+    device._page_label = (page_cfg().get("label") or current["name"])[:9]
     refresh_strip()
 
-    # peint les icônes configurées
-    for n, entry in (config.get("buttons") or {}).items():
-        try:
-            n = int(n)
-            icon = entry.get("icon")
-            if icon and os.path.exists(icon):
-                # chemin vers une image perso (png/jpg)
-                device.set_image(n, Image.open(icon))
-            elif icon:
-                # nom d'icône Material (+ couleurs CSS)
-                set_icon(device, n, icon,
-                         fg=entry.get("color", "#e0e0e0"),
-                         bg=entry.get("bg", "#101010"),
-                         label=entry.get("label"))
-            elif "label" in entry:
-                device.set_label(n, entry["label"], sub=entry.get("sub"))
-        except Exception as e:
-            print(f"Icône touche {n} ignorée : {e}")
+    # peint les icônes de la page courante
+    paint_page()
 
     try:
         while True:

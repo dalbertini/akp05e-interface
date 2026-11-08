@@ -5,11 +5,13 @@
 ## Fonctionnalités (FR)
 
 - **10 touches LCD** : icônes Material Icons (~2500, mises en cache après premier téléchargement) ou images perso, couleurs et libellés configurables
+- **Pages de profils** : plusieurs pages de touches (la config classique = page « accueil »), bascule par une touche ou un encodeur ; le bandeau affiche la page courante
+- **Page « Qobuz » fournie** : Play/Pause, Stop, Suivant, Précédent, Mute + retour accueil — fonctionne avec toutes les applications qui écoutent les touches média système (Qobuz, Spotify, VLC…)
 - **4 encodeurs rotatifs** : appui + rotation CW/CCW, actions configurables
 - **Volume système Windows en temps réel** (knob 1) : réglage du niveau réel de Windows via `pycaw`, appui = muet, et la zone tactile affiche **Vol %** + barre — mise à jour même si le volume est changé depuis Windows (barre des tâches, clavier)
 - **Luminosité** (knob 4) : rotation = réglage des écrans, appui = extinction/rallumage, zone tactile **Lum %** + barre
 - **Bandeau tactile** : une zone de 200 px par encodeur
-- **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité
+- **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité, changement de page
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
 
@@ -20,7 +22,7 @@ pip install -r requirements.txt
 python akp05e_app.py
 ```
 
-Au premier lancement, `akp05e_config.json` (config par défaut) est créé à côté du script, et la police d'icônes est téléchargée une fois dans `.icons_cache/`. Ensuite, tout fonctionne hors ligne. Si tu avais déjà un `akp05e_config.json`, mets à jour les entrées `encoder_1_*` pour profiter du volume système réel (ou supprime le fichier pour le régénérer).
+Au premier lancement, `akp05e_config.json` (config par défaut) est créé à côté du script, et la police d'icônes est téléchargée une fois dans `.icons_cache/`. Ensuite, tout fonctionne hors ligne. Pour bénéficier des pages et de la page Qobuz, supprime ton ancien `akp05e_config.json` pour le régénérer (ou ajoute-y la clé `pages`).
 
 > Ferme le logiciel Ajazz officiel avant de lancer l'application : les deux s'excluent (accès HID exclusif au deck).
 
@@ -33,9 +35,29 @@ Au premier lancement, `akp05e_config.json` (config par défaut) est créé à c�
       "action": {"type": "open", "path": "C:\\Program Files\\...\\Code.exe"}}
 ```
 
-Types d'actions : `open`, `url`, `keys`, `text`, `run`, `sysvolume` (volume système réel, `dir`: `up`/`down`/`mute`, `step` optionnel), `volume` (touches média), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`.
-
+Types d'actions : `open`, `url`, `keys`, `text`, `run`, `sysvolume` (volume système réel, `dir`: `up`/`down`/`mute`, `step` optionnel), `volume` (touches média), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page` (basculer vers une page).
 Événements configurables : `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
+
+### Pages (FR)
+
+La config classique (`buttons`/`encoders`) forme la page **« accueil »**. Des pages supplémentaires se définissent dans la clé `pages` :
+
+```json
+"pages": {
+  "qobuz": {
+    "label": "Qobuz",
+    "buttons": {
+      "1": {"icon": "play_arrow", "color": "#A5D6A7", "bg": "#1b2e1b",
+            "label": "Play", "action": {"type": "mediaplay"}},
+      "10": {"icon": "home", "label": "Accueil",
+             "action": {"type": "page", "page": "accueil"}}
+    },
+    "encoders": { ... }
+  }
+}
+```
+
+Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom de la page courante. Les touches média (`mediaplay`, `medianext`, `mediaprev`, `mediastop`) utilisent les codes virtuels Windows officiels, visibles par toutes les applications multimédia.
 
 ---
 
@@ -46,10 +68,12 @@ Types d'actions : `open`, `url`, `keys`, `text`, `run`, `sysvolume` (volume syst
 ## Features
 
 - **10 LCD keys** with configurable labels, colors, ~2500 Material Icons (cached after first download) or custom images
+- **Profile pages**: multiple key pages (the classic config = the "home" page), switch from a key or encoder; the touch strip shows the current page
+- **Built-in "Qobuz" page**: Play/Pause, Stop, Next, Previous, Mute + back to home — works with any app listening to system media keys (Qobuz, Spotify, VLC…)
 - **4 rotary encoders** with push + CW/CCW actions
 - **Real-time Windows system volume** (knob 1): sets the actual Windows master level via `pycaw`, push = mute; the touch strip zone shows **Vol %** + bar and updates even when volume changes from Windows itself
 - **Brightness control** (knob 4): rotation adjusts screens, push toggles on/off, touch strip zone shows **%** + bar
-- **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness
+- **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling
 
@@ -60,9 +84,9 @@ pip install -r requirements.txt
 python akp05e_app.py
 ```
 
-A default `akp05e_config.json` is created next to the script on first run; the icon font is downloaded once into `.icons_cache/`, then everything works offline. Close the official Ajazz software first — both need exclusive HID access.
+A default `akp05e_config.json` is created next to the script on first run; the icon font is downloaded once into `.icons_cache/`, then everything works offline. To get profile pages (including the Qobuz page), delete your old `akp05e_config.json` so it gets regenerated. Close the official Ajazz software first — both need exclusive HID access.
 
-Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`. Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
+Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page`. Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
 
 ## Protocol
 
