@@ -73,3 +73,5 @@ HID vendor-defined (VID `0x0300` / PID `0x3004`), 1024-byte packets, framed `CRT
 
 MIT — see [LICENSE](LICENSE). Icons: Material Icons (Google, Apache 2.0).
 "Ajazz" and "AKP05E" belong to their respective owners; this project is not affiliated.
+
+Version history: see [CHANGELOG.md](CHANGELOG.md).
