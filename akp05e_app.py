@@ -151,13 +151,12 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 
-# Événements du bandeau tactile : rapports 0x30..0x3F, nibble basse = geste
-# (0 = tap zone, 1 = swipe gauche, 2 = swipe droit) — mappage indicatif de la
-# doc de référence, affiné par les messages console si le firmware diffère.
-STRIP_GESTURE_MIN, STRIP_GESTURE_MAX = 0x30, 0x3F
-STRIP_GESTURE_CODES = {0: "tap", 1: "swipe_left", 2: "swipe_right"}
+# Événements du bandeau tactile — phase de calibration : le firmware réel
+# n'utilise pas les codes 0x30..0x3F de la doc de référence. Tous les rapports
+# de cette plage sont journalisés un par un (v1.5.1) pour établir le mappage.
+STRIP_GESTURE_MIN, STRIP_GESTURE_MAX = 0x30, 0x47
 
 # mapping touche pressée (1-10) -> wire-key image
 BUTTON_TO_WIRE_KEY = {1: 11, 2: 12, 3: 13, 4: 14, 5: 15,
@@ -417,17 +416,10 @@ class Akp05Device:
             ev = Event(name, True if name.endswith(("_cw", "_ccw"))
                        else state == KEY_DOWN)
         elif STRIP_GESTURE_MIN <= key <= STRIP_GESTURE_MAX:
-            gesture = STRIP_GESTURE_CODES.get(key & 0x0F)
-            if gesture is None:
-                self._log_unknown(key)
-                return
-            if gesture == "tap":
-                # état = index de zone tactile (0..3) -> zone 1..4
-                zone = max(1, min(4, state + 1)) if state <= 3 else state
-                name = f"strip_tap_{zone}"
-            else:
-                name = f"strip_{gesture}"
-            ev = Event(name, True)
+            # calibration : chaque événement tactile est journalisé,
+            # code et état, à chaque occurrence (pas de dédoublonnage)
+            print(f"[tactile] code=0x{key:02X} état={state}")
+            return
         else:
             self._log_unknown(key)
             return
