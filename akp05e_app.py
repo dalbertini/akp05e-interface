@@ -591,64 +591,211 @@ def run_action(action, device):
         print(f"Type d'action inconnu : {t}")
 
 DEFAULT_CONFIG = {
-    "brightness": DEFAULT_BRIGHTNESS,
-    "buttons": {
-        "1": {"icon": "terminal", "color": "#80CBC4", "label": "CMD",
-              "action": {"type": "run", "cmd": "cmd"}},
-        "2": {"icon": "description", "color": "#9FA8DA", "label": "Notepad",
-              "action": {"type": "open", "path": "notepad.exe"}},
-        "3": {"icon": "public", "color": "#90CAF9", "label": "Web",
-              "action": {"type": "url", "url": "https://github.com"}},
-        "4": {"icon": "content_copy", "color": "#CE93D8", "label": "Copie",
-              "action": {"type": "text", "text": "Bonjour !"}},
-        "5": {"icon": "refresh", "color": "#FFF59D", "label": "F5",
-              "action": {"type": "keys", "keys": ["f5"]}},
-        "6": {"icon": "play_arrow", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Play",
-              "action": {"type": "mediaplay"}},
-        "7": {"icon": "skip_next", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Suiv.",
-              "action": {"type": "medianext"}},
-        "8": {"icon": "skip_previous", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Prec.",
-              "action": {"type": "mediaprev"}},
-        "9": {"icon": "volume_off", "color": "#EF9A9A", "bg": "#331b1b", "label": "Mute",
-              "action": {"type": "sysvolume", "dir": "mute"}},
-        "10": {"icon": "music_note", "color": "#81D4FA", "bg": "#101d2b", "label": "Qobuz",
-               "action": {"type": "page", "page": "qobuz"}}
+  "brightness": 60,
+  "buttons": {
+    "1": {
+      "icon": "terminal",
+      "color": "#80CBC4",
+      "label": "CMD",
+      "action": {
+        "type": "run",
+        "cmd": "cmd"
+      }
     },
-    "encoders": {
-        "encoder_1_cw":   {"action": {"type": "sysvolume", "dir": "up", "step": 5}},
-        "encoder_1_ccw":  {"action": {"type": "sysvolume", "dir": "down", "step": 5}},
-        "encoder_1_button": {"action": {"type": "sysvolume", "dir": "mute"}},
-        "encoder_4_cw":   {"action": {"type": "brightness", "dir": "up", "step": 10}},
-        "encoder_4_ccw":  {"action": {"type": "brightness", "dir": "down", "step": 10}},
-        "encoder_4_button": {"action": {"type": "brightness_toggle"}}
+    "2": {
+      "icon": "description",
+      "color": "#9FA8DA",
+      "label": "Notepad",
+      "action": {
+        "type": "open",
+        "path": "notepad.exe"
+      }
     },
-    "pages": {
-        "qobuz": {
-            "label": "Qobuz",
-            "buttons": {
-                "1": {"icon": "play_arrow", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Play",
-                      "action": {"type": "mediaplay"}},
-                "2": {"icon": "stop", "color": "#EF9A9A", "bg": "#331b1b", "label": "Stop",
-                      "action": {"type": "mediastop"}},
-                "3": {"icon": "skip_next", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Suiv.",
-                      "action": {"type": "medianext"}},
-                "4": {"icon": "skip_previous", "color": "#A5D6A7", "bg": "#1b2e1b", "label": "Prec.",
-                      "action": {"type": "mediaprev"}},
-                "5": {"icon": "volume_off", "color": "#EF9A9A", "bg": "#331b1b", "label": "Mute",
-                      "action": {"type": "sysvolume", "dir": "mute"}},
-                "10": {"icon": "home", "color": "#80CBC4", "label": "Accueil",
-                       "action": {"type": "page", "page": "accueil"}}
-            },
-            "encoders": {
-                "encoder_1_cw":   {"action": {"type": "sysvolume", "dir": "up", "step": 5}},
-                "encoder_1_ccw":  {"action": {"type": "sysvolume", "dir": "down", "step": 5}},
-                "encoder_1_button": {"action": {"type": "sysvolume", "dir": "mute"}},
-                "encoder_4_cw":   {"action": {"type": "brightness", "dir": "up", "step": 10}},
-                "encoder_4_ccw":  {"action": {"type": "brightness", "dir": "down", "step": 10}},
-                "encoder_4_button": {"action": {"type": "brightness_toggle"}}
-            }
-        }
+    "3": {
+      "icon": "public",
+      "color": "#90CAF9",
+      "label": "Web",
+      "action": {
+        "type": "url",
+        "url": "https://github.com"
+      }
+    },
+    "4": {
+      "icon": "content_copy",
+      "color": "#CE93D8",
+      "label": "Copie",
+      "action": {
+        "type": "text",
+        "text": "Bonjour !"
+      }
+    },
+    "5": {
+      "icon": "refresh",
+      "color": "#FFF59D",
+      "label": "F5",
+      "action": {
+        "type": "keys",
+        "keys": [
+          "f5"
+        ]
+      }
+    },
+    "9": {
+      "icon": "volume_off",
+      "color": "#EF9A9A",
+      "bg": "#331b1b",
+      "label": "Mute",
+      "action": {
+        "type": "sysvolume",
+        "dir": "mute"
+      }
+    },
+    "10": {
+      "icon": "music_note",
+      "color": "#81D4FA",
+      "bg": "#101d2b",
+      "label": "Qobuz",
+      "action": {
+        "type": "page",
+        "page": "qobuz"
+      }
     }
+  },
+  "encoders": {
+    "encoder_1_cw": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "up",
+        "step": 5
+      }
+    },
+    "encoder_1_ccw": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "down",
+        "step": 5
+      }
+    },
+    "encoder_1_button": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "mute"
+      }
+    },
+    "encoder_4_cw": {
+      "action": {
+        "type": "brightness",
+        "dir": "up",
+        "step": 10
+      }
+    },
+    "encoder_4_ccw": {
+      "action": {
+        "type": "brightness",
+        "dir": "down",
+        "step": 10
+      }
+    },
+    "encoder_4_button": {
+      "action": {
+        "type": "brightness_toggle"
+      }
+    }
+  },
+  "pages": {
+    "qobuz": {
+      "label": "Qobuz",
+      "buttons": {
+        "1": {
+          "icon": "play_arrow",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Play",
+          "action": {
+            "type": "mediaplay"
+          }
+        },
+        "10": {
+          "icon": "home",
+          "color": "#80CBC4",
+          "label": "Accueil",
+          "action": {
+            "type": "page",
+            "page": "accueil"
+          }
+        },
+        "2": {
+          "icon": "skip_next",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Suiv.",
+          "action": {
+            "type": "medianext"
+          }
+        },
+        "3": {
+          "icon": "skip_previous",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Prec.",
+          "action": {
+            "type": "mediaprev"
+          }
+        },
+        "4": {
+          "icon": "volume_off",
+          "color": "#EF9A9A",
+          "bg": "#331b1b",
+          "label": "Mute",
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        }
+      }
+    }
+  }
 }
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),

@@ -3,11 +3,17 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.2.1] — 2026-11-08
+
+### Modifié
+- **Page Qobuz** : le bouton Stop est retiré (Qobuz ne le gère pas) — les touches se répartissent désormais : 1 = Play/Pause, 2 = Suivant, 3 = Précédent, 4 = Mute, 10 = Accueil.
+- **Page Accueil** : les boutons multimédia (6 = Play, 7 = Suivant, 8 = Précédent) sont retirés — ces commandes restent disponibles sur la page Qobuz. La touche 9 (Mute) et la touche 10 (Qobuz) sont conservées.
+
 ## [1.2.0] — 2026-11-08
 
 ### Ajouté
 - **Pages de profils** : la config classique forme la page « accueil » ; des pages supplémentaires se définissent dans la clé `pages` (chacune avec ses touches, ses encodeurs et son libellé). Nouvelle action `{"type": "page", "page": "nom"}` pour basculer ; la zone 2 du bandeau affiche le nom de la page courante.
-- **Page « Qobuz » par défaut** : Play/Pause, Stop, Suivant, Précédent, Mute (volume système) + retour accueil — pilotée par les touches média système, compatible Qobuz, Spotify, VLC, etc.
+- **Page « Qobuz » par défaut** : Play/Pause, Suivant, Précédent, Mute (volume système) + retour accueil — pilotée par les touches média système, compatible Qobuz, Spotify, VLC, etc.
 - Sur la page accueil, la touche 10 ouvre la page Qobuz (icône music_note), la touche 9 utilise le vrai volume système (muet).
 
 ### Corrigé
@@ -57,6 +63,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Protocole HID rétro-ingénieré (VID `0x0300` / PID `0x3004`, paquets 1024 octets, commandes `CRT`, images JPEG 112×112 / 800×112 pivotées de 180°)
 - Licence MIT, `README.md`, `.gitignore`
 
+[1.2.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
