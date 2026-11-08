@@ -7,7 +7,7 @@ AKP05E Deck — application de contrôle open source pour l'Ajazz AKP05E / AKP05
 Licence MIT. Aucun logiciel propriétaire requis : uniquement `pywinusb`
 (HID natif Windows) et `Pillow` (génération des icônes JPEG).
 
-    pip install pywinusb pillow
+    pip install pywinusb pillow pycaw
 
 Au premier lancement, un fichier `akp05e_config.json` est créé à côté du
 script : édite-le pour associer des actions aux touches et aux encodeurs,
@@ -39,12 +39,15 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "text",    "text": "Bonjour !"}                # texte tapé
   {"type": "run",     "cmd": "notepad", "args": []}
   {"type": "volume",  "dir": "up"}                        # touche média
+  {"type": "sysvolume", "dir": "up", "step": 5}           # volume système réel
   {"type": "mediaplay"} {"type": "medianext"} {"type": "mediaprev"} {"type": "mediastop"}
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
-appui = extinction/rallumage) et le bandeau tactile affiche le niveau
-en temps réel ("Lum 60%" + barre), avec une zone par encodeur.
+appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
+(pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
+en temps réel ("Vol 42%" et "Lum 60%" + barres), et se met à jour même si
+le volume est changé depuis Windows (barre des tâches, clavier).
 """
 
 import json
@@ -58,6 +61,45 @@ from collections import namedtuple
 
 import pywinusb.hid as hid
 from PIL import Image, ImageDraw, ImageFont
+
+# ---------------------------------------------------------------------------
+# Volume système Windows (pycaw) : niveau réel, pas une simple touche média.
+# Si pycaw est absent, l'action "sysvolume" retombe sur les touches média.
+# ---------------------------------------------------------------------------
+try:
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    _HAS_PYCAW = True
+except ImportError:
+    _HAS_PYCAW = False
+
+_endpoint_vol = None
+_endpoint_lock = threading.Lock()
+
+def _get_endpoint():
+    """Interface IAudioEndpointVolume du périphérique de sortie par défaut."""
+    global _endpoint_vol
+    with _endpoint_lock:
+        if _endpoint_vol is None:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_,
+                                        CLSCTX_ALL, None)
+            _endpoint_vol = interface.QueryInterface(IAudioEndpointVolume)
+        return _endpoint_vol
+
+def get_volume_pct():
+    """Volume principal système, en pourcentage (0-100)."""
+    return int(round(_get_endpoint().GetMasterVolumeLevelScalar() * 100))
+
+def set_volume_pct(pct):
+    _get_endpoint().SetMasterVolumeLevelScalar(
+        max(0, min(100, pct)) / 100.0, None)
+
+def get_mute():
+    return bool(_get_endpoint().GetMute())
+
+def set_mute(muted):
+    _get_endpoint().SetMute(bool(muted), None)
 
 # ---------------------------------------------------------------------------
 # Constantes matérielles (confirmées sur matériel réel)
@@ -155,9 +197,10 @@ def set_icon(device, button, name, fg="#e0e0e0", bg="#101010", label=None):
 # ---------------------------------------------------------------------------
 # Bandeau tactile (800x112) : une zone de 200px par encodeur
 # ---------------------------------------------------------------------------
-def show_strip(device, brightness, volume_label="Vol", extras=("K2", "K3")):
-    """Redessine le bandeau sous les 4 knobs : libellé de chaque encodeur,
-    et pour le knob 4 une barre + % de luminosité en temps réel."""
+def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3")):
+    """Redessine le bandeau sous les 4 knobs : zone 1 = volume système
+    (temps réel, + barre + %, "Muet" si coupé), zone 4 = luminosité
+    avec barre + %. Zones 2-3 libres (libellés extras)."""
     w, h = STRIP_IMAGE_SIZE
     img = Image.new("RGB", (w, h), (16, 16, 16))
     d = ImageDraw.Draw(img)
@@ -166,22 +209,41 @@ def show_strip(device, brightness, volume_label="Vol", extras=("K2", "K3")):
         font_big = ImageFont.truetype("arial.ttf", 26)
     except OSError:
         font = font_big = ImageFont.load_default()
-    # libellés des zones 1..3 (volume + 2 libres)
-    labels = [volume_label, extras[0], extras[1]]
-    for i, lab in enumerate(labels):
-        x = i * 200
-        d.text((x + 100, 34), lab, font=font, fill=(120, 120, 120), anchor="mm")
-    # zone 4 : luminosité avec barre de niveau
-    d.text((700, 28), "Lum", font=font, fill=(240, 220, 130), anchor="mm")
-    pct = max(0, min(100, int(brightness)))
-    d.text((700, 66), f"{pct}%", font=font_big, fill=(240, 240, 240), anchor="mm")
-    bar_x0, bar_x1, bar_y = 610, 790, 92
-    d.rounded_rectangle([bar_x0, bar_y, bar_x1, bar_y + 12], radius=6,
-                        fill=(50, 50, 50))
-    if pct > 0:
-        fill_w = int((bar_x1 - bar_x0 - 4) * pct / 100)
-        d.rounded_rectangle([bar_x0 + 2, bar_y + 2, bar_x0 + 2 + fill_w,
-                            bar_y + 10], radius=4, fill=(255, 213, 79))
+
+    def level_zone(x_center, name, pct, is_muted, name_color):
+        d.text((x_center, 28), name, font=font, fill=name_color, anchor="mm")
+        if is_muted:
+            d.text((x_center, 66), "Muet", font=font_big,
+                   fill=(239, 154, 154), anchor="mm")
+        else:
+            d.text((x_center, 66), f"{pct}%", font=font_big,
+                   fill=(240, 240, 240), anchor="mm")
+        bar_x0, bar_x1, bar_y = x_center - 90, x_center + 90, 92
+        d.rounded_rectangle([bar_x0, bar_y, bar_x1, bar_y + 12], radius=6,
+                            fill=(50, 50, 50))
+        if is_muted:
+            fill = (239, 154, 154)
+        elif name == "Vol":
+            fill = (129, 212, 250)
+        else:
+            fill = (255, 213, 79)
+        fill_w = int((bar_x1 - bar_x0 - 4) * max(0, min(100, pct)) / 100)
+        if fill_w > 0:
+            d.rounded_rectangle([bar_x0 + 2, bar_y + 2, bar_x0 + 2 + fill_w,
+                                 bar_y + 10], radius=4, fill=fill)
+
+    # zone 1 : volume système (ou libellé libre si pycaw absent)
+    if volume is not None:
+        level_zone(100, "Vol", volume, muted, (129, 212, 250))
+    else:
+        d.text((100, 34), "K1", font=font, fill=(120, 120, 120), anchor="mm")
+    # zones 2..3 : libellés libres
+    for i, lab in enumerate(extras):
+        d.text((i * 200 + 300, 34), lab, font=font,
+               fill=(120, 120, 120), anchor="mm")
+    # zone 4 : luminosité
+    level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
+               (240, 220, 130))
     # séparateurs verticaux entre zones
     for i in (1, 2, 3):
         d.line([(i * 200, 10), (i * 200, h - 10)], fill=(45, 45, 45), width=2)
@@ -455,6 +517,25 @@ def run_action(action, device):
         send_keys(["prev"])
     elif t == "mediastop":
         send_keys(["stop"])
+    elif t == "sysvolume":
+        # volume système Windows réel (pycaw) ; retombe sur les touches média
+        d = action.get("dir", "up")
+        if _HAS_PYCAW:
+            try:
+                if d == "mute":
+                    set_mute(not get_mute())
+                else:
+                    step = action.get("step", 5)
+                    set_volume_pct(get_volume_pct()
+                                   + (step if d == "up" else -step))
+            except Exception as e:
+                print(f"Volume système indisponible : {e}")
+        else:
+            send_keys([{"up": "volume_up", "down": "volume_down",
+                        "mute": "volume_mute"}[d]])
+        refresh = getattr(device, "on_strip_refresh", None)
+        if refresh:
+            refresh()
     elif t == "brightness":
         step = action.get("step", 10)
         device.set_brightness(device.brightness
@@ -494,9 +575,9 @@ DEFAULT_CONFIG = {
               "action": {"type": "mediastop"}}
     },
     "encoders": {
-        "encoder_1_cw":   {"action": {"type": "volume", "dir": "up"}},
-        "encoder_1_ccw":  {"action": {"type": "volume", "dir": "down"}},
-        "encoder_1_button": {"action": {"type": "volume", "dir": "mute"}},
+        "encoder_1_cw":   {"action": {"type": "sysvolume", "dir": "up", "step": 5}},
+        "encoder_1_ccw":  {"action": {"type": "sysvolume", "dir": "down", "step": 5}},
+        "encoder_1_button": {"action": {"type": "sysvolume", "dir": "mute"}},
         "encoder_4_cw":   {"action": {"type": "brightness", "dir": "up", "step": 10}},
         "encoder_4_ccw":  {"action": {"type": "brightness", "dir": "down", "step": 10}},
         "encoder_4_button": {"action": {"type": "brightness_toggle"}}
@@ -538,13 +619,49 @@ def main():
 
     device.on_event = handle
     device.on_disconnect = lambda: print("Deck débranché — relance l'application.")
-    device.on_brightness = lambda pct: show_strip(device, pct)
+
+    def refresh_strip():
+        """Redessine le bandeau : volume système + luminosité en direct."""
+        vol, muted = None, None
+        if _HAS_PYCAW:
+            try:
+                vol, muted = get_volume_pct(), get_mute()
+            except Exception:
+                pass
+        try:
+            show_strip(device, device.brightness, volume=vol, muted=muted)
+        except Exception as e:
+            print(f"Bandeau non redessiné : {e}")
+
+    def poll_volume():
+        """Met à jour le bandeau dès que le volume change (deck, clavier,
+        barre des tâches...) — vérification toutes les 0,5 s."""
+        last = None
+        while True:
+            state = None
+            if _HAS_PYCAW:
+                try:
+                    state = (get_volume_pct(), get_mute())
+                except Exception:
+                    state = None
+            if state != last:
+                last = state
+                refresh_strip()
+            time.sleep(0.5)
+
+    device.on_brightness = lambda pct: refresh_strip()
+    device.on_strip_refresh = refresh_strip
+    if _HAS_PYCAW:
+        threading.Thread(target=poll_volume, daemon=True).start()
+    else:
+        print("pycaw absent : le volume système réel est indisponible "
+              "(pip install pycaw) — retour aux touches média.")
 
     device.open()
     print("AKP05E connecté. Ctrl+C pour quitter.")
 
-    # bandeau tactile : affiche les zones des 4 knobs (luminosité en direct)
-    show_strip(device, device.brightness)
+    # bandeau tactile : zones Vol (temps réel) et Lum
+    refresh_strip()
 
     # peint les icônes configurées
     for n, entry in (config.get("buttons") or {}).items():
