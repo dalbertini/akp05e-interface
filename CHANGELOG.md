@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.5.2] — 2026-11-08
+
+### Ajouté
+- **Gestes du bandeau tactile activés avec le mappage réel du firmware** (établi par calibration en v1.5.1) : tap zone 1..4 = codes `0x40`–`0x43`, swipe gauche = `0x39` (page précédente), swipe droit = `0x38` (page suivante). Un tap sur une zone déclenche l'action du knob correspondant (par défaut, tap zone 2 — carrousel — = page suivante) ; les codes `0x3A`/`0x3B` (probables swipe haut/bas) restent signalés comme inconnus.
+
 ## [1.5.1] — 2026-11-08
 
 ### Modifié
@@ -84,6 +89,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

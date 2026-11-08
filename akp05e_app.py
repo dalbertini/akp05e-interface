@@ -151,12 +151,15 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.5.2"
 
-# Événements du bandeau tactile — phase de calibration : le firmware réel
-# n'utilise pas les codes 0x30..0x3F de la doc de référence. Tous les rapports
-# de cette plage sont journalisés un par un (v1.5.1) pour établir le mappage.
-STRIP_GESTURE_MIN, STRIP_GESTURE_MAX = 0x30, 0x47
+# Événements du bandeau tactile — mappage établi par calibration sur le
+# matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
+# (page précédente) ; 0x38 = swipe droit (page suivante). 0x3A/0x3B restent
+# inconnus (probables swipe haut/bas) et sont signalés s'ils surviennent.
+STRIP_TAP_BASE = 0x40    # tap zone N -> code 0x40 + N - 1
+STRIP_SWIPE_PREV = 0x39  # swipe gauche -> page précédente
+STRIP_SWIPE_NEXT = 0x38  # swipe droit  -> page suivante
 
 # mapping touche pressée (1-10) -> wire-key image
 BUTTON_TO_WIRE_KEY = {1: 11, 2: 12, 3: 13, 4: 14, 5: 15,
@@ -415,10 +418,15 @@ class Akp05Device:
             # twist = one-shot (state toujours 0) ; press = down/up
             ev = Event(name, True if name.endswith(("_cw", "_ccw"))
                        else state == KEY_DOWN)
-        elif STRIP_GESTURE_MIN <= key <= STRIP_GESTURE_MAX:
-            # calibration : chaque événement tactile est journalisé,
-            # code et état, à chaque occurrence (pas de dédoublonnage)
-            print(f"[tactile] code=0x{key:02X} état={state}")
+        elif STRIP_TAP_BASE <= key <= STRIP_TAP_BASE + 3:
+            # tap sur la zone tactile N (1..4), alignée sur l'encodeur N
+            ev = Event(f"strip_tap_{key - STRIP_TAP_BASE + 1}", True)
+        elif key == STRIP_SWIPE_PREV:
+            ev = Event("strip_swipe_left", True)
+        elif key == STRIP_SWIPE_NEXT:
+            ev = Event("strip_swipe_right", True)
+        elif 0x30 <= key <= 0x47:
+            self._log_unknown(key)
             return
         else:
             self._log_unknown(key)
