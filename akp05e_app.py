@@ -70,8 +70,20 @@ try:
     from comtypes import CLSCTX_ALL
     from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
     _HAS_PYCAW = True
-except ImportError:
+    _PYCAW_IMPORT_ERR = None
+except ImportError as e:
     _HAS_PYCAW = False
+    _PYCAW_IMPORT_ERR = str(e)
+
+def _com_init():
+    """Initialise COM dans le thread appelant (indispensable : le polling
+    de volume et les actions tournent dans des threads où COM n'est PAS
+    initialisé automatiquement — sinon chaque appel échoue en silence)."""
+    try:
+        import comtypes
+        comtypes.CoInitialize()
+    except Exception:
+        pass
 
 _endpoint_vol = None
 _endpoint_lock = threading.Lock()
@@ -89,13 +101,16 @@ def _get_endpoint():
 
 def get_volume_pct():
     """Volume principal système, en pourcentage (0-100)."""
+    _com_init()
     return int(round(_get_endpoint().GetMasterVolumeLevelScalar() * 100))
 
 def set_volume_pct(pct):
+    _com_init()
     _get_endpoint().SetMasterVolumeLevelScalar(
         max(0, min(100, pct)) / 100.0, None)
 
 def get_mute():
+    _com_init()
     return bool(_get_endpoint().GetMute())
 
 def set_mute(muted):
@@ -636,14 +651,20 @@ def main():
     def poll_volume():
         """Met à jour le bandeau dès que le volume change (deck, clavier,
         barre des tâches...) — vérification toutes les 0,5 s."""
+        _com_init()
         last = None
+        err_shown = False
         while True:
             state = None
             if _HAS_PYCAW:
                 try:
                     state = (get_volume_pct(), get_mute())
-                except Exception:
+                    err_shown = False
+                except Exception as e:
                     state = None
+                    if not err_shown:
+                        print(f"[volume] lecture du volume système impossible : {e}")
+                        err_shown = True
             if state != last:
                 last = state
                 refresh_strip()
@@ -654,8 +675,11 @@ def main():
     if _HAS_PYCAW:
         threading.Thread(target=poll_volume, daemon=True).start()
     else:
-        print("pycaw absent : le volume système réel est indisponible "
-              "(pip install pycaw) — retour aux touches média.")
+        print(f"pycaw/comtypes introuvable ({_PYCAW_IMPORT_ERR}) : le volume "
+              "système réel est indisponible. Installe-le avec le MÊME "
+              "interpréteur que celui qui lance le script :\n"
+              "    python -m pip install pycaw\n"
+              "Retour aux touches média.")
 
     device.open()
     print("AKP05E connecté. Ctrl+C pour quitter.")

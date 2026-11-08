@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.1.1] — 2026-11-08
+
+### Corrigé
+- **Le volume système restait bloqué sur « K1 »** : les appels audio Windows (COM) sont effectués depuis des threads (surveilleur de volume, actions), mais COM n'y était pas initialisé — chaque appel échouait silencieusement. COM est désormais initialisé dans chaque thread appelant (`_com_init()`), le bandeau affiche bien « Vol % ».
+- Les erreurs de lecture du volume ne sont plus avalées : la première erreur est affichée dans la console (au lieu d'un échec muet).
+- Si `pycaw`/`comtypes` sont introuvables, le message de démarrage affiche la cause exacte de l'échec d'import et rappelle d'installer avec le même interpréteur (`python -m pip install pycaw`).
+
 ## [1.1.0] — 2026-11-08
 
 ### Ajouté
@@ -34,5 +41,6 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Protocole HID rétro-ingénieré (VID `0x0300` / PID `0x3004`, paquets 1024 octets, commandes `CRT`, images JPEG 112×112 / 800×112 pivotées de 180°)
 - Licence MIT, `README.md`, `.gitignore`
 
+[1.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
