@@ -3,11 +3,17 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.1.2] — 2026-11-08
+
+### Corrigé
+- **Volume système à nouveau invisible (« K1 ») avec pycaw ≥ 20240210** : la nouvelle API pycaw fait de `AudioUtilities.GetSpeakers()` un objet `AudioDevice` sans méthode `.Activate()` — le volume est désormais accessible via l'attribut `.EndpointVolume`. L'application détecte automatiquement l'ancienne ou la nouvelle génération de l'API (`_get_endpoint()`), les deux versions de pycaw sont supportées.
+- `test_volume.py` (diagnostic) mis à jour pour tester les deux générations de l'API.
+
 ## [1.1.1] — 2026-11-08
 
 ### Corrigé
-- **Le volume système restait bloqué sur « K1 »** : les appels audio Windows (COM) sont effectués depuis des threads (surveilleur de volume, actions), mais COM n'y était pas initialisé — chaque appel échouait silencieusement. COM est désormais initialisé dans chaque thread appelant (`_com_init()`), le bandeau affiche bien « Vol % ».
-- Les erreurs de lecture du volume ne sont plus avalées : la première erreur est affichée dans la console (au lieu d'un échec muet).
+- **Le volume système restait bloqué sur « K1 »** : les appels audio Windows (COM) sont effectués depuis des threads (surveilleur de volume, actions), mais COM n'y était pas initialisé — chaque appel échouait silencieusement. COM est désormais initialisé dans chaque thread appelant (`_com_init()`).
+- Les erreurs de lecture du volume ne sont plus avalées : la première erreur est affichée dans la console.
 - Si `pycaw`/`comtypes` sont introuvables, le message de démarrage affiche la cause exacte de l'échec d'import et rappelle d'installer avec le même interpréteur (`python -m pip install pycaw`).
 
 ## [1.1.0] — 2026-11-08
@@ -21,7 +27,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 
 ### Modifié
 - Config par défaut du knob 1 : `volume` (touches média) → `sysvolume` (volume système réel)
-- **Bandeau unifié** : les zones « Vol » et « Lum » partagent désormais le même moteur d'affichage (libellé, %, barre de niveau) ; la zone « Lum » garde son comportement (rotation = ±10, appui sur le knob 4 = extinction/rallumage avec mémorisation du dernier niveau) mais le bandeau redessiné affiche désormais **les deux niveaux synchronisés** — un changement de luminosité met aussi à jour l'affichage du volume en temps réel
+- **Bandeau unifié** : les zones « Vol » et « Lum » partagent désormais le même moteur d'affichage (libellé, %, barre de niveau) ; la zone « Lum » garde son comportement (rotation = ±10, appui sur le knob 4 = extinction/rallumage avec mémorisation du dernier niveau) mais le bandeau redessiné affiche désormais **les deux niveaux synchronisés**
 - Suppression d'une ligne vide parasite en tête de fichier (le shebang est bien en ligne 1)
 
 ### Dégradation élégante
@@ -41,6 +47,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Protocole HID rétro-ingénieré (VID `0x0300` / PID `0x3004`, paquets 1024 octets, commandes `CRT`, images JPEG 112×112 / 800×112 pivotées de 180°)
 - Licence MIT, `README.md`, `.gitignore`
 
+[1.1.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

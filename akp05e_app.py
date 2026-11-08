@@ -89,14 +89,21 @@ _endpoint_vol = None
 _endpoint_lock = threading.Lock()
 
 def _get_endpoint():
-    """Interface IAudioEndpointVolume du périphérique de sortie par défaut."""
+    """Interface IAudioEndpointVolume du périphérique de sortie par défaut.
+    Gère les DEUX générations de l'API pycaw :
+      - ancienne (< 20240210) : AudioDevice a une méthode .Activate(...)
+      - nouvelle (>= 20240210) : AudioDevice expose .EndpointVolume directement
+    """
     global _endpoint_vol
     with _endpoint_lock:
         if _endpoint_vol is None:
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_,
-                                        CLSCTX_ALL, None)
-            _endpoint_vol = interface.QueryInterface(IAudioEndpointVolume)
+            device = AudioUtilities.GetSpeakers()
+            if hasattr(device, "Activate"):
+                interface = device.Activate(IAudioEndpointVolume._iid_,
+                                           CLSCTX_ALL, None)
+                _endpoint_vol = interface.QueryInterface(IAudioEndpointVolume)
+            else:
+                _endpoint_vol = device.EndpointVolume
         return _endpoint_vol
 
 def get_volume_pct():
