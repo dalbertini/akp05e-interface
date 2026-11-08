@@ -151,7 +151,13 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.4.2"
+APP_VERSION = "1.5.0"
+
+# Événements du bandeau tactile : rapports 0x30..0x3F, nibble basse = geste
+# (0 = tap zone, 1 = swipe gauche, 2 = swipe droit) — mappage indicatif de la
+# doc de référence, affiné par les messages console si le firmware diffère.
+STRIP_GESTURE_MIN, STRIP_GESTURE_MAX = 0x30, 0x3F
+STRIP_GESTURE_CODES = {0: "tap", 1: "swipe_left", 2: "swipe_right"}
 
 # mapping touche pressée (1-10) -> wire-key image
 BUTTON_TO_WIRE_KEY = {1: 11, 2: 12, 3: 13, 4: 14, 5: 15,
@@ -353,6 +359,7 @@ class Akp05Device:
         self.dev = None
         self._keepalive_stop = threading.Event()
         self._threads = []
+        self._unknown_seen = set()  # codes d'entrée inconnus déjà signalés
         self.on_event = None          # callback(Event)
         self.on_disconnect = None
         self.on_brightness = None     # callback(pct) — rafraîchit le bandeau
@@ -409,13 +416,34 @@ class Akp05Device:
             # twist = one-shot (state toujours 0) ; press = down/up
             ev = Event(name, True if name.endswith(("_cw", "_ccw"))
                        else state == KEY_DOWN)
+        elif STRIP_GESTURE_MIN <= key <= STRIP_GESTURE_MAX:
+            gesture = STRIP_GESTURE_CODES.get(key & 0x0F)
+            if gesture is None:
+                self._log_unknown(key)
+                return
+            if gesture == "tap":
+                # état = index de zone tactile (0..3) -> zone 1..4
+                zone = max(1, min(4, state + 1)) if state <= 3 else state
+                name = f"strip_tap_{zone}"
+            else:
+                name = f"strip_{gesture}"
+            ev = Event(name, True)
         else:
+            self._log_unknown(key)
             return
         if self.on_event:
             try:
                 self.on_event(ev)
             except Exception as e:
                 print(f"[erreur handler] {e}")
+
+    def _log_unknown(self, key):
+        """Signale une fois par code les entrées non reconnues, pour affiner
+        le mappage du protocole avec les retours réels du deck."""
+        if key not in self._unknown_seen:
+            self._unknown_seen.add(key)
+            print(f"[protocole] entrée inconnue : 0x{key:02X} "
+                  f"(merci de signaler ce message pour le débogage)")
 
     def _keepalive_loop(self):
         while not self._keepalive_stop.wait(10.0):
@@ -956,9 +984,31 @@ def main():
 
     device.on_page_change = switch_page
 
+    def _handle_strip(name):
+        """Gestes du bandeau tactile : swipe = page précédente/suivante,
+        tap sur une zone = action de l'encodeur correspondant (par défaut,
+        tap sur la zone 2 du carrousel = page suivante)."""
+        if name in ("strip_swipe_left", "strip_swipe_right"):
+            way = "prev" if name.endswith("left") else "next"
+            print(f"[tactile] swipe {'gauche' if way == 'prev' else 'droit'} → page {way}")
+            switch_page(way)
+            return
+        zone = int(name.rsplit("_", 1)[1])
+        print(f"[tactile] tap zone {zone}")
+        enc = f"encoder_{zone}_button"
+        action = page_cfg().get("encoders", {}).get(enc, {}).get("action")
+        if action:
+            run_action(action, device)
+        elif zone == 2:
+            switch_page("next")  # zone du carrousel sans action dédiée
+
     def handle(ev):
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
+        if ev.name.startswith("strip_"):
+            threading.Thread(target=_handle_strip, args=(ev.name,),
+                             daemon=True).start()
+            return
         cfg = page_cfg()
         action = None
         if ev.name.startswith("button_"):
