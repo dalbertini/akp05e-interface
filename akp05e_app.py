@@ -147,6 +147,7 @@ BUTTON_IMAGE_SIZE = (112, 112)
 STRIP_IMAGE_SIZE = (800, 112)
 STRIP_WIRE_KEY = 1
 DEFAULT_BRIGHTNESS = 60
+APP_VERSION = "1.4.1"
 
 # mapping touche pressée (1-10) -> wire-key image
 BUTTON_TO_WIRE_KEY = {1: 11, 2: 12, 3: 13, 4: 14, 5: 15,
@@ -437,7 +438,10 @@ class Akp05Device:
                 print(f"[erreur bandeau] {e}")
 
     def _upload_jpeg(self, wire_key, jpeg):
-        """Envoi d'une image JPEG sur un wire-key (BAT + chunks + STP)."""
+        """Envoi d'une image JPEG sur un wire-key (BAT + chunks + STP).
+        Un mini-délai entre les paquets est indispensable : envoyés en
+        rafale, le firmware du deck en perd certains en route et l'image
+        se corrompt au milieu (zones brouillées)."""
         header = crt_command("BAT", [0, 0, (len(jpeg) >> 8) & 0xFF,
                                     len(jpeg) & 0xFF, wire_key])
         with self.lock:
@@ -447,6 +451,7 @@ class Akp05Device:
                 packet = [0] * TOTAL_LEN
                 packet[1:1 + len(chunk)] = list(chunk)
                 self._send(packet)
+                time.sleep(0.002)  # laisse le firmware du deck absorber
             self._send(crt_command("STP"))
 
     @staticmethod
@@ -1012,7 +1017,7 @@ def main():
               "Retour aux touches média.")
 
     device.open()
-    print("AKP05E connecté. Ctrl+C pour quitter.")
+    print(f"AKP05E Interface v{APP_VERSION} — connecté. Ctrl+C pour quitter.")
 
     # bandeau tactile : zones Vol (temps réel), page courante (zone 2) et Lum
     device._page_label = (page_cfg().get("label") or current["name"])[:9]
