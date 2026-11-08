@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.4.2] — 2026-11-08
+
+### Corrigé
+- **Bandeau tactile corrompu (zones brouillées qui évoluent à chaque rafraîchissement)** : le JPEG du bandeau était encodé en qualité 90 et le carrousel coloré introduit en v1.4.0 l'a fait grossir au point de déborder du buffer du firmware — le milieu de l'image se corrompait (carrés, décalages horizontaux), le délai de 2 ms de la v1.4.1 n'était donc pas la bonne piste. Le bandeau est désormais **compressé adaptativement** (`_pil_to_jpeg_capped`) : la qualité JPEG baisse automatiquement (80 → 65 → 50 → 35) jusqu'à rester sous 12 Ko, la taille qui s'affichait correctement dans les versions ≤ 1.3.x. Un avertissement s'affiche si la limite restait dépassée.
+
 ## [1.4.1] — 2026-11-08
 
 ### Corrigé
@@ -68,6 +73,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.4.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.4.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.3.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

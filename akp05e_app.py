@@ -146,8 +146,12 @@ KEY_IDX, STATE_IDX = 10, 11 # positions dans les rapports d'entrée Windows
 BUTTON_IMAGE_SIZE = (112, 112)
 STRIP_IMAGE_SIZE = (800, 112)
 STRIP_WIRE_KEY = 1
+# Taille max du JPEG du bandeau : au-delà, le buffer du firmware boucle sur
+# lui-même et le milieu de l'image se corrompt (bandes brouillées).
+STRIP_MAX_JPEG = 12000
+STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.4.1"
+APP_VERSION = "1.4.2"
 
 # mapping touche pressée (1-10) -> wire-key image
 BUTTON_TO_WIRE_KEY = {1: 11, 2: 12, 3: 13, 4: 14, 5: 15,
@@ -461,6 +465,21 @@ class Akp05Device:
         img.save(buf, format="JPEG", quality=90)
         return buf.getvalue()
 
+    @staticmethod
+    def _pil_to_jpeg_capped(img, max_size=STRIP_MAX_JPEG):
+        """Encode en JPEG en réduisant la qualité jusqu'à tenir sous
+        max_size octets : un JPEG trop gros déborde du buffer du firmware
+        (le milieu du bandeau se corrompt)."""
+        import io
+        jpeg = None
+        for q in STRIP_JPEG_QUALITIES:
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=q, optimize=True)
+            jpeg = buf.getvalue()
+            if len(jpeg) <= max_size:
+                break
+        return jpeg
+
     def set_image(self, button: int, img: Image.Image):
         """Upload une image PIL sur la touche (1-10), 112x112, rotation 180°."""
         if button not in BUTTON_TO_WIRE_KEY:
@@ -469,9 +488,14 @@ class Akp05Device:
         self._upload_jpeg(BUTTON_TO_WIRE_KEY[button], self._pil_to_jpeg(img))
 
     def set_strip(self, img: Image.Image):
-        """Upload une image PIL sur le bandeau tactile (800x112, wire-key 1)."""
+        """Upload une image PIL sur le bandeau tactile (800x112, wire-key 1).
+        JPEG compressé adaptativement pour rester sous la limite firmware."""
         img = img.convert("RGB").resize(STRIP_IMAGE_SIZE).rotate(180)
-        self._upload_jpeg(STRIP_WIRE_KEY, self._pil_to_jpeg(img))
+        jpeg = self._pil_to_jpeg_capped(img)
+        if len(jpeg) > STRIP_MAX_JPEG:
+            print(f"[bandeau] JPEG encore gros ({len(jpeg)} octets), "
+                  "risque de corruption possible")
+        self._upload_jpeg(STRIP_WIRE_KEY, jpeg)
 
     def set_label(self, button: int, text: str, bg=(15, 15, 15),
                   fg=(240, 240, 240), sub: str = None):
