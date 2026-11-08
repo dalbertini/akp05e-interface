@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.3.0] — 2026-11-08
+
+### Ajouté
+- **Le knob 2 fait défiler les pages** : rotation CW = page suivante, CCW = page précédente (action `{"type": "page", "page": "next"}` / `"prev"`), actif sur toutes les pages et automatiquement compatible avec les futures pages ajoutées dans la config.
+- L'appui du knob 2 reste libre (configurable).
+
+
 ## [1.2.1] — 2026-11-08
 
 ### Modifié
@@ -63,6 +70,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Protocole HID rétro-ingénieré (VID `0x0300` / PID `0x3004`, paquets 1024 octets, commandes `CRT`, images JPEG 112×112 / 800×112 pivotées de 180°)
 - Licence MIT, `README.md`, `.gitignore`
 
+[1.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.2.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.1.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -44,6 +44,8 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
   {"type": "page", "page": "qobuz"}                         # changer de page
+  {"type": "page", "page": "next"}                          # ou "prev" : défiler
+(Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.)
 PAGES DE PROFILS : la config classique ("buttons"/"encoders") forme la page
 "accueil". Des pages supplémentaires se définissent dans la clé "pages" :
   {"pages": {"qobuz": {"label": "Qobuz", "buttons": {...}, "encoders": {...}}}}
@@ -700,6 +702,18 @@ DEFAULT_CONFIG = {
       "action": {
         "type": "brightness_toggle"
       }
+    },
+    "encoder_2_cw": {
+      "action": {
+        "type": "page",
+        "page": "next"
+      }
+    },
+    "encoder_2_ccw": {
+      "action": {
+        "type": "page",
+        "page": "prev"
+      }
     }
   },
   "pages": {
@@ -792,6 +806,18 @@ DEFAULT_CONFIG = {
           "action": {
             "type": "brightness_toggle"
           }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
         }
       }
     }
@@ -856,6 +882,12 @@ def main():
     def switch_page(name):
         if not name:
             return
+        # "next" / "prev" : fait défiler les pages (knob 2)
+        if name in ("next", "prev"):
+            i = (page_names.index(current["name"])
+                 if current["name"] in page_names else 0)
+            name = page_names[(i + (1 if name == "next" else -1))
+                               % len(page_names)]
         if name == "accueil" or name in pages:
             current["name"] = name
             print(f"[page] {name}")
