@@ -1,0 +1,9 @@
+# cache de la police d'icônes (téléchargée au premier usage)
+.icons_cache/
+
+# config locale (contient tes actions personnelles)
+akp05e_config.json
+
+# python
+__pycache__/
+*.pyc
