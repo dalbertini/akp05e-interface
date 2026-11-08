@@ -651,16 +651,6 @@ DEFAULT_CONFIG = {
         "type": "sysvolume",
         "dir": "mute"
       }
-    },
-    "10": {
-      "icon": "music_note",
-      "color": "#81D4FA",
-      "bg": "#101d2b",
-      "label": "Qobuz",
-      "action": {
-        "type": "page",
-        "page": "qobuz"
-      }
     }
   },
   "encoders": {
@@ -727,15 +717,6 @@ DEFAULT_CONFIG = {
           "label": "Play",
           "action": {
             "type": "mediaplay"
-          }
-        },
-        "10": {
-          "icon": "home",
-          "color": "#80CBC4",
-          "label": "Accueil",
-          "action": {
-            "type": "page",
-            "page": "accueil"
           }
         },
         "2": {
