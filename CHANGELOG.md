@@ -14,6 +14,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 
 ### Modifié
 - Config par défaut du knob 1 : `volume` (touches média) → `sysvolume` (volume système réel)
+- **Bandeau unifié** : les zones « Vol » et « Lum » partagent désormais le même moteur d'affichage (libellé, %, barre de niveau) ; la zone « Lum » garde son comportement (rotation = ±10, appui sur le knob 4 = extinction/rallumage avec mémorisation du dernier niveau) mais le bandeau redessiné affiche désormais **les deux niveaux synchronisés** — un changement de luminosité met aussi à jour l'affichage du volume en temps réel
 - Suppression d'une ligne vide parasite en tête de fichier (le shebang est bien en ligne 1)
 
 ### Dégradation élégante
