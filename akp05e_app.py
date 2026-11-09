@@ -61,7 +61,9 @@ appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
 (pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
 en temps réel ("Vol 42%" et "Lum 60%" + barres), et se met à jour même si
 le volume est changé depuis Windows (barre des tâches, clavier).
-"""
+La zone 3 du bandeau affiche un VU-MÈTRE temps réel (niveau de crête du
+son système via WASAPI/pycaw, marqueur de crête qui retombe lentement) —
+désactivable via {"vu_meter": {"enabled": false}} dans la config."""
 
 import json
 import os
@@ -81,7 +83,8 @@ from PIL import Image, ImageDraw, ImageFont
 # ---------------------------------------------------------------------------
 try:
     from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    from pycaw.pycaw import (AudioUtilities, IAudioEndpointVolume,
+                            IAudioMeterInformation)
     _HAS_PYCAW = True
     _PYCAW_IMPORT_ERR = None
 except ImportError as e:
@@ -135,6 +138,43 @@ def get_mute():
 
 def set_mute(muted):
     _get_endpoint().SetMute(bool(muted), None)
+
+# --- VU-mètre : peak meter WASAPI (pycaw) ---------------------------------
+_meter = None
+
+def _get_meter():
+    """Interface IAudioMeterInformation du périphérique de sortie par
+    défaut (peak meter WASAPI). Gère les DEUX générations de pycaw :
+      - ancienne : AudioDevice expose .Activate(...)
+      - nouvelle (>= 2025) : l'IMMDevice brut est dans device._dev
+    """
+    global _meter
+    with _endpoint_lock:
+        if _meter is None:
+            device = AudioUtilities.GetSpeakers()
+            if hasattr(device, "Activate"):
+                itf = device.Activate(IAudioMeterInformation._iid_,
+                                      CLSCTX_ALL, None)
+            else:
+                imm = getattr(device, "_dev", None)
+                if imm is None:
+                    return None
+                itf = imm.Activate(IAudioMeterInformation._iid_,
+                                   CLSCTX_ALL, None)
+            _meter = itf.QueryInterface(IAudioMeterInformation)
+        return _meter
+
+def vu_get_peak():
+    """Niveau de crête instantané du son du système, entre 0.0 et 1.0.
+    Retourne None si l'interface est indisponible."""
+    _com_init()
+    meter = _get_meter()
+    if meter is None:
+        return None
+    peak = meter.GetPeakValue()
+    if isinstance(peak, (int, float)):
+        return max(0.0, min(1.0, float(peak)))
+    return None
 
 # ---------------------------------------------------------------------------
 # HWiNFO64 (licence Pro) : températures et capteurs via la mémoire partagée.
@@ -291,7 +331,12 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.7.0"
+APP_VERSION = "1.8.0"
+
+# cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
+# la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
+_strip_base = None
+_strip_base_lock = threading.Lock()
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -383,6 +428,41 @@ def set_icon(device, button, name, fg="#e0e0e0", bg="#101010", label=None):
 # ---------------------------------------------------------------------------
 # Bandeau tactile (800x112) : une zone de 200px par encodeur
 # ---------------------------------------------------------------------------
+def draw_vu_zone(img, peak, hold, muted=False):
+    """VU-mètre vertical segmenté dans la zone 3 du bandeau (x 400-600) :
+    segments vert/ambre/rouge + marqueur de crête (peak-hold) qui
+    retombe lentement, "Muet" si le son est coupé."""
+    d = ImageDraw.Draw(img)
+    d.rectangle([404, 6, 596, 106], fill=(16, 16, 16))  # efface la zone
+    try:
+        f_t = ImageFont.truetype("arial.ttf", 14)
+    except OSError:
+        f_t = ImageFont.load_default()
+    d.text((500, 12), "VU", font=f_t, fill=(129, 212, 250), anchor="mm")
+    n = 14                       # nombre de segments
+    y_bot, y_top = 106, 24
+    seg_h = (y_bot - y_top) / n
+    for i in range(n):
+        y0 = y_bot - (i + 1) * seg_h
+        y1 = y_bot - i * seg_h - 1
+        if i / n < 0.6:
+            col = (129, 199, 132)                    # vert
+        elif i / n < 0.85:
+            col = (255, 213, 79)                     # ambre
+        else:
+            col = (239, 83, 80)                      # rouge
+        lit = (i + 0.5) / n <= peak
+        mark = (not muted and not lit and i / n <= hold < (i + 1) / n)
+        if lit:
+            fill = col
+        elif mark:  # segment de crête éteint, en teinte sombre
+            fill = (col[0] // 3, col[1] // 3, col[2] // 3)
+        else:
+            fill = (40, 42, 46)
+        d.rectangle([470, y0, 530, y1], fill=fill)
+    if muted:
+        d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
+
 def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
                pages=None, page_icon=None, page_color=None):
     """Redessine le bandeau sous les 4 knobs : zone 1 = volume système
@@ -475,6 +555,9 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     # séparateurs verticaux entre zones
     for i in (1, 2, 3):
         d.line([(i * 200, 10), (i * 200, h - 10)], fill=(45, 45, 45), width=2)
+    global _strip_base  # le fil du VU-mètre redessinera la zone 3 par-dessus
+    with _strip_base_lock:
+        _strip_base = img.copy()
     device.set_strip(img)
 
 def paint_hw_button(device, button, label, reading, thresholds=(70, 85)):
@@ -866,6 +949,10 @@ def run_action(action, device):
 
 DEFAULT_CONFIG = {
   "brightness": 60,
+  "vu_meter": {
+    "enabled": True,
+    "fps": 12
+  },
   "buttons": {
     "1": {
       "icon": "terminal",
@@ -1366,6 +1453,8 @@ def main():
     pages = config.get("pages") or {}
     page_names = ["accueil"] + [n for n in pages if n != "accueil"]
     current = {"name": config.get("page", "accueil")}
+    vu_cfg = config.get("vu_meter") or {}
+    vu_on = _HAS_PYCAW and bool(vu_cfg.get("enabled", True))
 
     def page_cfg():
         if current["name"] == "accueil" or current["name"] not in pages:
@@ -1471,7 +1560,8 @@ def main():
                 vol, muted = get_volume_pct(), get_mute()
             except Exception:
                 pass
-        extras = (getattr(device, "_page_label", None) or "K2", "K3")
+        extras = (getattr(device, "_page_label", None) or "K2",
+                  "VU" if vu_on else "K3")
         # carrousel : pages précédente / courante / suivante (zone 2)
         i = (page_names.index(current["name"])
              if current["name"] in page_names else 0)
@@ -1517,6 +1607,44 @@ def main():
                 refresh_strip()
             time.sleep(0.5)
 
+    def poll_vu():
+        """VU-mètre temps réel sur la zone 3 du bandeau : niveau de crête
+        du son système (peak meter WASAPI), ~fps rafraîchissements/s avec
+        marqueur de crête qui retombe lentement. Ne dessine que si le
+        niveau a changé (le bandeau est lent : ~15-17 FPS max)."""
+        _com_init()
+        fps = max(2, min(30, int(vu_cfg.get("fps", 12))))
+        period = 1.0 / fps
+        hold, hold_t = 0.0, 0.0
+        drawn = None
+        err_shown = False
+        while True:
+            t0 = time.time()
+            peak, muted = None, False
+            try:
+                peak = vu_get_peak()
+                muted = get_mute()
+            except Exception as e:
+                if not err_shown:
+                    err_shown = True
+                    print(f"[vu] niveau audio indisponible : {e}")
+            base = _strip_base
+            if peak is not None and base is not None:
+                if peak >= hold - 0.004:
+                    hold, hold_t = peak, t0
+                elif t0 - hold_t > 0.04:
+                    hold = max(0.0, hold - 0.055)  # décroissance du marqueur
+                state = (int(peak * 14), int(hold * 14), muted)
+                if state != drawn:
+                    drawn = state
+                    img = base.copy()
+                    draw_vu_zone(img, peak, hold, muted)
+                    try:
+                        device.set_strip(img)
+                    except Exception:
+                        pass
+            time.sleep(max(0.02, period - (time.time() - t0)))
+
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
 
@@ -1557,6 +1685,8 @@ def main():
                 time.sleep(3)
 
     threading.Thread(target=poll_hardware, daemon=True).start()
+    if vu_on:
+        threading.Thread(target=poll_vu, daemon=True).start()
     if _HAS_PYCAW:
         threading.Thread(target=poll_volume, daemon=True).start()
     else:

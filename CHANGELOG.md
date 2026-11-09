@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.8.0] — 2026-11-09
+
+### Ajouté
+- **VU-mètre temps réel sur la zone 3 du bandeau tactile** : niveau de crête du son système via le peak meter WASAPI (pycaw `IAudioMeterInformation`, gère les deux générations de l'API). Barre verticale segmentée vert/ambre/rouge, marqueur de crête (peak-hold) qui retombe lentement, "Muet" si le son est coupé. Animation ~12 FPS (le bandeau plafonne à ~15-17 FPS, mesuré au chronomètre) — ne redessine que si le niveau change. Désactivable : `"vu_meter": {"enabled": false}` dans `akp05e_config.json` (réglage `fps` 2-30, défaut 12).
+
 ## [1.7.0] — 2026-11-09
 
 ### Ajouté
@@ -118,6 +123,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
