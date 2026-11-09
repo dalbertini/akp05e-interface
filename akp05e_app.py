@@ -54,6 +54,8 @@ le nom de la page courante. Bascule via l'action {"type": "page", ...}.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
+Les pages « raccourcis » (copier/coller/couper, Ctrl+A/B/I/U/Z, Impr. écran,
+Échap) et « hardware » (températures HWiNFO64) sont aussi fournies par défaut.
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
 appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
 (pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
@@ -289,7 +291,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.6.3"
+APP_VERSION = "1.7.0"
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -977,6 +979,156 @@ DEFAULT_CONFIG = {
     }
   },
   "pages": {
+    "raccourcis": {
+      "label": "Raccourcis",
+      "icon": "keyboard",
+      "color": "#9FA8DA",
+      "buttons": {
+        "1": {
+          "icon": "content_copy",
+          "color": "#90CAF9",
+          "label": "Ctrl C",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "c"]
+          }
+        },
+        "2": {
+          "icon": "content_paste",
+          "color": "#90CAF9",
+          "label": "Ctrl V",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "v"]
+          }
+        },
+        "3": {
+          "icon": "content_cut",
+          "color": "#90CAF9",
+          "label": "Ctrl X",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "x"]
+          }
+        },
+        "4": {
+          "icon": "select_all",
+          "color": "#A5D6A7",
+          "label": "Ctrl A",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "a"]
+          }
+        },
+        "5": {
+          "icon": "format_bold",
+          "color": "#FFF59D",
+          "label": "Gras",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "b"]
+          }
+        },
+        "6": {
+          "icon": "format_italic",
+          "color": "#FFF59D",
+          "label": "Italique",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "i"]
+          }
+        },
+        "7": {
+          "icon": "format_underlined",
+          "color": "#FFF59D",
+          "label": "Souligné",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "u"]
+          }
+        },
+        "8": {
+          "icon": "photo_camera",
+          "color": "#CE93D8",
+          "label": "Impr écr",
+          "action": {
+            "type": "keys",
+            "keys": ["printscreen"]
+          }
+        },
+        "9": {
+          "icon": "cancel",
+          "color": "#EF9A9A",
+          "label": "Esc",
+          "action": {
+            "type": "keys",
+            "keys": ["esc"]
+          }
+        },
+        "10": {
+          "icon": "undo",
+          "color": "#80CBC4",
+          "label": "Annuler",
+          "action": {
+            "type": "keys",
+            "keys": ["ctrl", "z"]
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      }
+    },
     "qobuz": {
       "label": "Qobuz",
       "buttons": {

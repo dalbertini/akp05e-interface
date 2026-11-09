@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.7.0] — 2026-11-09
+
+### Ajouté
+- **Page « Raccourcis »** (fournie par défaut) : 10 touches de raccourcis clavier Windows — Copier (Ctrl+C), Coller (Ctrl+V), Couper (Ctrl+X), Tout sélectionner (Ctrl+A), Gras (Ctrl+B), Italique (Ctrl+I), Souligné (Ctrl+U), Impr. écran, Échap, Annuler (Ctrl+Z). Utilise l'action `{"type": "keys", "keys": [...]}` (SendInput) — personnalise chaque touche dans `akp05e_config.json`.
+
 ## [1.6.3] — 2026-11-09
 
 ### Corrigé
@@ -113,6 +118,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
