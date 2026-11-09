@@ -337,7 +337,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.0.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -644,14 +644,17 @@ def paint_timer_button(device, button, label, remaining=None, total=300,
     d.text((56, 98), sub, font=f_unit, fill=(150, 150, 150), anchor="mm")
     device.set_image(button, img)
 
-def ring_alarm(times=6):
-    """Alarme de fin de minuteur : bips aigus (winsound, stdlib Windows)."""
+def ring_alarm(times=3):
+    """Alarme de fin de minuteur : carillon doux (winsound, stdlib Windows)
+    — deux notes descendantes (Sol 5 puis Do 5, plus grave), répétées
+    avec de longues pauses, au lieu de bips aigus en rafale."""
     try:
         import winsound
         for _ in range(times):
-            winsound.Beep(880, 150)
-            winsound.Beep(1245, 200)
-            time.sleep(0.12)
+            winsound.Beep(784, 200)
+            time.sleep(0.08)
+            winsound.Beep(523, 300)
+            time.sleep(0.9)
     except Exception as e:
         print(f"[minuteur] alarme silencieuse ({e}) — temps écoulé !")
 
@@ -1906,13 +1909,18 @@ def main():
 
     def timer_event(n, action, down):
         """Clic court : départ / pause / reprise (ou acquitte l'alarme).
-        Clic long (> 0,6 s) : réinitialise le minuteur."""
+        Clic long (> 0,6 s) : réinitialise le minuteur (sans le lancer)."""
         try:
             total = int(action.get("minutes", 5)) * 60
         except (TypeError, ValueError):
             total = 300
         if down:
-            _timer_press[0] = (n, time.monotonic())
+            # conserve l'instant INITIAL d'appui : si le deck renvoie des
+            # événements "down" répétés pendant un appui maintenu, ne pas
+            # les ignorer ferait paraître le relâchement court (held < 0,6)
+            # et relancerait le minuteur juste après une réinitialisation.
+            if _timer_press[0] is None or _timer_press[0][0] != n:
+                _timer_press[0] = (n, time.monotonic())
             return
         press = _timer_press[0]
         _timer_press[0] = None
@@ -1923,9 +1931,11 @@ def main():
             old_btn = timer_state["btn"]
             active = old_btn == n
             if held >= 0.6:
-                # clic long : réinitialise (et coupe l'alarme)
+                # clic long : réinitialise complètement (coupe l'alarme,
+                # touche retour au préréglage gris) — ne lance JAMAIS
+                # le minuteur, quel que soit l'état précédent
                 if active:
-                    timer_state.update(remaining=total, end_ts=None,
+                    timer_state.update(btn=None, remaining=0, end_ts=None,
                                        running=False, alarm=False)
             elif active and timer_state["alarm"]:
                 # clic pendant l'alarme : acquitte et repositionne

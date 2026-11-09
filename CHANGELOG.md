@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.0.1] — 2026-11-09
+
+### Corrigé
+- **Appui long sur un minuteur : ne relance plus jamais le minuteur.** Le deck peut renvoyer des événements « appui » répétés pendant un appui maintenu : chacun écrasait l'instant initial d'appui, si bien qu'au relâchement la durée paraissait courte (< 0,6 s) et la branche « reprise » redémarrait le minuteur juste après la réinitialisation. L'instant d'appui d'origine est désormais conservé et le clic long remet complètement le minuteur à l'état « préréglage » (touche grise, pas de décompte).
+
+### Modifié
+- **Alarme de fin de minuteur plus douce** : carillon descendant Sol 5 → Do 5 (plus grave), 3 répétitions bien espacées — au lieu de bips aigus en rafale.
+
 ## [2.0.0] — 2026-11-09
 
 ### Ajouté
@@ -142,6 +150,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
