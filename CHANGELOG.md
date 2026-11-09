@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.8.1] — 2026-11-09
+
+### Corrigé
+- **Saccades du VU-mètre lors des changements de volume/luminosité** : chaque refresh du bandeau redessinait la zone 3 ("VU") puis attendait le prochain passage du fil VU pour repeindre (~80 ms de scintillement, plus deux envois concurrents). `set_strip` mémorise désormais la dernière image réellement affichée et les refresh recopient les pixels du dernier rendu VU — plus de scintillement, et le fil VU n'a plus besoin de réenvoyer une frame juste après un refresh (moins de contention sur le bus HID).
+
 ## [1.8.0] — 2026-11-09
 
 ### Ajouté
@@ -123,6 +128,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -331,12 +331,15 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.8.0"
+APP_VERSION = "1.8.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
 _strip_base = None
 _strip_base_lock = threading.Lock()
+_strip_last = None        # dernière image RÉELLEMENT affichée (avec le VU)
+_strip_last_lock = threading.Lock()
+_vu_active = False        # levé par main() quand le fil VU tourne
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -546,9 +549,16 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     else:
         d.text((x0 + 100, 34), extras[0], font=font,
                fill=(120, 120, 120), anchor="mm")
-    # zone 3 : libellé libre
-    d.text((500, 34), extras[1], font=font,
-           fill=(120, 120, 120), anchor="mm")
+    # zone 3 : VU-mètre — on recolle les pixels du dernier rendu affiché
+    # (zéro scintillement quand un refresh volume/luminosité intervient,
+    # et le fil VU n'a pas besoin de réenvoyer une frame juste après) —
+    # sinon libellé libre
+    if _vu_active and _strip_last is not None:
+        with _strip_last_lock:
+            img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
+    else:
+        d.text((500, 34), extras[1], font=font,
+               fill=(120, 120, 120), anchor="mm")
     # zone 4 : luminosité
     level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
                (240, 220, 130))
@@ -773,8 +783,14 @@ class Akp05Device:
 
     def set_strip(self, img: Image.Image):
         """Upload une image PIL sur le bandeau tactile (800x112, wire-key 1).
-        JPEG compressé adaptativement pour rester sous la limite firmware."""
-        img = img.convert("RGB").resize(STRIP_IMAGE_SIZE).rotate(180)
+        JPEG compressé adaptativement pour rester sous la limite firmware.
+        Mémorise le dernier rendu affiché : les refresh (volume, luminosité)
+        recopient ensuite les pixels du VU au lieu de le faire scintiller."""
+        img = img.convert("RGB").resize(STRIP_IMAGE_SIZE)
+        global _strip_last
+        with _strip_last_lock:
+            _strip_last = img.copy()
+        img = img.rotate(180)
         jpeg = self._pil_to_jpeg_capped(img)
         if len(jpeg) > STRIP_MAX_JPEG:
             print(f"[bandeau] JPEG encore gros ({len(jpeg)} octets), "
@@ -1455,6 +1471,8 @@ def main():
     current = {"name": config.get("page", "accueil")}
     vu_cfg = config.get("vu_meter") or {}
     vu_on = _HAS_PYCAW and bool(vu_cfg.get("enabled", True))
+    global _vu_active
+    _vu_active = vu_on
 
     def page_cfg():
         if current["name"] == "accueil" or current["name"] not in pages:
