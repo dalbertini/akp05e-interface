@@ -19,6 +19,7 @@
 - **Zoom universel sur le knob 3** *(nouveau, v1.9)* : Ctrl+molette dans la fenêtre active (CW = grossir, CCW = réduire, appui = Ctrl+0) — surclassable par page via `"encoders"`
 - **Page « minuteurs »** *(nouveau, v2.0)* : préréglages 1/2/5/10/20/30 min — clic = départ/pause/reprise, clic long = réinitialise, alarme sonore et clignotement à la fin (action `{"type": "timer", "minutes": N}`) — **durée réglable** : la touche « Régl. » affiche la durée du knob 3 (1 à 99 min), appui sur le knob 3 = départ immédiat
 - **Chronomètre intégré à la page « minuteurs »** *(nouveau, v2.1)* : touche « Chrono » (libellé violet) — clic = départ/pause/reprise, clic long = remise à zéro, temps mm:ss en temps réel (action `{"type": "stopwatch"}`)
+- **Changement de page automatique** *(nouveau, v2.2)* : la clé `"auto_pages"` associe un nom de processus à une page — Qobuz/Spotify/VLC au premier plan → page « Qobuz », HWiNFO64 → page « hardware », retour à la page précédente à la fermeture. Une navigation manuelle (knob 2) pendant que l'application est active est respectée.
 - **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité, changement de page
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
@@ -87,6 +88,7 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Universal zoom on knob 3** *(new in v1.9)*: Ctrl+wheel in the active window (CW = zoom in, CCW = zoom out, press = Ctrl+0) — can be overridden per page via `"encoders"`
 - **"Timers" page** *(new in v2.0)*: presets 1/2/5/10/20/30 min — click = start/pause/resume, long click = reset, beep alarm and red flash at the end (action `{"type": "timer", "minutes": N}`) — **custom duration**: the "Régl." key shows the knob 3 duration (1 to 99 min), pressing knob 3 starts it right away
 - **Stopwatch on the "Timers" page** *(new in v2.1)*: "Chrono" key (purple label) — click = start/pause/resume, long click = reset, live mm:ss time (action `{"type": "stopwatch"}`)
+- **Automatic page switching** *(new in v2.2)*: the `"auto_pages"` key maps a process name to a page — Qobuz/Spotify/VLC in the foreground → "Qobuz" page, HWiNFO64 → "hardware" page, and back to the previous page when it closes. Manual navigation (knob 2) while the app is active is respected.
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling

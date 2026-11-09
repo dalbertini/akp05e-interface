@@ -61,6 +61,13 @@ PAGES DE PROFILS : la config classique ("buttons"/"encoders") forme la page
   {"pages": {"qobuz": {"label": "Qobuz", "buttons": {...}, "encoders": {...}}}}
 Chaque page a ses touches et encodeurs propres ; la zone 2 du bandeau affiche
 le nom de la page courante. Bascule via l'action {"type": "page", ...}.
+CHANGEMENT DE PAGE AUTOMATIQUE : la clé "auto_pages" associe un nom de
+processus (fenêtre au premier plan, comparaison partielle, sans casse) à
+une page. Ex. {"qobuz": "qobuz", "spotify": "qobuz"} : mettre Qobuz ou
+Spotify au premier plan bascule le deck sur la page "qobuz", et il revient
+à la page précédente quand on la quitte. Une navigation manuelle (knob 2)
+pendant que l'application est active est respectée jusqu'au prochain
+changement d'application. Clé absente ou vide = fonction désactivée.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
@@ -344,7 +351,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.1.1"
+APP_VERSION = "2.2.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -989,6 +996,37 @@ def zoom_wheel(direction, notches=2):
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
+def get_foreground_app():
+    """Nom (minuscule) de l'exécutable de la fenêtre au premier plan.
+    Windows uniquement, stdlib ctypes ; None si indisponible."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return None
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        kernel32 = ctypes.windll.kernel32
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,
+                                 False, pid)
+        if not h:
+            return None
+        try:
+            buf = ctypes.create_unicode_buffer(1024)
+            size = wintypes.DWORD(len(buf))
+            if not kernel32.QueryFullProcessImageNameW(h, 0, buf,
+                                                       ctypes.byref(size)):
+                return None
+            return os.path.basename(buf.value or "").lower() or None
+        finally:
+            kernel32.CloseHandle(h)
+    except Exception:
+        return None
+
+
 def run_action(action, device):
     if not action:
         return
@@ -1064,6 +1102,12 @@ def run_action(action, device):
 
 DEFAULT_CONFIG = {
   "brightness": 30,
+  "auto_pages": {
+    "qobuz": "qobuz",
+    "spotify": "qobuz",
+    "vlc": "qobuz",
+    "hwinfo64": "hardware"
+  },
   "vu_meter": {
     "enabled": True,
     "fps": 12
@@ -2182,6 +2226,61 @@ def main():
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
 
+    # --- PAGES AUTOMATIQUES (application au premier plan) ---------------
+    auto_state = {"match": None,          # (clé, page) de l'app active
+                  "return_page": None,    # page à restaurer en quittant
+                  "manual": False}        # navigation manuelle récente
+    auto_lock = threading.RLock()
+
+    def poll_auto_pages():
+        """Bascule vers la page associée à l'application au premier plan
+        (clé "auto_pages" : nom d'exe -> page). Revient à la page
+        précédente quand on la quitte ; une navigation manuelle est
+        respectée tant que l'application active ne change pas."""
+        while True:
+            try:
+                cfg_auto = config.get("auto_pages") or {}
+                if not cfg_auto:
+                    time.sleep(1.5)
+                    continue
+                exe = get_foreground_app()
+                match = None
+                if exe:
+                    for key, page in cfg_auto.items():
+                        if key.lower() in exe:
+                            match = (key, page)
+                            break
+                with auto_lock:
+                    if match != auto_state["match"]:
+                        was_manual = auto_state["manual"]
+                        auto_state["match"] = match
+                        auto_state["manual"] = False
+                        if match:
+                            target = match[1]
+                            if target == "accueil" or target in pages:
+                                if current["name"] == target:
+                                    auto_state["return_page"] = None
+                                else:
+                                    auto_state["return_page"] = current["name"]
+                                    print(f"[auto] {match[0]} -> page {target}")
+                                    switch_page(target)
+                        else:
+                            ret = auto_state["return_page"]
+                            auto_state["return_page"] = None
+                            if (ret and not was_manual
+                                    and (ret == "accueil" or ret in pages)
+                                    and current["name"] != ret):
+                                print(f"[auto] retour -> page {ret}")
+                                switch_page(ret)
+                    elif match and not auto_state["manual"]:
+                        # même application mais page changée manuellement :
+                        # on ne force pas le retour
+                        if current["name"] != match[1]:
+                            auto_state["manual"] = True
+            except Exception as e:
+                print(f"[erreur pages auto] {e}")
+            time.sleep(1.0)
+
     def poll_hardware():
         """Met à jour les touches capteurs de la page courante toutes les
         `refresh` secondes (défaut 2). Ne fait rien si HWiNFO est absent."""
@@ -2220,6 +2319,7 @@ def main():
 
     threading.Thread(target=poll_hardware, daemon=True).start()
     threading.Thread(target=poll_timers, daemon=True).start()
+    threading.Thread(target=poll_auto_pages, daemon=True).start()
     if vu_on:
         threading.Thread(target=poll_vu, daemon=True).start()
     if _HAS_PYCAW:

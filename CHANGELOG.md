@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.2.0] — 2026-11-09
+
+### Ajouté
+- **Changement de page automatique selon l'application active** : la clé `"auto_pages"` de la config associe un nom de processus (fenêtre au premier plan, comparaison partielle sans casse) à une page. Par défaut : Qobuz/Spotify/VLC → page « Qobuz », HWiNFO64 → page « hardware ». Le deck revient à la page précédente quand on quitte l'application ; une navigation manuelle (knob 2) pendant qu'elle est active est respectée jusqu'au prochain changement d'application. Clé absente ou vide = fonction désactivée. Détection stdlib (ctypes), sans dépendance.
+
 ## [2.1.1] — 2026-11-09
 
 ### Modifié
@@ -170,6 +175,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
