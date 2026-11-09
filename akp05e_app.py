@@ -65,9 +65,9 @@ Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
 Les pages « raccourcis » (copier/coller/couper, Ctrl+A/B/I/U/Z, Impr. écran,
-Échap), « hardware » (températures HWiNFO64), « minuteurs » (préréglages
-1/2/5/10/20/30 min + durée réglable au knob 3, alarme) et « chronos »
-(chronomètre : clic = départ/pause/reprise, clic long = remise à zéro)
+Échap), « hardware » (températures HWiNFO64) et « minuteurs » (préréglages
+1/2/5/10/20/30 min + durée réglable au knob 3, alarme + touche « Chrono »
+chronomètre : clic = départ/pause/reprise, clic long = remise à zéro)
 sont aussi fournies par défaut.
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
 appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
@@ -344,7 +344,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -628,7 +628,7 @@ def format_mmss(seconds):
     return f"{s // 60}:{s % 60:02d}"
 
 def paint_timer_button(device, button, label, remaining=None, total=300,
-                       status="idle", idle_sub="min"):
+                       status="idle", idle_sub="min", label_fill=None):
     """Touche minuteur : libellé en haut, temps restant au centre, état
     en bas (idle = préréglage gris, run = vert, pause = ambre, alarm =
     rouge)."""
@@ -640,8 +640,8 @@ def paint_timer_button(device, button, label, remaining=None, total=300,
         f_unit = ImageFont.truetype("arial.ttf", 13)
     except OSError:
         f_small = f_big = f_unit = ImageFont.load_default()
-    d.text((56, 20), (label or "?")[:10], font=f_small, fill=(150, 150, 150),
-           anchor="mm")
+    d.text((56, 20), (label or "?")[:10], font=f_small,
+           fill=label_fill or (150, 150, 150), anchor="mm")
     txt = format_mmss(remaining if remaining is not None else total)
     d.text((56, 63), txt, font=f_big,
            fill=TIMER_STATUS_COLORS.get(status, (200, 200, 200)),
@@ -1224,6 +1224,12 @@ DEFAULT_CONFIG = {
             "type": "timer",
             "minutes": 0
           }
+        },
+        "8": {
+          "label": "Chrono",
+          "action": {
+            "type": "stopwatch"
+          }
         }
       },
       "encoders": {
@@ -1293,72 +1299,6 @@ DEFAULT_CONFIG = {
         "encoder_3_button": {
           "action": {
             "type": "timer_start"
-          }
-        }
-      }
-    },
-    "chronos": {
-      "label": "Chrono",
-      "icon": "timer",
-      "color": "#B39DDB",
-      "buttons": {
-        "1": {
-          "label": "Chrono",
-          "action": {
-            "type": "stopwatch"
-          }
-        }
-      },
-      "encoders": {
-        "encoder_1_cw": {
-          "action": {
-            "type": "sysvolume",
-            "dir": "up",
-            "step": 5
-          }
-        },
-        "encoder_1_ccw": {
-          "action": {
-            "type": "sysvolume",
-            "dir": "down",
-            "step": 5
-          }
-        },
-        "encoder_1_button": {
-          "action": {
-            "type": "sysvolume",
-            "dir": "mute"
-          }
-        },
-        "encoder_4_cw": {
-          "action": {
-            "type": "brightness",
-            "dir": "up",
-            "step": 10
-          }
-        },
-        "encoder_4_ccw": {
-          "action": {
-            "type": "brightness",
-            "dir": "down",
-            "step": 10
-          }
-        },
-        "encoder_4_button": {
-          "action": {
-            "type": "brightness_toggle"
-          }
-        },
-        "encoder_2_cw": {
-          "action": {
-            "type": "page",
-            "page": "next"
-          }
-        },
-        "encoder_2_ccw": {
-          "action": {
-            "type": "page",
-            "page": "prev"
           }
         }
       }
@@ -2154,8 +2094,10 @@ def main():
         elapsed = chrono_elapsed()
         status = ("run" if running
                   else ("pause" if elapsed > 0 else "idle"))
+        # libellé violet : distingue le chrono des préréglages minuteur
         paint_timer_button(device, n, entry.get("label") or "Chrono",
-                           elapsed, 0, status, idle_sub="prêt")
+                           elapsed, 0, status, idle_sub="chrono",
+                           label_fill=(179, 157, 219))
 
     def chrono_event(n, action, down):
         """Chronomètre : clic court = départ / pause / reprise, clic long

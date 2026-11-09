@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.1.1] — 2026-11-09
+
+### Modifié
+- **Le chronomètre déménage dans la page « minuteurs »** : touche « Chrono » (libellé violet, sous-titre « chrono ») — plus de page « chronos » séparée, pour garder le carrousel des pages léger. L'action `{"type": "stopwatch"}` reste utilisable sur n'importe quelle page.
+
 ## [2.1.0] — 2026-11-09
 
 ### Ajouté
@@ -164,6 +169,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
