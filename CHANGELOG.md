@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.9.0] — 2026-11-09
+
+### Ajouté
+- **Zoom universel sur le knob 3** (défaut global) : rotation = Ctrl+molette dans la fenêtre active (navigateurs, Office, PDF…), CW = grossir, CCW = réduire, appui = Ctrl+0 (zoom 100 %). Implémenté par un envoi souris SendInput (structure `INPUT_MOUSE` à empreinte identique au clavier, 40 octets x64) avec Ctrl maintenu. Nouvelle action `{"type": "zoom", "dir": "in"|"out"|"reset"}` — le knob 3 reste surclassable par page via `"encoders"` (sans action configurée, le zoom s'applique partout).
+
 ## [1.8.1] — 2026-11-09
 
 ### Corrigé
@@ -128,6 +133,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

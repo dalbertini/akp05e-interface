@@ -15,7 +15,8 @@
 - **Bandeau tactile** : une zone de 200 px par encodeur, avec carrousel de pages (pilule + icône + couleur d'accent)
 - **Gestes tactiles** *(nouveau, v1.5)* : **swipe gauche/droite** sur le bandeau = page précédente/suivante ; **tap** sur une zone = action du knob correspondant (par défaut, tap sur le carrousel = page suivante). Mappage établi par calibration sur le matériel réel
 - **Page « Hardware » (HWiNFO64)** *(nouveau, v1.6)* : températures et capteurs du PC en temps réel sur les touches via HWiNFO64 (licence Pro, option « Shared Memory Support ») — code couleur par seuils, `python akp05e_app.py --list-sensors` pour choisir les capteurs
-- **VU-mètre** *(nouveau, v1.8)* : niveau audio du système en temps réel sur la zone 3 du bandeau tactile (peak meter WASAPI via pycaw), segments vert/ambre/rouge et marqueur de crête — `"vu_meter": {"enabled": false}"` pour couper
+- **VU-mètre** *(nouveau, v1.8)* : niveau audio du système en temps réel sur la zone 3 du bandeau tactile (peak meter WASAPI via pycaw), segments vert/ambre/rouge et marqueur de crête — `"vu_meter": {"enabled": false}` pour couper
+- **Zoom universel sur le knob 3** *(nouveau, v1.9)* : Ctrl+molette dans la fenêtre active (CW = grossir, CCW = réduire, appui = Ctrl+0) — surclassable par page via `"encoders"`
 - **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité, changement de page
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
@@ -81,6 +82,7 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Touch gestures** *(new in v1.5)*: **swipe left/right** on the strip = previous/next page; **tap** a zone to trigger the matching knob action (carousel tap = next page by default). Mapping calibrated on real hardware
 - **"Hardware" page (HWiNFO64)** *(new in v1.6)*: real-time PC temperatures and sensors on the keys via HWiNFO64 (Pro license, enable "Shared Memory Support") — color-coded thresholds, run `python akp05e_app.py --list-sensors` to pick sensors
 - **VU meter** *(new in v1.8)*: live system audio level on touch strip zone 3 (WASAPI peak meter via pycaw), green/amber/red segments with peak-hold marker — set `"vu_meter": {"enabled": false}` to turn it off
+- **Universal zoom on knob 3** *(new in v1.9)*: Ctrl+wheel in the active window (CW = zoom in, CCW = zoom out, press = Ctrl+0) — can be overridden per page via `"encoders"`
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling

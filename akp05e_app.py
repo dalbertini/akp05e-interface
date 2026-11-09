@@ -43,9 +43,12 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "mediaplay"} {"type": "medianext"} {"type": "mediaprev"} {"type": "mediastop"}
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
+  {"type": "zoom", "dir": "in"}                            # Ctrl+molette ("out"/"reset"=Ctrl+0)
   {"type": "page", "page": "qobuz"}                         # changer de page
   {"type": "page", "page": "next"}                          # ou "prev" : défiler
-(Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.)
+(Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.
+Le knob 3, s'il n'a pas d'action configurée, fait le ZOOM Ctrl+molette :
+CW = grossir, CCW = réduire, appui = Ctrl+0 — dans la fenêtre active.)
 PAGES DE PROFILS : la config classique ("buttons"/"encoders") forme la page
 "accueil". Des pages supplémentaires se définissent dans la clé "pages" :
   {"pages": {"qobuz": {"label": "Qobuz", "buttons": {...}, "encoders": {...}}}}
@@ -331,7 +334,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.8.1"
+APP_VERSION = "1.9.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -894,6 +897,36 @@ def type_text(text):
                 _key_event(0x10, flags=KEYEVENTF_KEYUP)
         send_keys(["enter"])
 
+# --- Souris (SendInput) : molette pour le zoom Ctrl+molette du knob 3 -----
+INPUT_MOUSE = 0
+MOUSEEVENTF_WHEEL = 0x0800
+WHEEL_DELTA = 120
+
+class _MOUSEINPUT(ctypes.Structure):
+    _fields_ = [("dx", wintypes.LONG), ("dy", wintypes.LONG),
+                ("mouseData", wintypes.DWORD), ("dwFlags", wintypes.DWORD),
+                ("time", wintypes.DWORD),
+                ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong))]
+
+class _INPUT_MOUSE(ctypes.Structure):
+    # même empreinte que _INPUT (40 octets sur x64) : DWORD type + pad +
+    # MOUSEINPUT — SendInput accepte les deux structures à taille égale.
+    _fields_ = [("type", wintypes.DWORD), ("pad", wintypes.DWORD),
+                ("mi", _MOUSEINPUT)]
+
+def _mouse_wheel_event(notches):
+    inp = _INPUT_MOUSE(type=INPUT_MOUSE)
+    inp.mi = _MOUSEINPUT(0, 0, notches * WHEEL_DELTA, MOUSEEVENTF_WHEEL,
+                          0, None)
+    user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(_INPUT_MOUSE))
+
+def zoom_wheel(direction, notches=2):
+    """Ctrl+molette : zoom de la fenêtre ACTIVE (navigateurs, Office,
+    PDF, Photoshop…). direction : 1 = grossir, -1 = réduire."""
+    _key_event(MODIFIERS["ctrl"])
+    _mouse_wheel_event(direction * notches)
+    _key_event(MODIFIERS["ctrl"], flags=KEYEVENTF_KEYUP)
+
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
@@ -960,6 +993,13 @@ def run_action(action, device):
         else:
             device._last_bright = device.brightness
             device.set_brightness(0)
+    elif t == "zoom":
+        # zoom Ctrl+molette de la fenêtre active (knob 3 par défaut)
+        d = action.get("dir", "in")
+        if d == "reset":
+            send_keys(["ctrl", "0"])
+        else:
+            zoom_wheel(1 if d == "in" else -1, action.get("step", 2))
     else:
         print(f"Type d'action inconnu : {t}")
 
@@ -1561,6 +1601,11 @@ def main():
             action = entry and entry.get("action")
         else:
             action = cfg.get("encoders", {}).get(ev.name, {}).get("action")
+            if action is None and ev.name.startswith("encoder_3"):
+                # knob 3 sans action configurée : zoom universel par défaut
+                action = {"type": "zoom", "dir": {
+                    "encoder_3_cw": "in", "encoder_3_ccw": "out",
+                    "encoder_3_button": "reset"}[ev.name]}
         if action:
             print(f"[action] {ev.name} -> {action.get('type')}")
             threading.Thread(target=run_action, args=(action, device),
