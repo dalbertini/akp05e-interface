@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎉 **v1.5.2 — le bandeau tactile répond au toucher !** Swipe gauche/droite = page précédente/suivante, tap sur une zone = action du knob correspondant. Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🌡️ **v1.6.0 — page « Hardware » : les températures du PC s'affichent en temps réel sur les touches via HWiNFO64 !** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -14,6 +14,7 @@
 - **Luminosité** (knob 4) : rotation = réglage des écrans, appui = extinction/rallumage, zone tactile **Lum %** + barre
 - **Bandeau tactile** : une zone de 200 px par encodeur, avec carrousel de pages (pilule + icône + couleur d'accent)
 - **Gestes tactiles** *(nouveau, v1.5)* : **swipe gauche/droite** sur le bandeau = page précédente/suivante ; **tap** sur une zone = action du knob correspondant (par défaut, tap sur le carrousel = page suivante). Mappage établi par calibration sur le matériel réel
+- **Page « Hardware » (HWiNFO64)** *(nouveau, v1.6)* : températures et capteurs du PC en temps réel sur les touches via HWiNFO64 (licence Pro, option « Shared Memory Support ») — code couleur par seuils, `python akp05e_app.py --list-sensors` pour choisir les capteurs
 - **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité, changement de page
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
@@ -77,6 +78,7 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Real-time Windows system volume** (knob 1): sets the actual Windows master level via `pycaw`, push = mute; the touch strip zone shows **Vol %** + bar and updates even when volume changes from Windows itself
 - **Brightness control** (knob 4): rotation adjusts screens, push toggles on/off, touch strip zone shows **%** + bar
 - **Touch gestures** *(new in v1.5)*: **swipe left/right** on the strip = previous/next page; **tap** a zone to trigger the matching knob action (carousel tap = next page by default). Mapping calibrated on real hardware
+- **"Hardware" page (HWiNFO64)** *(new in v1.6)*: real-time PC temperatures and sensors on the keys via HWiNFO64 (Pro license, enable "Shared Memory Support") — color-coded thresholds, run `python akp05e_app.py --list-sensors` to pick sensors
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling

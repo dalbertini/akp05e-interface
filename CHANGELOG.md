@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.6.0] — 2026-11-09
+
+### Ajouté
+- **Page « Hardware » (HWiNFO64)** : températures et capteurs du PC en temps réel sur les touches via HWiNFO64 (licence Pro, option « Shared Memory Support » à activer). Nouveau type de bouton `"hw"` avec code couleur des températures (vert < 70 °C < orange < 85 °C < rouge), seuils personnalisables (`"thresholds"`), rafraîchissement toutes les 2 s (`"refresh"`).
+- **Mode `--list-sensors`** : `python akp05e_app.py --list-sensors` affiche toutes les mesures disponibles pour choisir les capteurs à afficher sur les touches.
+- **Lecture de la mémoire partagée HWiNFO64 par `ctypes`** — aucune dépendance supplémentaire à installer.
+
 ## [1.5.2] — 2026-11-08
 
 ### Ajouté
@@ -89,6 +96,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

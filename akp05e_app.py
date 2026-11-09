@@ -135,6 +135,104 @@ def set_mute(muted):
     _get_endpoint().SetMute(bool(muted), None)
 
 # ---------------------------------------------------------------------------
+# HWiNFO64 (licence Pro) : températures et capteurs via la mémoire partagée.
+# Activer « Shared Memory Support » dans les réglages HWiNFO ; liste des
+# mesures disponibles : python akp05e_app.py --list-sensors
+# ---------------------------------------------------------------------------
+HWINFO_MAP_NAME = "Global\\HWiNFO_SENS_SM2"
+HWINFO_MUTEX_NAME = "Global\\HWiNFO_SM2_MUTEX"
+HWINFO_TYPES = {1: "temp", 2: "volt", 3: "fan", 4: "current", 5: "power",
+               6: "clock", 7: "usage", 8: "other"}
+
+def _read_cstr(buf):
+    """Chaîne ANSI terminée par NUL -> str lisible."""
+    return buf.split(b"\x00")[0].decode("cp1252", "replace").strip()
+
+def hwinfo_readings():
+    """Lit la mémoire partagée HWiNFO64. Retourne None si HWiNFO est absent
+    ou si « Shared Memory Support » est désactivé, sinon la liste des mesures :
+    sensor, label, type, unit, value, min, max, avg."""
+    import ctypes
+    import struct as _struct
+    k32 = ctypes.windll.kernel32
+    FILE_MAP_READ = 0x0004
+    hmap = k32.OpenFileMappingW(FILE_MAP_READ, False, HWINFO_MAP_NAME)
+    if not hmap:
+        return None
+    hmut = k32.CreateMutexW(None, False, HWINFO_MUTEX_NAME)
+    locked = hmut and k32.WaitForSingleObject(hmut, 200) == 0
+    base = 0
+    try:
+        base = k32.MapViewOfFile(hmap, FILE_MAP_READ, 0, 0, 0)
+        if not base:
+            return None
+        head = ctypes.string_at(base, 44)
+        (_sig, _ver, _rev, _poll, off_sens, size_sens, n_sens,
+         off_read, size_read, n_read) = _struct.unpack("<IIIqIIIIII", head)
+        sensors = []
+        for i in range(n_sens):
+            el = ctypes.string_at(base + off_sens + i * size_sens, size_sens)
+            name_u = _read_cstr(el[136:136 + 128])
+            sensors.append(name_u or _read_cstr(el[8:8 + 128]))
+        out = []
+        for i in range(n_read):
+            el = ctypes.string_at(base + off_read + i * size_read, size_read)
+            rtype, sidx, rid = _struct.unpack_from("<III", el, 0)
+            label_u = _read_cstr(el[16:16 + 128])
+            label_o = _read_cstr(el[144:144 + 128])
+            unit = _read_cstr(el[272:272 + 16])
+            value, vmin, vmax, vavg = _struct.unpack_from("<dddd", el, 288)
+            sname = sensors[sidx] if 0 <= sidx < len(sensors) else "?"
+            out.append({"sensor": sname, "label": label_u or label_o,
+                        "label_orig": label_o, "type": rtype, "unit": unit,
+                        "value": value, "min": vmin, "max": vmax, "avg": vavg})
+        return out
+    finally:
+        if base:
+            k32.UnmapViewOfFile(base)
+        if locked:
+            k32.ReleaseMutex(hmut)
+        if hmut:
+            k32.CloseHandle(hmut)
+        k32.CloseHandle(hmap)
+
+def hw_match(readings, needle):
+    """Cherche la mesure correspondant au motif (sous-chaîne, insensible à
+    la casse, sur libellé + libellé d'origine + nom de capteur). En cas de
+    correspondances multiples, privilégie le libellé le plus court."""
+    if not readings:
+        return None
+    n = (needle or "").lower().strip()
+    cands = [r for r in readings
+             if n and n in (r["label"] + " " + r["label_orig"]
+                            + " " + r["sensor"]).lower()]
+    if not cands:
+        return None
+    cands.sort(key=lambda r: len(r["label"]))
+    return cands[0]
+
+def run_list_sensors():
+    """Mode --list-sensors : affiche toutes les mesures HWiNFO disponibles."""
+    print("Lecture de la mémoire partagée HWiNFO64…")
+    readings = hwinfo_readings()
+    if readings is None:
+        print("Mémoire partagée introuvable. Vérifie :")
+        print("  - HWiNFO64 est lancé et les capteurs sont actifs (fenêtre Sensors)")
+        print('  - Settings → "Shared Memory Support" est activé')
+        print("  - l\'application est lancée avec les mêmes droits qu\'HWiNFO")
+        return
+    if not readings:
+        print("Aucune mesure publiée par HWiNFO.")
+        return
+    print(f"{len(readings)} mesures disponibles :\n")
+    for r in readings:
+        t = HWINFO_TYPES.get(r["type"], "?")
+        print(f"  [{r['sensor']}] {r['label']} — {r['value']:.1f} {r['unit']} ({t})")
+    print('\nExemple de bouton pour la page "hardware" de akp05e_config.json :')
+    ex = readings[0]["label"]
+    print(f'  "1": {{"hw": "{ex}", "label": "{ex[:8]}"}}')
+
+# ---------------------------------------------------------------------------
 # Constantes matérielles (confirmées sur matériel réel)
 # ---------------------------------------------------------------------------
 VENDOR_ID = 0x0300
@@ -151,7 +249,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.5.2"
+APP_VERSION = "1.6.0"
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -336,6 +434,39 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     for i in (1, 2, 3):
         d.line([(i * 200, 10), (i * 200, h - 10)], fill=(45, 45, 45), width=2)
     device.set_strip(img)
+
+def paint_hw_button(device, button, label, reading, thresholds=(70, 85)):
+    """Dessine une touche de capteur : libellé en haut, grande valeur au
+    centre, unité en bas ; la couleur suit les seuils pour les températures
+    (vert < warn < orange < crit < rouge)."""
+    img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 16, 16))
+    d = ImageDraw.Draw(img)
+    try:
+        f_small = ImageFont.truetype("arial.ttf", 15)
+        f_big = ImageFont.truetype("arial.ttf", 34)
+        f_unit = ImageFont.truetype("arial.ttf", 13)
+    except OSError:
+        f_small = f_big = f_unit = ImageFont.load_default()
+    d.text((56, 22), (label or "?")[:10], font=f_small, fill=(150, 150, 150),
+           anchor="mm")
+    if reading is None:
+        d.text((56, 66), "—", font=f_big, fill=(120, 120, 120), anchor="mm")
+    else:
+        v = reading["value"]
+        col = (129, 212, 250)
+        if reading["type"] == 1:  # température : code couleur
+            if v < thresholds[0]:
+                col = (165, 214, 129)
+            elif v < thresholds[1]:
+                col = (255, 213, 79)
+            else:
+                col = (239, 83, 80)
+        txt = f"{v:.0f}" if abs(v) >= 9.95 else f"{v:.1f}"
+        d.text((56, 66), txt, font=f_big, fill=col, anchor="mm")
+        if reading["unit"]:
+            d.text((56, 98), reading["unit"], font=f_unit,
+                   fill=(150, 150, 150), anchor="mm")
+    device.set_image(button, img)
 
 # ---------------------------------------------------------------------------
 # Couche protocole HID
@@ -902,6 +1033,95 @@ DEFAULT_CONFIG = {
       },
       "icon": "music_note",
       "color": "#81D4FA"
+    },
+    "hardware": {
+      "label": "Hardware",
+      "icon": "monitor_heart",
+      "color": "#FFB74D",
+      "refresh": 2,
+      "thresholds": [
+        70,
+        85
+      ],
+      "buttons": {
+        "1": {
+          "hw": "CPU Package",
+          "label": "CPU",
+          "icon": "device_thermostat",
+          "color": "#FF8A65"
+        },
+        "2": {
+          "hw": "GPU",
+          "label": "GPU",
+          "icon": "device_thermostat",
+          "color": "#CE93D8"
+        },
+        "3": {
+          "hw": "SSD",
+          "label": "SSD",
+          "icon": "device_thermostat",
+          "color": "#80DEEA"
+        },
+        "4": {
+          "hw": "Battery",
+          "label": "Batt.",
+          "icon": "battery_charging_full",
+          "color": "#A5D6A7"
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      }
     }
   },
   "label": "Accueil",
@@ -925,6 +1145,9 @@ def load_config():
 # Point d'entrée
 # ---------------------------------------------------------------------------
 def main():
+    if "--list-sensors" in sys.argv:
+        run_list_sensors()
+        return
     config = load_config()
     device = Akp05Device(brightness=config.get("brightness", DEFAULT_BRIGHTNESS))
 
@@ -959,6 +1182,11 @@ def main():
                              fg=entry.get("color", "#e0e0e0"),
                              bg=entry.get("bg", "#101010"),
                              label=entry.get("label"))
+                elif "hw" in entry:
+                    # touche capteur : dessinée en attente puis remplie
+                    # par poll_hardware dès la première lecture HWiNFO
+                    paint_hw_button(device, n, entry.get("label") or entry["hw"],
+                                    None, page_cfg().get("thresholds", [70, 85]))
                 elif "label" in entry:
                     device.set_label(n, entry["label"], sub=entry.get("sub"))
             except Exception as e:
@@ -1081,6 +1309,44 @@ def main():
 
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
+
+    def poll_hardware():
+        """Met à jour les touches capteurs de la page courante toutes les
+        `refresh` secondes (défaut 2). Ne fait rien si HWiNFO est absent."""
+        warned_off, warned_missing = False, set()
+        while True:
+            try:
+                page = page_cfg()
+                hw_btns = {n: e for n, e in (page.get("buttons") or {}).items()
+                           if "hw" in e}
+                if not hw_btns:
+                    time.sleep(2)
+                    continue
+                readings = hwinfo_readings()
+                if readings is None:
+                    if not warned_off:
+                        warned_off = True
+                        print("[hardware] HWiNFO64 introuvable (mémoire partagée "
+                              "absente) — relance avec HWiNFO64 ouvert, "
+                              "« Shared Memory Support » activé.")
+                else:
+                    warned_off = False
+                    thresholds = page.get("thresholds", [70, 85])
+                    for n, entry in hw_btns.items():
+                        r = hw_match(readings, entry["hw"])
+                        if r is None and n not in warned_missing:
+                            warned_missing.add(n)
+                            print(f"[hardware] capteur introuvable : {entry['hw']!r} "
+                                  "(cf. --list-sensors)")
+                        paint_hw_button(device, int(n),
+                                        entry.get("label") or entry["hw"], r,
+                                        thresholds)
+                time.sleep(page.get("refresh", 2) or 2)
+            except Exception as e:
+                print(f"[erreur hardware] {e}")
+                time.sleep(3)
+
+    threading.Thread(target=poll_hardware, daemon=True).start()
     if _HAS_PYCAW:
         threading.Thread(target=poll_volume, daemon=True).start()
     else:
