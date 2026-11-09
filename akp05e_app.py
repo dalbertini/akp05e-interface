@@ -336,8 +336,8 @@ STRIP_WIRE_KEY = 1
 # lui-même et le milieu de l'image se corrompt (bandes brouillées).
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
-DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "2.0.1"
+DEFAULT_BRIGHTNESS = 30
+APP_VERSION = "2.0.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1056,7 +1056,7 @@ def run_action(action, device):
         print(f"Type d'action inconnu : {t}")
 
 DEFAULT_CONFIG = {
-  "brightness": 60,
+  "brightness": 30,
   "vu_meter": {
     "enabled": True,
     "fps": 12

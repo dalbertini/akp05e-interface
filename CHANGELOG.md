@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.0.2] — 2026-11-09
+
+### Modifié
+- **Luminosité par défaut à 30 %** au démarrage (au lieu de 60 %) : `DEFAULT_BRIGHTNESS = 30` et `"brightness": 30` dans la config par défaut. Un `akp05e_config.json` existant conserve sa valeur ; mets `"brightness": 30` dedans (ou supprime-le pour le régénérer) pour appliquer le nouveau défaut. Le knob 4 règle toujours la luminosité à la volée.
+
 ## [2.0.1] — 2026-11-09
 
 ### Corrigé
@@ -151,6 +156,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
