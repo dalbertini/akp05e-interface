@@ -44,6 +44,8 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
   {"type": "zoom", "dir": "in"}                            # Ctrl+molette ("out"/"reset"=Ctrl+0)
+  {"type": "timer", "minutes": 5}                          # minuteur : clic = départ/pause/reprise,
+                                                           # clic long = réinitialise, alarme à la fin
   {"type": "page", "page": "qobuz"}                         # changer de page
   {"type": "page", "page": "next"}                          # ou "prev" : défiler
 (Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.
@@ -58,7 +60,8 @@ Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
 Les pages « raccourcis » (copier/coller/couper, Ctrl+A/B/I/U/Z, Impr. écran,
-Échap) et « hardware » (températures HWiNFO64) sont aussi fournies par défaut.
+Échap), « hardware » (températures HWiNFO64) et « minuteurs » (préréglages
+1/2/5/10/20/30 min avec alarme) sont aussi fournies par défaut.
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
 appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
 (pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
@@ -334,7 +337,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.9.0"
+APP_VERSION = "2.0.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -605,6 +608,52 @@ def paint_hw_button(device, button, label, reading, thresholds=(70, 85)):
             d.text((56, 98), reading["unit"], font=f_unit,
                    fill=(150, 150, 150), anchor="mm")
     device.set_image(button, img)
+
+# ---------------------------------------------------------------------------
+# Minuteurs : touches prédéfinies avec départ/pause (clic) et reset (clic long)
+# ---------------------------------------------------------------------------
+TIMER_STATUS_COLORS = {"idle": (176, 190, 197), "run": (129, 199, 132),
+                       "pause": (255, 213, 79), "alarm": (239, 83, 80)}
+
+def format_mmss(seconds):
+    """Secondes -> 'm:ss' (zéro de gauche sur les secondes)."""
+    s = max(0, int(seconds))
+    return f"{s // 60}:{s % 60:02d}"
+
+def paint_timer_button(device, button, label, remaining=None, total=300,
+                       status="idle"):
+    """Touche minuteur : libellé en haut, temps restant au centre, état
+    en bas (idle = préréglage gris, run = vert, pause = ambre, alarm =
+    rouge)."""
+    img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 16, 16))
+    d = ImageDraw.Draw(img)
+    try:
+        f_small = ImageFont.truetype("arial.ttf", 15)
+        f_big = ImageFont.truetype("arial.ttf", 31)
+        f_unit = ImageFont.truetype("arial.ttf", 13)
+    except OSError:
+        f_small = f_big = f_unit = ImageFont.load_default()
+    d.text((56, 20), (label or "?")[:10], font=f_small, fill=(150, 150, 150),
+           anchor="mm")
+    txt = format_mmss(remaining if remaining is not None else total)
+    d.text((56, 63), txt, font=f_big,
+           fill=TIMER_STATUS_COLORS.get(status, (200, 200, 200)),
+           anchor="mm")
+    sub = {"idle": "min", "run": "en cours", "pause": "pause",
+           "alarm": "fini !"}[status]
+    d.text((56, 98), sub, font=f_unit, fill=(150, 150, 150), anchor="mm")
+    device.set_image(button, img)
+
+def ring_alarm(times=6):
+    """Alarme de fin de minuteur : bips aigus (winsound, stdlib Windows)."""
+    try:
+        import winsound
+        for _ in range(times):
+            winsound.Beep(880, 150)
+            winsound.Beep(1245, 200)
+            time.sleep(0.12)
+    except Exception as e:
+        print(f"[minuteur] alarme silencieuse ({e}) — temps écoulé !")
 
 # ---------------------------------------------------------------------------
 # Couche protocole HID
@@ -1038,12 +1087,12 @@ DEFAULT_CONFIG = {
       }
     },
     "4": {
-      "icon": "content_copy",
-      "color": "#CE93D8",
-      "label": "Copie",
+      "icon": "timer",
+      "color": "#FFCC80",
+      "label": "Minut.",
       "action": {
-        "type": "text",
-        "text": "Bonjour !"
+        "type": "page",
+        "page": "minuteurs"
       }
     },
     "5": {
@@ -1055,16 +1104,6 @@ DEFAULT_CONFIG = {
         "keys": [
           "f5"
         ]
-      }
-    },
-    "9": {
-      "icon": "volume_off",
-      "color": "#EF9A9A",
-      "bg": "#331b1b",
-      "label": "Mute",
-      "action": {
-        "type": "sysvolume",
-        "dir": "mute"
       }
     }
   },
@@ -1122,6 +1161,108 @@ DEFAULT_CONFIG = {
     }
   },
   "pages": {
+    "minuteurs": {
+      "label": "Minuteur",
+      "icon": "timer",
+      "color": "#FFCC80",
+      "buttons": {
+        "1": {
+          "label": "1 min",
+          "action": {
+            "type": "timer",
+            "minutes": 1
+          }
+        },
+        "2": {
+          "label": "2 min",
+          "action": {
+            "type": "timer",
+            "minutes": 2
+          }
+        },
+        "3": {
+          "label": "5 min",
+          "action": {
+            "type": "timer",
+            "minutes": 5
+          }
+        },
+        "4": {
+          "label": "10 min",
+          "action": {
+            "type": "timer",
+            "minutes": 10
+          }
+        },
+        "5": {
+          "label": "20 min",
+          "action": {
+            "type": "timer",
+            "minutes": 20
+          }
+        },
+        "6": {
+          "label": "30 min",
+          "action": {
+            "type": "timer",
+            "minutes": 30
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      }
+    },
     "raccourcis": {
       "label": "Raccourcis",
       "icon": "keyboard",
@@ -1529,6 +1670,10 @@ def main():
                     device.set_image(n, Image.new("RGB", BUTTON_IMAGE_SIZE,
                                                   (12, 12, 12)))
                     continue
+                if (entry.get("action") or {}).get("type") == "timer":
+                    # touche minuteur : rendu selon l'état du minuteur actif
+                    paint_timer_state(n, entry)
+                    continue
                 icon = entry.get("icon")
                 if icon and os.path.exists(icon):
                     # chemin vers une image perso (png/jpg)
@@ -1588,6 +1733,17 @@ def main():
             switch_page("next")  # zone du carrousel sans action dédiée
 
     def handle(ev):
+        # minuteurs : gèrent eux-mêmes l'appui ET le relâchement
+        # (clic court = départ/pause/reprise, clic long = réinitialise)
+        if ev.name.startswith("button_"):
+            entry = page_cfg().get("buttons", {}).get(ev.name.split("_")[1])
+            t_act = entry and entry.get("action")
+            if t_act and t_act.get("type") == "timer":
+                try:
+                    timer_event(ev.name.split("_")[1], t_act, ev.state)
+                except Exception as e:
+                    print(f"[erreur minuteur] {e}")
+                return
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
         if ev.name.startswith("strip_"):
@@ -1708,6 +1864,133 @@ def main():
                         pass
             time.sleep(max(0.02, period - (time.time() - t0)))
 
+    # --- MINUTEURS -------------------------------------------------------
+    timer_state = {"btn": None,        # touche du minuteur actif (str)
+                  "remaining": 0,      # secondes restantes (fiable si pause)
+                  "end_ts": None,     # fin en time.monotonic() si en marche
+                  "running": False,
+                  "alarm": False}
+    timer_lock = threading.RLock()
+    _timer_press = [None]              # (numéro de touche, instant d'appui)
+
+    def timer_remaining():
+        with timer_lock:
+            if timer_state["running"]:
+                return max(0.0, timer_state["end_ts"] - time.monotonic())
+            return float(timer_state["remaining"])
+
+    def paint_timer_state(n, entry, status_override=None):
+        total = int((entry.get("action") or {}).get("minutes", 5)) * 60
+        if status_override:
+            paint_timer_button(device, n, entry.get("label"), 0, total,
+                               status_override)
+            return
+        with timer_lock:
+            active = timer_state["btn"] == str(n)
+            running = timer_state["running"]
+            alarm = timer_state["alarm"]
+            remaining = timer_state["remaining"]
+        if not active:
+            paint_timer_button(device, n, entry.get("label"), None, total)
+        else:
+            if alarm:
+                status = "alarm"
+            elif running:
+                status = "run"
+            elif remaining > 0:
+                status = "pause"
+            else:
+                status = "idle"
+            paint_timer_button(device, n, entry.get("label"),
+                               timer_remaining(), total, status)
+
+    def timer_event(n, action, down):
+        """Clic court : départ / pause / reprise (ou acquitte l'alarme).
+        Clic long (> 0,6 s) : réinitialise le minuteur."""
+        try:
+            total = int(action.get("minutes", 5)) * 60
+        except (TypeError, ValueError):
+            total = 300
+        if down:
+            _timer_press[0] = (n, time.monotonic())
+            return
+        press = _timer_press[0]
+        _timer_press[0] = None
+        if not press or press[0] != n:
+            return
+        held = time.monotonic() - press[1]
+        with timer_lock:
+            old_btn = timer_state["btn"]
+            active = old_btn == n
+            if held >= 0.6:
+                # clic long : réinitialise (et coupe l'alarme)
+                if active:
+                    timer_state.update(remaining=total, end_ts=None,
+                                       running=False, alarm=False)
+            elif active and timer_state["alarm"]:
+                # clic pendant l'alarme : acquitte et repositionne
+                timer_state.update(remaining=total, end_ts=None,
+                                   running=False, alarm=False)
+            elif active and timer_state["running"]:
+                # pause
+                timer_state["remaining"] = max(
+                    0, timer_state["end_ts"] - time.monotonic())
+                timer_state["running"] = False
+            elif active and timer_state["remaining"] > 0:
+                # reprise
+                timer_state["end_ts"] = (time.monotonic()
+                                         + timer_state["remaining"])
+                timer_state["running"] = True
+            else:
+                # départ (nouveau minuteur ou redémarre un minuteur fini)
+                timer_state.update(btn=n, remaining=total,
+                                   end_ts=time.monotonic() + total,
+                                   running=True, alarm=False)
+        # repeint la touche (et l'ancienne active si on vient d'en changer)
+        entry = (page_cfg().get("buttons") or {}).get(n)
+        if entry:
+            paint_timer_state(int(n), entry)
+        if old_btn and old_btn != n:
+            old_entry = (page_cfg().get("buttons") or {}).get(old_btn)
+            if old_entry:
+                paint_timer_state(int(old_btn), old_entry)
+
+    def poll_timers():
+        """Rafraîchit chaque seconde la touche du minuteur actif, déclenche
+        l'alarme à la fin (bips + clignotement rouge). Le minuteur poursuit
+        même si on quitte la page (seul le rafraîchissement visuel s'arrête)."""
+        last_sig = None
+        while True:
+            try:
+                with timer_lock:
+                    btn = timer_state["btn"]
+                    running = timer_state["running"]
+                    alarm = timer_state["alarm"]
+                if btn is not None:
+                    rem = timer_remaining()
+                    if running and rem <= 0:
+                        with timer_lock:
+                            timer_state["running"] = False
+                            timer_state["alarm"] = True
+                            alarm = True
+                        print(f"[minuteur] temps écoulé (touche {btn}) !")
+                        threading.Thread(target=ring_alarm,
+                                         daemon=True).start()
+                    entry = (page_cfg().get("buttons") or {}).get(btn)
+                    if entry and (entry.get("action") or {}).get("type") == "timer":
+                        blink = int(time.time() * 2) % 2 == 0
+                        sig = (int(rem), alarm, blink if alarm else 0)
+                        if sig != last_sig:
+                            last_sig = sig
+                            if alarm and not blink:
+                                paint_timer_state(int(btn), entry,
+                                                  status_override="idle")
+                            else:
+                                paint_timer_state(int(btn), entry)
+            except Exception as e:
+                print(f"[erreur minuteur] {e}")
+            time.sleep(0.25)
+
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
 
@@ -1748,6 +2031,7 @@ def main():
                 time.sleep(3)
 
     threading.Thread(target=poll_hardware, daemon=True).start()
+    threading.Thread(target=poll_timers, daemon=True).start()
     if vu_on:
         threading.Thread(target=poll_vu, daemon=True).start()
     if _HAS_PYCAW:

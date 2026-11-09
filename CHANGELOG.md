@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.0.0] — 2026-11-09
+
+### Ajouté
+- **Page « minuteurs »** : préréglages 1/2/5/10/20/30 min, un minuteur actif à la fois (démarrer un autre minuteur remplace l'actif). Clic court = départ / pause / reprise (ou acquitte l'alarme), **clic long (> 0,6 s) = réinitialise**. Affichage du temps restant en temps réel sur la touche : préréglage gris, vert = en cours, ambre = pause, rouge clignotant = fini. **Alarme sonore** à la fin (bips winsound) + clignotement ; le minuteur poursuit même si on change de page. Nouvelle action `{"type": "timer", "minutes": N}`.
+
+### Modifié
+- **Page accueil** : les touches « Copie » (texte) et « Mute » sont retirées ; nouvelle touche « Minut. » (icône timer) vers la page « minuteurs ». Le mute reste accessible sur le knob 1 (appui) et la page Qobuz.
+
 ## [1.9.0] — 2026-11-09
 
 ### Ajouté
@@ -133,6 +141,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
