@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.6.2] — 2026-11-09
+
+### Modifié
+- **Page « Hardware » par défaut alignée sur les capteurs réels** (calibré sur un portable CPU Intel + Quadro M1200 + HD Graphics 530) : 7 touches — CPU (Package), iGPU (GPU Core Temperature), dGPU (GPU Temperature, 0 °C = Optimus endormi), PCH, CPU % (Total CPU Usage), SSD C: et SSD E: (Drive Temperature). Les motifs `"hw"` sont des sous-chaînes uniques des libellés HWiNFO — adapte-les via `--list-sensors` si ton matériel diffère.
+
 ## [1.6.1] — 2026-11-09
 
 ### Corrigé
@@ -103,6 +108,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.6.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -279,7 +279,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.6.1"
+APP_VERSION = "1.6.2"
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -1081,22 +1081,40 @@ DEFAULT_CONFIG = {
           "color": "#FF8A65"
         },
         "2": {
-          "hw": "GPU",
-          "label": "GPU",
+          "hw": "GPU Core Temperature",
+          "label": "iGPU",
           "icon": "device_thermostat",
           "color": "#CE93D8"
         },
         "3": {
-          "hw": "SSD",
-          "label": "SSD",
+          "hw": "GPU Temperature",
+          "label": "dGPU",
+          "icon": "device_thermostat",
+          "color": "#B39DDB"
+        },
+        "4": {
+          "hw": "PCH Temperature",
+          "label": "PCH",
           "icon": "device_thermostat",
           "color": "#80DEEA"
         },
-        "4": {
-          "hw": "Battery",
-          "label": "Batt.",
-          "icon": "battery_charging_full",
-          "color": "#A5D6A7"
+        "5": {
+          "hw": "Total CPU Usage",
+          "label": "CPU %",
+          "icon": "speed",
+          "color": "#90CAF9"
+        },
+        "6": {
+          "hw": "C:]",
+          "label": "SSD C:",
+          "icon": "save",
+          "color": "#80DEEA"
+        },
+        "7": {
+          "hw": "E:",
+          "label": "SSD E:",
+          "icon": "save",
+          "color": "#4DD0E1"
         }
       },
       "encoders": {
