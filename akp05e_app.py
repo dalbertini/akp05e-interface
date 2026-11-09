@@ -46,6 +46,11 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "zoom", "dir": "in"}                            # Ctrl+molette ("out"/"reset"=Ctrl+0)
   {"type": "timer", "minutes": 5}                          # minuteur : clic = départ/pause/reprise,
                                                            # clic long = réinitialise, alarme à la fin
+                                                           # ("minutes": 0 = durée réglable, knob 3)
+  {"type": "stopwatch"}                                    # chronomètre : clic = départ/pause/reprise,
+                                                           # clic long = remise à zéro
+  {"type": "timer_adjust", "dir": "up"}                    # knob 3 : durée réglable +1 min ("down" = -1)
+  {"type": "timer_start"}                                  # knob 3 appuyé : démarre le minuteur réglable
   {"type": "page", "page": "qobuz"}                         # changer de page
   {"type": "page", "page": "next"}                          # ou "prev" : défiler
 (Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.
@@ -60,8 +65,10 @@ Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
 Les pages « raccourcis » (copier/coller/couper, Ctrl+A/B/I/U/Z, Impr. écran,
-Échap), « hardware » (températures HWiNFO64) et « minuteurs » (préréglages
-1/2/5/10/20/30 min avec alarme) sont aussi fournies par défaut.
+Échap), « hardware » (températures HWiNFO64), « minuteurs » (préréglages
+1/2/5/10/20/30 min + durée réglable au knob 3, alarme) et « chronos »
+(chronomètre : clic = départ/pause/reprise, clic long = remise à zéro)
+sont aussi fournies par défaut.
 Le knob 4 pilote la luminosité des écrans (rotation = réglage par pas,
 appui = extinction/rallumage) et le knob 1 règle le VOLUME SYSTÈME Windows
 (pycaw : niveau réel, appui = muet). Le bandeau tactile affiche les deux
@@ -337,7 +344,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.0.2"
+APP_VERSION = "2.1.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -621,7 +628,7 @@ def format_mmss(seconds):
     return f"{s // 60}:{s % 60:02d}"
 
 def paint_timer_button(device, button, label, remaining=None, total=300,
-                       status="idle"):
+                       status="idle", idle_sub="min"):
     """Touche minuteur : libellé en haut, temps restant au centre, état
     en bas (idle = préréglage gris, run = vert, pause = ambre, alarm =
     rouge)."""
@@ -639,7 +646,7 @@ def paint_timer_button(device, button, label, remaining=None, total=300,
     d.text((56, 63), txt, font=f_big,
            fill=TIMER_STATUS_COLORS.get(status, (200, 200, 200)),
            anchor="mm")
-    sub = {"idle": "min", "run": "en cours", "pause": "pause",
+    sub = {"idle": idle_sub, "run": "en cours", "pause": "pause",
            "alarm": "fini !"}[status]
     d.text((56, 98), sub, font=f_unit, fill=(150, 150, 150), anchor="mm")
     device.set_image(button, img)
@@ -1210,6 +1217,96 @@ DEFAULT_CONFIG = {
             "type": "timer",
             "minutes": 30
           }
+        },
+        "7": {
+          "label": "Régl.",
+          "action": {
+            "type": "timer",
+            "minutes": 0
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        },
+        "encoder_3_cw": {
+          "action": {
+            "type": "timer_adjust",
+            "dir": "up"
+          }
+        },
+        "encoder_3_ccw": {
+          "action": {
+            "type": "timer_adjust",
+            "dir": "down"
+          }
+        },
+        "encoder_3_button": {
+          "action": {
+            "type": "timer_start"
+          }
+        }
+      }
+    },
+    "chronos": {
+      "label": "Chrono",
+      "icon": "timer",
+      "color": "#B39DDB",
+      "buttons": {
+        "1": {
+          "label": "Chrono",
+          "action": {
+            "type": "stopwatch"
+          }
         }
       },
       "encoders": {
@@ -1677,6 +1774,10 @@ def main():
                     # touche minuteur : rendu selon l'état du minuteur actif
                     paint_timer_state(n, entry)
                     continue
+                if (entry.get("action") or {}).get("type") == "stopwatch":
+                    # touche chronomètre : rendu selon l'état du chrono
+                    paint_chrono_state(n, entry)
+                    continue
                 icon = entry.get("icon")
                 if icon and os.path.exists(icon):
                     # chemin vers une image perso (png/jpg)
@@ -1747,6 +1848,12 @@ def main():
                 except Exception as e:
                     print(f"[erreur minuteur] {e}")
                 return
+            if t_act and t_act.get("type") == "stopwatch":
+                try:
+                    chrono_event(ev.name.split("_")[1], t_act, ev.state)
+                except Exception as e:
+                    print(f"[erreur chronomètre] {e}")
+                return
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
         if ev.name.startswith("strip_"):
@@ -1765,6 +1872,16 @@ def main():
                 action = {"type": "zoom", "dir": {
                     "encoder_3_cw": "in", "encoder_3_ccw": "out",
                     "encoder_3_button": "reset"}[ev.name]}
+        if action and action.get("type") in ("timer_adjust", "timer_start"):
+            # knob 3 (page minuteurs) : durée réglable / départ direct
+            try:
+                if action.get("type") == "timer_adjust":
+                    timer_adjust(action.get("dir") == "up")
+                else:
+                    timer_start_custom()
+            except Exception as e:
+                print(f"[erreur minuteur réglable] {e}")
+            return
         if action:
             print(f"[action] {ev.name} -> {action.get('type')}")
             threading.Thread(target=run_action, args=(action, device),
@@ -1875,6 +1992,21 @@ def main():
                   "alarm": False}
     timer_lock = threading.RLock()
     _timer_press = [None]              # (numéro de touche, instant d'appui)
+    custom_minutes = [5]               # minuteur réglable (knob 3, 1-99 min)
+    chrono_state = {"running": False,  # chronomètre
+                    "elapsed": 0.0, "start_ts": None}
+    _chrono_press = [None]             # (touche, instant d'appui) chrono
+
+    def timer_minutes(action):
+        """Minutes d'une action timer ; "minutes": 0 = durée réglable
+        (ajustée au knob 3 sur la page minuteurs)."""
+        try:
+            m = int(action.get("minutes", 5))
+        except (TypeError, ValueError):
+            m = 5
+        if m <= 0:
+            m = custom_minutes[0]
+        return m
 
     def timer_remaining():
         with timer_lock:
@@ -1883,9 +2015,17 @@ def main():
             return float(timer_state["remaining"])
 
     def paint_timer_state(n, entry, status_override=None):
-        total = int((entry.get("action") or {}).get("minutes", 5)) * 60
+        act = entry.get("action") or {}
+        m = int(act.get("minutes", 5) or 0)
+        if m <= 0:
+            # touche « Régl. » : durée réglable, libellé dynamique
+            total = custom_minutes[0] * 60
+            label = f"{custom_minutes[0]} min"
+        else:
+            total = m * 60
+            label = entry.get("label")
         if status_override:
-            paint_timer_button(device, n, entry.get("label"), 0, total,
+            paint_timer_button(device, n, label, 0, total,
                                status_override)
             return
         with timer_lock:
@@ -1894,7 +2034,7 @@ def main():
             alarm = timer_state["alarm"]
             remaining = timer_state["remaining"]
         if not active:
-            paint_timer_button(device, n, entry.get("label"), None, total)
+            paint_timer_button(device, n, label, None, total)
         else:
             if alarm:
                 status = "alarm"
@@ -1904,14 +2044,14 @@ def main():
                 status = "pause"
             else:
                 status = "idle"
-            paint_timer_button(device, n, entry.get("label"),
+            paint_timer_button(device, n, label,
                                timer_remaining(), total, status)
 
     def timer_event(n, action, down):
         """Clic court : départ / pause / reprise (ou acquitte l'alarme).
         Clic long (> 0,6 s) : réinitialise le minuteur (sans le lancer)."""
         try:
-            total = int(action.get("minutes", 5)) * 60
+            total = timer_minutes(action) * 60
         except (TypeError, ValueError):
             total = 300
         if down:
@@ -1965,6 +2105,90 @@ def main():
             if old_entry:
                 paint_timer_state(int(old_btn), old_entry)
 
+    def timer_adjust(up):
+        """Knob 3 (page minuteurs) : ajuste la durée réglable (1 à 99 min)."""
+        with timer_lock:
+            custom_minutes[0] = max(1, min(99,
+                                          custom_minutes[0] + (1 if up else -1)))
+        print(f"[minuteur] durée réglable : {custom_minutes[0]} min")
+        for bn, e in (page_cfg().get("buttons") or {}).items():
+            ea = e.get("action") or {}
+            if ea.get("type") == "timer" and int(ea.get("minutes", 5) or 0) <= 0:
+                paint_timer_state(int(bn), e)
+
+    def timer_start_custom():
+        """Appui sur le knob 3 (page minuteurs) : démarre le minuteur
+        réglable sur sa touche « Régl. »."""
+        btn = None
+        for bn, e in (page_cfg().get("buttons") or {}).items():
+            ea = e.get("action") or {}
+            if ea.get("type") == "timer" and int(ea.get("minutes", 5) or 0) <= 0:
+                btn = bn
+                break
+        if not btn:
+            print("[minuteur] pas de touche « Régl. » sur cette page")
+            return
+        with timer_lock:
+            old_btn = timer_state["btn"]
+            total = custom_minutes[0] * 60
+            timer_state.update(btn=btn, remaining=total,
+                               end_ts=time.monotonic() + total,
+                               running=True, alarm=False)
+        for b in (old_btn, btn):
+            if b:
+                e = (page_cfg().get("buttons") or {}).get(b)
+                if e:
+                    paint_timer_state(int(b), e)
+
+    def chrono_elapsed():
+        """Temps mesuré par le chronomètre, en secondes."""
+        with timer_lock:
+            el = float(chrono_state["elapsed"])
+            if chrono_state["running"]:
+                el += max(0.0, time.monotonic() - chrono_state["start_ts"])
+            return el
+
+    def paint_chrono_state(n, entry):
+        with timer_lock:
+            running = chrono_state["running"]
+        elapsed = chrono_elapsed()
+        status = ("run" if running
+                  else ("pause" if elapsed > 0 else "idle"))
+        paint_timer_button(device, n, entry.get("label") or "Chrono",
+                           elapsed, 0, status, idle_sub="prêt")
+
+    def chrono_event(n, action, down):
+        """Chronomètre : clic court = départ / pause / reprise, clic long
+        (> 0,6 s) = remise à zéro."""
+        if down:
+            if _chrono_press[0] is None or _chrono_press[0][0] != n:
+                _chrono_press[0] = (n, time.monotonic())
+            return
+        press = _chrono_press[0]
+        _chrono_press[0] = None
+        if not press or press[0] != n:
+            return
+        held = time.monotonic() - press[1]
+        with timer_lock:
+            if held >= 0.6:
+                chrono_state.update(running=False, elapsed=0.0,
+                                   start_ts=None)
+            elif chrono_state["running"]:
+                chrono_state["elapsed"] += max(
+                    0.0, time.monotonic() - chrono_state["start_ts"])
+                chrono_state.update(running=False, start_ts=None)
+            elif chrono_state["elapsed"] > 0:
+                chrono_state.update(start_ts=time.monotonic(),
+                                    running=True)
+            else:
+                chrono_state.update(start_ts=time.monotonic(),
+                                     running=True)
+        entry = (page_cfg().get("buttons") or {}).get(n)
+        if entry:
+            paint_chrono_state(int(n), entry)
+
+    _chrono_last = [None]             # pour le rafraîchissement du chrono
+
     def poll_timers():
         """Rafraîchit chaque seconde la touche du minuteur actif, déclenche
         l'alarme à la fin (bips + clignotement rouge). Le minuteur poursuit
@@ -1997,6 +2221,18 @@ def main():
                                                   status_override="idle")
                             else:
                                 paint_timer_state(int(btn), entry)
+                    # chronomètre : rafraîchit la touche s'il tourne
+                    for bn, e2 in (page_cfg().get("buttons") or {}).items():
+                        ea = e2.get("action") or {}
+                        if ea.get("type") == "stopwatch":
+                            with timer_lock:
+                                crun = chrono_state["running"]
+                            if crun:
+                                csig = int(chrono_elapsed() * 2)
+                                if csig != _chrono_last[0]:
+                                    _chrono_last[0] = csig
+                                    paint_chrono_state(int(bn), e2)
+                            break
             except Exception as e:
                 print(f"[erreur minuteur] {e}")
             time.sleep(0.25)

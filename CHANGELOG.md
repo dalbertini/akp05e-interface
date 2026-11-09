@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.1.0] — 2026-11-09
+
+### Ajouté
+- **Minuteur réglable (page « minuteurs »)** : nouvelle touche « Régl. » — le **knob 3** ajuste la durée de **1 à 99 min** (le libellé de la touche suit en direct), et un **appui sur le knob 3 démarre** le minuteur réglable immédiatement. Config : action `{"type": "timer", "minutes": 0}` + `timer_adjust` / `timer_start` sur les encodeurs.
+- **Page « chronos »** : chronomètre — clic court = départ / pause / reprise, **clic long (> 0,6 s) = remise à zéro**, temps écoulé mm:ss en temps réel sur la touche (gris = prêt, vert = en cours, ambre = pause). Nouvelle action `{"type": "stopwatch"}`. Le chronomètre continue même si on change de page (comme le minuteur).
+
 ## [2.0.2] — 2026-11-09
 
 ### Modifié
@@ -157,6 +163,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
