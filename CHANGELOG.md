@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.6.3] — 2026-11-09
+
+### Corrigé
+- **Températures des disques enfin affichées** : un motif `"hw"` comme `"C:]"` matchait toutes les mesures du capteur `[C:]` (usure, heures, température…) et le tie-break par libellé le plus court sélectionnait la mauvaise. `hw_match` accepte désormais une **liste de sous-chaînes** (toutes requises, ex. `["C:]", "Drive Temperature"]`) et privilégie une température en cas de correspondances multiples. Boutons 6/7 par défaut : SSD C: et SSD E:/F: sur `Drive Temperature`.
+
 ## [1.6.2] — 2026-11-09
 
 ### Modifié
@@ -108,6 +113,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.6.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

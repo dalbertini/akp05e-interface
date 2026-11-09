@@ -227,18 +227,28 @@ def hwinfo_readings():
         k32.CloseHandle(hmap)
 
 def hw_match(readings, needle):
-    """Cherche la mesure correspondant au motif (sous-chaîne, insensible à
-    la casse, sur libellé + libellé d'origine + nom de capteur). En cas de
-    correspondances multiples, privilégie le libellé le plus court."""
-    if not readings:
+    """Cherche la mesure correspondant au motif : soit une sous-chaîne,
+    soit une LISTE de sous-chaînes (toutes doivent alors correspondre —
+    ex. ["C:]", "Drive Temperature"] pour la température du disque C:).
+    Recherche insensible à la casse sur libellé + libellé d'origine +
+    nom de capteur. Parmi les correspondances, privilégie une température
+    (c'est le but des touches capteurs), puis le libellé le plus court."""
+    if not readings or not needle:
         return None
-    n = (needle or "").lower().strip()
-    cands = [r for r in readings
-             if n and n in (r["label"] + " " + r["label_orig"]
-                            + " " + r["sensor"]).lower()]
+    needles = needle if isinstance(needle, list) else [needle]
+    needles = [str(n).lower().strip() for n in needles if str(n).strip()]
+    if not needles:
+        return None
+    cands = []
+    for r in readings:
+        hay = (r["label"] + " " + r["label_orig"]
+               + " " + r["sensor"]).lower()
+        if all(n in hay for n in needles):
+            cands.append(r)
     if not cands:
         return None
-    cands.sort(key=lambda r: len(r["label"]))
+    # température d'abord (type 1), puis libellé le plus court
+    cands.sort(key=lambda r: (r["type"] != 1, len(r["label"])))
     return cands[0]
 
 def run_list_sensors():
@@ -279,7 +289,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.6.2"
+APP_VERSION = "1.6.3"
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -1105,13 +1115,13 @@ DEFAULT_CONFIG = {
           "color": "#90CAF9"
         },
         "6": {
-          "hw": "C:]",
+          "hw": ["C:]", "Drive Temperature"],
           "label": "SSD C:",
           "icon": "save",
           "color": "#80DEEA"
         },
         "7": {
-          "hw": "E:",
+          "hw": ["E:", "Drive Temperature"],
           "label": "SSD E:",
           "icon": "save",
           "color": "#4DD0E1"
