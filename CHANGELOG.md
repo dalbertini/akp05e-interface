@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [1.6.1] — 2026-11-09
+
+### Corrigé
+- **Crash « access violation » de la page Hardware** : ctypes tronquait en 32 bits les handles et pointeurs 64 bits retournés par `OpenFileMapping`/`MapViewOfFile` sous Windows x64 — les prototypes WinAPI sont désormais déclarés explicitement (`restype`/`argtypes`).
+- **Décodage des mesures aligné sur la vraie structure `#pragma pack(1)`** de HWiNFO : libellés aux offsets 12/140 (au lieu de 16/144), unité à 268, valeurs `double` à 284 — les libellés et valeurs étaient illisibles.
+- **Garde-fous** : signature `HWiS` et dimensions de sections validées avant toute lecture en mémoire.
+
 ## [1.6.0] — 2026-11-09
 
 ### Ajouté
@@ -96,6 +103,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[1.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

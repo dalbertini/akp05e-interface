@@ -156,6 +156,23 @@ def hwinfo_readings():
     import struct as _struct
     k32 = ctypes.windll.kernel32
     FILE_MAP_READ = 0x0004
+    # Prototypes WinAPI STRICTS : sans eux, ctypes tronque les handles et
+    # pointeurs 64 bits en int 32 bits (restype par défaut) — sous Windows
+    # x64, MapViewOfFile retourne une adresse > 4 Go et chaque lecture
+    # déclenche une "access violation". Indispensable !
+    from ctypes import wintypes as _wt
+    k32.OpenFileMappingW.restype = ctypes.c_void_p
+    k32.OpenFileMappingW.argtypes = [ctypes.c_uint32, _wt.BOOL, _wt.LPCWSTR]
+    k32.CreateMutexW.restype = ctypes.c_void_p
+    k32.CreateMutexW.argtypes = [ctypes.c_void_p, _wt.BOOL, _wt.LPCWSTR]
+    k32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    k32.ReleaseMutex.argtypes = [ctypes.c_void_p]
+    k32.MapViewOfFile.restype = ctypes.c_void_p
+    k32.MapViewOfFile.argtypes = [ctypes.c_void_p, ctypes.c_uint32,
+                                   ctypes.c_uint32, ctypes.c_uint32,
+                                   ctypes.c_size_t]
+    k32.UnmapViewOfFile.argtypes = [ctypes.c_void_p]
+    k32.CloseHandle.argtypes = [ctypes.c_void_p]
     hmap = k32.OpenFileMappingW(FILE_MAP_READ, False, HWINFO_MAP_NAME)
     if not hmap:
         return None
@@ -169,6 +186,16 @@ def hwinfo_readings():
         head = ctypes.string_at(base, 44)
         (_sig, _ver, _rev, _poll, off_sens, size_sens, n_sens,
          off_read, size_read, n_read) = _struct.unpack("<IIIqIIIIII", head)
+        # Garde-fous : signature "HWiS" (0x53695748, 'DEAD' si inactif) et
+        # dimensions plausibles — on ne tente AUCUNE lecture dans une
+        # mémoire dont la description ne colle pas au format documenté.
+        if _sig != 0x53695748:  # "HWiS" ; 'DEAD' quand HWiNFO est inactif
+            return None
+        if (not 0 < size_sens <= 512 or not 0 < size_read <= 1024
+                or n_sens > 4096 or n_read > 65536
+                or off_sens + n_sens * size_sens > 0x40000000
+                or off_read + n_read * size_read > 0x40000000):
+            return None
         sensors = []
         for i in range(n_sens):
             el = ctypes.string_at(base + off_sens + i * size_sens, size_sens)
@@ -177,11 +204,14 @@ def hwinfo_readings():
         out = []
         for i in range(n_read):
             el = ctypes.string_at(base + off_read + i * size_read, size_read)
+            # HWiNFO_SENSORS_READING_ELEMENT est #pragma pack(1) :
+            # type(4) idx(4) id(4) | label_orig[128] @12 | label_user[128]
+            # @140 | unit[16] @268 | Value/Min/Max/Avg (double) @284.
             rtype, sidx, rid = _struct.unpack_from("<III", el, 0)
-            label_u = _read_cstr(el[16:16 + 128])
-            label_o = _read_cstr(el[144:144 + 128])
-            unit = _read_cstr(el[272:272 + 16])
-            value, vmin, vmax, vavg = _struct.unpack_from("<dddd", el, 288)
+            label_o = _read_cstr(el[12:12 + 128])
+            label_u = _read_cstr(el[140:140 + 128])
+            unit = _read_cstr(el[268:268 + 16])
+            value, vmin, vmax, vavg = _struct.unpack_from("<dddd", el, 284)
             sname = sensors[sidx] if 0 <= sidx < len(sensors) else "?"
             out.append({"sensor": sname, "label": label_u or label_o,
                         "label_orig": label_o, "type": rtype, "unit": unit,
@@ -249,7 +279,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 60
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
