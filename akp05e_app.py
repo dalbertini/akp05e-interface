@@ -51,6 +51,14 @@ Types d'actions configurables dans akp05e_config.json :
                                                            # clic long = remise à zéro
   {"type": "timer_adjust", "dir": "up"}                    # knob 3 : durée réglable +1 min ("down" = -1)
   {"type": "timer_start"}                                  # knob 3 appuyé : démarre le minuteur réglable
+  {"type": "lms_power_all"}                                 # LMS : allume/éteint TOUS les Squeezebox
+  {"type": "lms_power_selected"}                             # LMS : allume/éteint le lecteur sélectionné
+  {"type": "lms_select_player"}                              # LMS : change de lecteur ("dir": "prev")
+  {"type": "lms_playpause"}                                 # LMS : pause / reprise du lecteur sélectionné
+  {"type": "lms_volume", "dir": "up", "step": 5}             # LMS : volume du lecteur sélectionné
+  {"type": "lms_mute"}                                       # LMS : muet du lecteur sélectionné
+  {"type": "lms_sync"}                                      # LMS : synchronise tous les lecteurs (ou dissocie)
+  {"type": "lms_favorite", "index": 0}                       # LMS : joue le favori n°0 (radios)
   {"type": "page", "page": "qobuz"}                         # changer de page
   {"type": "page", "page": "next"}                          # ou "prev" : défiler
 (Par défaut, le knob 2 fait défiler les pages : CW = suivante, CCW = précédente.
@@ -68,6 +76,14 @@ Spotify au premier plan bascule le deck sur la page "qobuz", et il revient
 à la page précédente quand on la quitte. Une navigation manuelle (knob 2)
 pendant que l'application est active est respectée jusqu'au prochain
 changement d'application. Clé absente ou vide = fonction désactivée.
+INTÉGRATION LYRION MEDIA SERVER (LMS / Squeezebox) : la clé "lms"
+({"host": "192.168.1.24", "port": 9000}) active la page « lms » :
+lecteurs découverts automatiquement, favoris radios (LMS) sur les
+touches 5-10, knob 1 = volume du lecteur sélectionné (appui = muet),
+knob 3 = changer de lecteur (appui = allumer/éteindre), boutons
+« Veille » (tous allumer/éteindre), « Lecture » (pause/reprise) et
+« Maison » (synchroniser tous les lecteurs sur le sélectionné).
+API JSON-RPC de LMS, stdlib uniquement — hôte vide = désactivé.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
@@ -91,6 +107,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import webbrowser
 from collections import namedtuple
 
@@ -351,7 +368,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.2.0"
+APP_VERSION = "2.3.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -996,6 +1013,111 @@ def zoom_wheel(direction, notches=2):
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
+class LMSClient:
+    """Client Lyrion Media Server (LMS) via l'API JSON-RPC
+    (http://host:9000/jsonrpc.js) — stdlib urllib, aucune dépendance.
+    host vide = intégration désactivée."""
+
+    def __init__(self, host, port=9000, timeout=3.0):
+        self.url = (f"http://{host}:{int(port)}/jsonrpc.js"
+                    if host else None)
+        self.timeout = timeout
+        self._id = 0
+
+    @property
+    def enabled(self):
+        return bool(self.url)
+
+    def request(self, player, command, timeout=None):
+        """Appel slim.request ; renvoie le dict 'result' (None si erreur
+        ou LMS injoignable)."""
+        if not self.url:
+            return None
+        self._id += 1
+        payload = json.dumps({"id": self._id, "method": "slim.request",
+                              "params": [player, command]})
+        try:
+            req = urllib.request.Request(
+                self.url, data=payload.encode("utf-8"),
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(
+                    req, timeout=timeout or self.timeout) as r:
+                data = json.loads(r.read().decode("utf-8"))
+            return data.get("result")
+        except Exception as e:
+            print(f"[lms] requête échouée ({e})")
+            return None
+
+    def players(self):
+        """Liste des lecteurs : [{id, name, power, volume, playing,
+        title, sync_master}] ({} vide si LMS injoignable)."""
+        res = self.request("", ["players", 0, 50])
+        if not res:
+            return []
+        out = []
+        for p in res.get("players_loop") or []:
+            out.append({
+                "id": p.get("playerid"),
+                "name": p.get("name") or "?",
+                "power": bool(int(p.get("power", 0) or 0)),
+                "volume": int(p.get("mixer volume", 0) or 0),
+                "playing": bool(int(p.get("isplaying", 0) or 0)),
+                "title": p.get("current_title") or "",
+                "sync_master": bool(int(p.get("issyncmaster", 0) or 0)),
+            })
+        return out
+
+    def favorites(self):
+        """Favoris LMS de premier niveau (radios) : [{id, name, url}]."""
+        res = self.request("", ["favorites", "items", 0, 50])
+        if not res:
+            return []
+        out = []
+        for f in res.get("favorites_loop") or []:
+            if int(f.get("hasitems", 0) or 0):    # sous-dossier : ignoré
+                continue
+            if not f.get("id"):
+                continue
+            out.append({"id": str(f["id"]), "name": f.get("name") or "?",
+                        "url": f.get("url") or ""})
+        return out
+
+    def power_all(self, on):
+        """Allume ou éteigne tous les lecteurs."""
+        for p in self.players():
+            self.request(p["id"], ["power", "1" if on else "0"])
+
+    def power(self, player, on):
+        self.request(player, ["power", "1" if on else "0"])
+
+    def volume(self, player, delta):
+        """Volume relatif (ex. +5 / -5) du lecteur."""
+        self.request(player, ["mixer", "volume", f"{int(delta):+d}"])
+
+    def mute_toggle(self, player):
+        self.request(player, ["mixer", "muting", "toggle"])
+
+    def playpause(self, player, playing):
+        """Pause si en lecture, reprise sinon."""
+        self.request(player, ["pause", "1"] if playing else ["play"])
+
+    def play_favorite(self, player, fav_id):
+        """Joue un favori (radio) sur le lecteur (l'allume au passage)."""
+        self.request(player, ["power", "1"])
+        self.request(player, ["favorites", "play", str(fav_id)])
+
+    def sync_all(self, master):
+        """Synchronise tous les lecteurs sur <master>."""
+        for p in self.players():
+            if p["id"] != master:
+                self.request(p["id"], ["sync", master])
+
+    def desync_all(self):
+        """Désynchronise tous les lecteurs."""
+        for p in self.players():
+            self.request(p["id"], ["sync", "-"])
+
+
 def get_foreground_app():
     """Nom (minuscule) de l'exécutable de la fenêtre au premier plan.
     Windows uniquement, stdlib ctypes ; None si indisponible."""
@@ -1107,6 +1229,10 @@ DEFAULT_CONFIG = {
     "spotify": "qobuz",
     "vlc": "qobuz",
     "hwinfo64": "hardware"
+  },
+  "lms": {
+    "host": "",
+    "port": 9000
   },
   "vu_meter": {
     "enabled": True,
@@ -1343,6 +1469,147 @@ DEFAULT_CONFIG = {
         "encoder_3_button": {
           "action": {
             "type": "timer_start"
+          }
+        }
+      }
+    },
+    "lms": {
+      "label": "LMS",
+      "icon": "speaker",
+      "color": "#A5D6A7",
+      "buttons": {
+        "1": {
+          "label": "Veille",
+          "action": {
+            "type": "lms_power_all"
+          }
+        },
+        "2": {
+          "label": "Lecteur",
+          "action": {
+            "type": "lms_select_player"
+          }
+        },
+        "3": {
+          "label": "Lecture",
+          "action": {
+            "type": "lms_playpause"
+          }
+        },
+        "4": {
+          "label": "Maison",
+          "action": {
+            "type": "lms_sync"
+          }
+        },
+        "5": {
+          "label": "Radio 1",
+          "action": {
+            "type": "lms_favorite",
+            "index": 0
+          }
+        },
+        "6": {
+          "label": "Radio 2",
+          "action": {
+            "type": "lms_favorite",
+            "index": 1
+          }
+        },
+        "7": {
+          "label": "Radio 3",
+          "action": {
+            "type": "lms_favorite",
+            "index": 2
+          }
+        },
+        "8": {
+          "label": "Radio 4",
+          "action": {
+            "type": "lms_favorite",
+            "index": 3
+          }
+        },
+        "9": {
+          "label": "Radio 5",
+          "action": {
+            "type": "lms_favorite",
+            "index": 4
+          }
+        },
+        "10": {
+          "label": "Radio 6",
+          "action": {
+            "type": "lms_favorite",
+            "index": 5
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "lms_volume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "lms_volume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "lms_mute"
+          }
+        },
+        "encoder_3_cw": {
+          "action": {
+            "type": "lms_select_player"
+          }
+        },
+        "encoder_3_ccw": {
+          "action": {
+            "type": "lms_select_player",
+            "dir": "prev"
+          }
+        },
+        "encoder_3_button": {
+          "action": {
+            "type": "lms_power_selected"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
           }
         }
       }
@@ -1762,6 +2029,11 @@ def main():
                     # touche chronomètre : rendu selon l'état du chrono
                     paint_chrono_state(n, entry)
                     continue
+                if str((entry.get("action") or {}).get("type")
+                       or "").startswith("lms"):
+                    # touche LMS : libellés dynamiques
+                    paint_lms_button(n, entry)
+                    continue
                 icon = entry.get("icon")
                 if icon and os.path.exists(icon):
                     # chemin vers une image perso (png/jpg)
@@ -1856,6 +2128,11 @@ def main():
                 action = {"type": "zoom", "dir": {
                     "encoder_3_cw": "in", "encoder_3_ccw": "out",
                     "encoder_3_button": "reset"}[ev.name]}
+        if action and str(action.get("type") or "").startswith("lms"):
+            # actions Lyrion Media Server (page « lms ») — en thread
+            threading.Thread(target=lms_action, args=(action,),
+                             daemon=True).start()
+            return
         if action and action.get("type") in ("timer_adjust", "timer_start"):
             # knob 3 (page minuteurs) : durée réglable / départ direct
             try:
@@ -2226,6 +2503,144 @@ def main():
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
 
+    # --- LYRION MEDIA SERVER (LMS / Squeezebox) --------------------------
+    lms = LMSClient((config.get("lms") or {}).get("host", ""),
+                    (config.get("lms") or {}).get("port", 9000))
+    lms_state = {"players": [],       # lecteurs découverts (poll)
+                 "favorites": [],     # favoris radios LMS
+                 "selected": 0,       # index du lecteur sélectionné
+                 "loaded": False}     # première découverte faite ?
+    lms_lock = threading.RLock()
+
+    def lms_selected():
+        with lms_lock:
+            ps = lms_state["players"]
+            if not ps:
+                return None
+            return ps[min(lms_state["selected"], len(ps) - 1)]
+
+    def paint_lms_button(n, entry):
+        """Touche LMS : libellés dynamiques (lecteur sélectionné, favoris,
+        états) rafraîchis par poll_lms."""
+        t = (entry.get("action") or {}).get("type") or ""
+        label = entry.get("label") or "LMS"
+        sub = ""
+        with lms_lock:
+            players = list(lms_state["players"])
+            favs = list(lms_state["favorites"])
+        sel = lms_selected()
+        if not lms.enabled:
+            sub = "config off"
+        elif not players:
+            sub = "LMS ?"
+        elif t == "lms_power_all":
+            on = sum(1 for q in players if q["power"])
+            sub = f"{on}/{len(players)} allumés"
+        elif t == "lms_select_player":
+            sub = (sel["name"] if sel else "-")[:10]
+        elif t == "lms_playpause":
+            if sel and sel["playing"]:
+                sub = ">> " + (sel["title"] or "?")[:8]
+            elif sel:
+                sub = "|| pause"
+        elif t == "lms_sync":
+            sub = ("synchro" if any(q["sync_master"] for q in players)
+                   else "indep.")
+        elif t == "lms_favorite":
+            i = int((entry.get("action") or {}).get("index", 0))
+            if 0 <= i < len(favs):
+                label = favs[i]["name"][:12]
+                if sel and sel["playing"] and sel["title"] == favs[i]["name"]:
+                    sub = ">> en cours"
+                else:
+                    sub = "radio"
+            else:
+                sub = "(vide)"
+        device.set_label(n, label, sub=sub)
+
+    def paint_lms_page():
+        """Repeint toutes les touches LMS de la page courante."""
+        buttons = page_cfg().get("buttons") or {}
+        for bn, entry in buttons.items():
+            if str((entry.get("action") or {}).get("type")
+                   or "").startswith("lms"):
+                try:
+                    paint_lms_button(int(bn), entry)
+                except Exception as e:
+                    print(f"[erreur lms peinture] {e}")
+
+    def lms_action(action):
+        """Exécutée dans un thread : commande LMS puis rafraîchissement."""
+        if not lms.enabled:
+            print('[lms] non configuré : renseigne "lms": {"host": ...} '
+                  'dans akp05e_config.json')
+            return
+        t = action.get("type")
+        sel = lms_selected()
+        if t == "lms_volume" and sel:
+            step = int(action.get("step", 5))
+            lms.volume(sel["id"], step if action.get("dir") == "up" else -step)
+        elif t == "lms_mute" and sel:
+            lms.mute_toggle(sel["id"])
+        elif t == "lms_power_all":
+            with lms_lock:
+                players = list(lms_state["players"])
+            on = any(q["power"] for q in players)
+            lms.power_all(not on)
+        elif t == "lms_power_selected" and sel:
+            lms.power(sel["id"], not sel["power"])
+        elif t == "lms_select_player":
+            with lms_lock:
+                n = len(lms_state["players"])
+                if n:
+                    d = -1 if action.get("dir") == "prev" else 1
+                    lms_state["selected"] = ((lms_state["selected"] + d)
+                                             % n)
+        elif t == "lms_playpause" and sel:
+            lms.playpause(sel["id"], sel["playing"])
+        elif t == "lms_sync" and sel:
+            with lms_lock:
+                players = list(lms_state["players"])
+            if any(q["sync_master"] for q in players):
+                lms.desync_all()
+            else:
+                lms.sync_all(sel["id"])
+        elif t == "lms_favorite" and sel:
+            with lms_lock:
+                favs = list(lms_state["favorites"])
+            i = int(action.get("index", 0))
+            if 0 <= i < len(favs):
+                lms.play_favorite(sel["id"], favs[i]["id"])
+        # rafraîchit l'état (et l'affichage si on est sur la page lms)
+        with lms_lock:
+            players = lms.players()
+            if players:
+                lms_state["players"] = players
+        if current["name"] == "lms":
+            paint_lms_page()
+
+    def poll_lms():
+        """Découvre les lecteurs/favoris, rafraîchit la page LMS (2 s)."""
+        while True:
+            try:
+                if lms.enabled:
+                    with lms_lock:
+                        players = lms.players()
+                        if players:
+                            lms_state["players"] = players
+                            if not lms_state["favorites"]:
+                                lms_state["favorites"] = lms.favorites()
+                            if not lms_state["loaded"]:
+                                lms_state["loaded"] = True
+                                print(f"[lms] connecté : {len(players)} "
+                                      "lecteurs — "
+                                      + ", ".join(q["name"] for q in players))
+                    if current["name"] == "lms":
+                        paint_lms_page()
+            except Exception as e:
+                print(f"[erreur lms] {e}")
+            time.sleep(2.0)
+
     # --- PAGES AUTOMATIQUES (application au premier plan) ---------------
     auto_state = {"match": None,          # (clé, page) de l'app active
                   "return_page": None,    # page à restaurer en quittant
@@ -2320,6 +2735,7 @@ def main():
     threading.Thread(target=poll_hardware, daemon=True).start()
     threading.Thread(target=poll_timers, daemon=True).start()
     threading.Thread(target=poll_auto_pages, daemon=True).start()
+    threading.Thread(target=poll_lms, daemon=True).start()
     if vu_on:
         threading.Thread(target=poll_vu, daemon=True).start()
     if _HAS_PYCAW:

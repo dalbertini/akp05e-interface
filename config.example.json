@@ -6,6 +6,10 @@
     "vlc": "qobuz",
     "hwinfo64": "hardware"
   },
+  "lms": {
+    "host": "",
+    "port": 9000
+  },
   "vu_meter": {
     "enabled": true,
     "fps": 12
@@ -241,6 +245,147 @@
         "encoder_3_button": {
           "action": {
             "type": "timer_start"
+          }
+        }
+      }
+    },
+    "lms": {
+      "label": "LMS",
+      "icon": "speaker",
+      "color": "#A5D6A7",
+      "buttons": {
+        "1": {
+          "label": "Veille",
+          "action": {
+            "type": "lms_power_all"
+          }
+        },
+        "2": {
+          "label": "Lecteur",
+          "action": {
+            "type": "lms_select_player"
+          }
+        },
+        "3": {
+          "label": "Lecture",
+          "action": {
+            "type": "lms_playpause"
+          }
+        },
+        "4": {
+          "label": "Maison",
+          "action": {
+            "type": "lms_sync"
+          }
+        },
+        "5": {
+          "label": "Radio 1",
+          "action": {
+            "type": "lms_favorite",
+            "index": 0
+          }
+        },
+        "6": {
+          "label": "Radio 2",
+          "action": {
+            "type": "lms_favorite",
+            "index": 1
+          }
+        },
+        "7": {
+          "label": "Radio 3",
+          "action": {
+            "type": "lms_favorite",
+            "index": 2
+          }
+        },
+        "8": {
+          "label": "Radio 4",
+          "action": {
+            "type": "lms_favorite",
+            "index": 3
+          }
+        },
+        "9": {
+          "label": "Radio 5",
+          "action": {
+            "type": "lms_favorite",
+            "index": 4
+          }
+        },
+        "10": {
+          "label": "Radio 6",
+          "action": {
+            "type": "lms_favorite",
+            "index": 5
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "lms_volume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "lms_volume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "lms_mute"
+          }
+        },
+        "encoder_3_cw": {
+          "action": {
+            "type": "lms_select_player"
+          }
+        },
+        "encoder_3_ccw": {
+          "action": {
+            "type": "lms_select_player",
+            "dir": "prev"
+          }
+        },
+        "encoder_3_button": {
+          "action": {
+            "type": "lms_power_selected"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
           }
         }
       }

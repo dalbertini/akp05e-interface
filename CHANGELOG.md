@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.3.0] — 2026-11-10
+
+### Ajouté
+- **Intégration Lyrion Media Server (LMS / Squeezebox)** : nouvelle page « LMS » pilotant tous les Squeezebox de la maison (3 Touch + 3 Radio). Clé de config `"lms": {"host": "…", "port": 9000}` (hôte vide = désactivé) — lecteurs et favoris radios découverts automatiquement via l'API JSON-RPC de LMS, en stdlib (urllib), zéro dépendance. Boutons : « Veille » (tout allumer/éteindre, affiche « X/Y allumés »), « Lecteur » (nom du lecteur sélectionné), « Lecture » (pause/reprise, affiche le morceau en cours), « Maison » (synchronise tous les lecteurs sur le sélectionné / dissocie), touches 5-10 : **6 radios des favoris LMS** (nom automatique, indicateur « en cours »). Knob 1 = volume du lecteur sélectionné (appui = muet), knob 3 = changer de lecteur (appui = allumer/éteindre). Rafraîchissement automatique toutes les 2 s ; LMS injoignable = touches « LMS ? » sans plantage. Nouvelles actions : `lms_power_all`, `lms_power_selected`, `lms_select_player`, `lms_playpause`, `lms_volume`, `lms_mute`, `lms_sync`, `lms_favorite`.
+
 ## [2.2.0] — 2026-11-09
 
 ### Ajouté
@@ -176,6 +181,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

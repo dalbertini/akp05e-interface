@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.2.0 — Minuteurs réglables, chronomètre et pages automatiques selon l'application active !** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.3.0 — Intégration Lyrion Media Server : pilote tes Squeezebox depuis le deck !** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -22,6 +22,7 @@
 - **Page « minuteurs »** *(nouveau, v2.0)* : préréglages 1/2/5/10/20/30 min — clic = départ/pause/reprise, clic long = réinitialise, alarme sonore et clignotement à la fin (action `{"type": "timer", "minutes": N}`) — **durée réglable** : la touche « Régl. » affiche la durée du knob 3 (1 à 99 min), appui sur le knob 3 = départ immédiat
 - **Chronomètre intégré à la page « minuteurs »** *(nouveau, v2.1)* : touche « Chrono » (libellé violet) — clic = départ/pause/reprise, clic long = remise à zéro, temps mm:ss en temps réel (action `{"type": "stopwatch"}`)
 - **Changement de page automatique** *(nouveau, v2.2)* : la clé `"auto_pages"` associe un nom de processus à une page — Qobuz/Spotify/VLC au premier plan → page « Qobuz », HWiNFO64 → page « hardware », retour à la page précédente à la fermeture. Une navigation manuelle (knob 2) pendant que l'application est active est respectée.
+- **Intégration Lyrion Media Server (LMS / Squeezebox)** *(nouveau, v2.3)* : nouvelle page « LMS » — tous tes Squeezebox pilotés depuis le deck. Boutons « Veille » (tout allumer/éteindre), « Lecteur » (sélection), « Lecture » (pause/reprise), « Maison » (synchroniser tous les lecteurs = même musique dans toute la maison), et **6 touches de radios remplies automatiquement depuis tes favoris LMS**. Knob 1 = volume du lecteur sélectionné (appui = muet), knob 3 = changer de lecteur (appui = allumer/éteindre). Config : `"lms": {"host": "192.168.1.24", "port": 9000}` — lecteurs et favoris découverts automatiquement via l'API JSON-RPC de LMS, stdlib uniquement.
 - **Actions configurables** via `akp05e_config.json` : lancer un programme, ouvrir une URL, raccourcis clavier, taper du texte, commande, volume système, volume/média, luminosité, changement de page
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
@@ -54,7 +55,7 @@ Un exemple complet (la config par défaut, régénérable en supprimant `akp05e_
       "action": {"type": "open", "path": "C:\\Program Files\\...\\Code.exe"}}
 ```
 
-Types d'actions : `open`, `url`, `keys`, `text`, `run`, `sysvolume` (volume système réel, `dir`: `up`/`down`/`mute`, `step` optionnel), `volume` (touches média), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page` (basculer vers une page), `timer` (minuteur ; `"minutes": 0` = durée réglable au knob 3), `stopwatch` (chronomètre), `timer_adjust` / `timer_start` (régler / démarrer le minuteur réglable).
+Types d'actions : `open`, `url`, `keys`, `text`, `run`, `sysvolume` (volume système réel, `dir`: `up`/`down`/`mute`, `step` optionnel), `volume` (touches média), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page` (basculer vers une page), `timer` (minuteur ; `"minutes": 0` = durée réglable au knob 3), `stopwatch` (chronomètre), `timer_adjust` / `timer_start` (régler / démarrer le minuteur réglable), `lms_power_all`, `lms_power_selected`, `lms_select_player`, `lms_playpause`, `lms_volume`, `lms_mute`, `lms_sync`, `lms_favorite` (pilotage Lyrion Media Server).
 Événements configurables : `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
 
 ### Pages (FR)
@@ -101,6 +102,7 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **"Timers" page** *(new in v2.0)*: presets 1/2/5/10/20/30 min — click = start/pause/resume, long click = reset, beep alarm and red flash at the end (action `{"type": "timer", "minutes": N}`) — **custom duration**: the "Régl." key shows the knob 3 duration (1 to 99 min), pressing knob 3 starts it right away
 - **Stopwatch on the "Timers" page** *(new in v2.1)*: "Chrono" key (purple label) — click = start/pause/resume, long click = reset, live mm:ss time (action `{"type": "stopwatch"}`)
 - **Automatic page switching** *(new in v2.2)*: the `"auto_pages"` key maps a process name to a page — Qobuz/Spotify/VLC in the foreground → "Qobuz" page, HWiNFO64 → "hardware" page, and back to the previous page when it closes. Manual navigation (knob 2) while the app is active is respected.
+- **Lyrion Media Server (LMS / Squeezebox) integration** *(new in v2.3)*: new "LMS" page — all your Squeezeboxes from the deck. "Veille" (all on/off), "Lecteur" (select), "Lecture" (pause/resume), "Maison" (sync every player = same music house-wide), and **6 radio keys filled automatically from your LMS favorites**. Knob 1 = selected player volume (press = mute), knob 3 = switch player (press = power). Config: `"lms": {"host": "192.168.1.24", "port": 9000}` — players and favorites discovered automatically through LMS's JSON-RPC API, stdlib only.
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling
@@ -120,7 +122,7 @@ python akp05e_app.py
 
 A default `akp05e_config.json` is created next to the script on first run; the icon font is downloaded once into `.icons_cache/`, then everything works offline. To get profile pages (including the Qobuz page), delete your old `akp05e_config.json` so it gets regenerated. Close the official Ajazz software first — both need exclusive HID access.
 
-Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page`, `timer` (0 = knob-3 adjustable duration), `stopwatch`, `timer_adjust` / `timer_start` (adjust / start the custom timer). Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
+Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page`, `timer` (0 = knob-3 adjustable duration), `stopwatch`, `timer_adjust` / `timer_start` (adjust / start the custom timer), `lms_power_all`, `lms_power_selected`, `lms_select_player`, `lms_playpause`, `lms_volume`, `lms_mute`, `lms_sync`, `lms_favorite` (Lyrion Media Server control). Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
 
 ## Protocol
 
