@@ -379,7 +379,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.4.3"
+APP_VERSION = "2.4.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1133,13 +1133,27 @@ class LMSClient:
             })
         return out
 
+    @staticmethod
+    def _loop_of(res):
+        """Boucle d'items d'une réponse favorites : selon la version du
+        serveur LMS, la clé s'appelle favorites_loop, loop_loop, itemLoop
+        ou items (cf. diagnostic v2.4.2 : certains serveurs renvoient
+        loop_loop)."""
+        if not isinstance(res, dict):
+            return []
+        for key in ("favorites_loop", "loop_loop", "itemLoop", "items"):
+            v = res.get(key)
+            if isinstance(v, list) and v:
+                return v
+        return []
+
     def _favorites_level(self, folder_id=None):
-        """Un niveau de l'arbre des favoris LMS (favorites_loop)."""
+        """Un niveau de l'arbre des favoris LMS."""
         cmd = ["favorites", "items", 0, 100, "want_url:1"]
         if folder_id:
             cmd.append(f"item_id:{folder_id}")
         res = self.request("", cmd)
-        return (res or {}).get("favorites_loop") or []
+        return self._loop_of(res)
 
     def _favorite_leaves(self, folder_id=None):
         """Feuilles de l'arbre des favoris (descend dans les dossiers)."""
@@ -1168,8 +1182,7 @@ class LMSClient:
                                 "name": it.get("name") or "?",
                                 "url": it.get("url") or ""})
 
-        walk((res or {}).get("favorites_loop") or [])
-        walk((res or {}).get("items") or [])
+        walk(self._loop_of(res))
         return out
 
     def favorites(self, folder=None):
@@ -1467,27 +1480,3 @@ DEFAULT_CONFIG = {
     "encoder_4_cw": {
       "action": {
         "type": "brightness",
-        "dir": "up",
-        "step": 10
-      }
-    },
-    "encoder_4_ccw": {
-      "action": {
-        "type": "brightness",
-        "dir": "down",
-        "step": 10
-      }
-    },
-    "encoder_4_button": {
-      "action": {
-        "type": "brightness_toggle"
-      }
-    },
-    "encoder_2_cw": {
-      "action": {
-        "type": "page",
-        "page": "next"
-      }
-    },
-    "encoder_2_ccw": {
-      "action": {

@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.4] — 2026-11-10
+
+### Corrigé
+- **Favoris introuvables sur certains serveurs LMS** : certaines versions du serveur renvoient les favoris dans la clé `loop_loop` au lieu de `favorites_loop`. Ce format est désormais reconnu (également `itemLoop` et `items`) — les radios (FIP, FIP Rock…) apparaissent enfin dans la page Favoris.
+
 ## [2.4.3] — 2026-11-10
 
 ### Corrigé
@@ -221,6 +226,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
