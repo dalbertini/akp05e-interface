@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.5.1"
+APP_VERSION = "2.5.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -900,8 +900,23 @@ class Akp05Device:
         """Dessine une icône texte simple et l'envoie sur la touche.
         small=True : police réduite et nom coupé sur DEUX lignes pour
         afficher les noms longs (Squeezebox, radios) en entier."""
-        img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg)
-        d = ImageDraw.Draw(img)
+        w_bt, h_bt = BUTTON_IMAGE_SIZE
+        if (isinstance(bg, (tuple, list)) and len(bg) == 2
+                and isinstance(bg[0], (tuple, list))
+                and isinstance(bg[1], (tuple, list))):
+            # dégradé vertical : couleur du HAUT vers celle du BAS
+            (r1, g1, b1), (r2, g2, b2) = bg
+            img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg[0])
+            d = ImageDraw.Draw(img)
+            for y in range(h_bt):
+                t = y / max(1, h_bt - 1)
+                d.line([(0, y), (w_bt, y)],
+                       fill=(int(r1 + (r2 - r1) * t),
+                             int(g1 + (g2 - g1) * t),
+                             int(b1 + (b2 - b1) * t)))
+        else:
+            img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg)
+            d = ImageDraw.Draw(img)
         try:
             if small:
                 font_big = ImageFont.truetype("arial.ttf", 20)
@@ -1090,13 +1105,30 @@ def lms_active_fav(title, favs):
     return best
 
 
-def lms_viewed_active_fav(vp, favs, launched_id=None):
-    """Index du favori actif pour le lecteur affiché : titre en cours si
-    le flux le dit (lms_active_fav), sinon la dernière radio LANCÉE DEPUIS
-    LE DECK (le current_title d'une webradio est souvent la métadonnée du
-    morceau en cours, pas le nom de la station). -1 si aucun/lecteur éteint."""
+def _url_key(url):
+    """Normalise une URL pour comparaison (schéma ignoré, minuscules)."""
+    u = str(url or "").strip().lower()
+    for pre in ("http://", "https://"):
+        if u.startswith(pre):
+            u = u[len(pre):]
+    return u.rstrip("/")
+
+
+def lms_viewed_active_fav(vp, favs, launched_id=None, playing_url=None):
+    """Index du favori actif pour le lecteur affiché, -1 si aucun.
+    1. URL du flux en cours == URL du favori (fiable AUSSI au démarrage,
+       quand la radio a été lancée depuis LMS/web et non depuis le deck) ;
+    2. titre en cours (lms_active_fav) ;
+    3. dernière radio LANCÉE DEPUIS LE DECK (le current_title d'une
+       webradio est souvent la métadonnée du morceau, pas la station)."""
     if not vp or not vp.get("playing"):
         return -1
+    if playing_url:
+        pu = _url_key(playing_url)
+        for j, f in enumerate(favs):
+            fu = _url_key(f.get("url"))
+            if fu and fu == pu:
+                return j
     i = lms_active_fav(vp.get("title") or "", favs)
     if i >= 0:
         return i
@@ -1299,6 +1331,19 @@ class LMSClient:
                 if str(v) in ("0", "1"):
                     return str(v) == "1"
         return False
+
+    def playing_url(self, player):
+        """URL du flux en cours sur le lecteur (None si rien / erreur).
+        Permet d'identifier la radio active MÊME AU DÉMARRAGE de
+        l'application (le current_title d'une webradio est souvent la
+        métadonnée du morceau, pas le nom de la station)."""
+        res = self.request(player, ["status", "0", "1"])
+        if not isinstance(res, dict):
+            return None
+        loop = res.get("playlist_loop") or []
+        if loop and loop[0].get("url"):
+            return str(loop[0]["url"])
+        return res.get("url") or None
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -2674,7 +2719,8 @@ def main():
                  "viewed_muted": False,  # état muet du lecteur affiché
                  "favs_logged": False,   # découverte des favoris loggée ?
                  "loaded": False,     # première découverte faite ?
-                 "launched_fav": {}}  # lecteur -> id favori lancé depuis le deck
+                 "launched_fav": {},  # lecteur -> id favori lancé depuis le deck
+                 "playing_url": None}  # URL du flux en cours (lecteur affiché)
     lms_lock = threading.RLock()
 
     def lms_selected():
@@ -2705,6 +2751,12 @@ def main():
             if v is not None:
                 vp["volume"] = v
             lms_state["viewed_muted"] = lms.mute_state(vp["id"])
+            try:
+                lms_state["playing_url"] = (lms.playing_url(vp["id"])
+                                            if vp.get("playing")
+                                            else None)
+            except Exception:
+                lms_state["playing_url"] = None
 
     def paint_lms_button(n, entry):
         """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
@@ -2718,6 +2770,7 @@ def main():
             favs = list(lms_state["favorites"])
             fav_off = lms_state["fav_offset"]
             launched = dict(lms_state["launched_fav"])
+            playing_url = lms_state["playing_url"]
         sel = lms_selected()
         vp = lms_viewed()
         if not lms.enabled:
@@ -2760,8 +2813,10 @@ def main():
             if 0 <= i < len(favs):
                 label = favs[i]["name"][:16]
                 lid = launched.get(vp["id"]) if vp else None
-                if (lms_viewed_active_fav(vp, favs, lid) == i):
-                    bg = (22, 76, 200)  # bleu vif : cette radio est active
+                if (lms_viewed_active_fav(vp, favs, lid,
+                                          playing_url) == i):
+                    # dégradé bleu (haut) -> noir (bas) : radio active
+                    bg = ((24, 72, 190), (6, 10, 26))
                     fg = (255, 255, 255)
                     sub = ">> en cours"
                 else:
@@ -2786,8 +2841,10 @@ def main():
             if 0 <= i < len(favs):
                 label = favs[i]["name"][:16]
                 lid = launched.get(sel["id"]) if sel else None
-                if (lms_viewed_active_fav(sel, favs, lid) == i):
-                    bg = (22, 76, 200)  # bleu vif : cette radio est active
+                if (lms_viewed_active_fav(sel, favs, lid,
+                                          playing_url) == i):
+                    # dégradé bleu (haut) -> noir (bas) : radio active
+                    bg = ((24, 72, 190), (6, 10, 26))
                     fg = (255, 255, 255)
                     sub = ">> en cours"
                 else:

@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.5.1 — LMS : radio active surlignée en bleu, pages lecteurs/favoris/applis : un bouton par Squeezebox, alim individuelle, favoris et applis par lecteur.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.5.2 — LMS : radio active surlignée (dégradé bleu, détection par URL), pages lecteurs/favoris/applis : un bouton par Squeezebox, alim individuelle, favoris et applis par lecteur.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
