@@ -1,0 +1,640 @@
+{
+  "brightness": 30,
+  "auto_pages": {
+    "qobuz": "qobuz",
+    "spotify": "qobuz",
+    "vlc": "qobuz",
+    "hwinfo64": "hardware"
+  },
+  "vu_meter": {
+    "enabled": true,
+    "fps": 12
+  },
+  "buttons": {
+    "1": {
+      "icon": "terminal",
+      "color": "#80CBC4",
+      "label": "CMD",
+      "action": {
+        "type": "run",
+        "cmd": "cmd"
+      }
+    },
+    "2": {
+      "icon": "description",
+      "color": "#9FA8DA",
+      "label": "Notepad",
+      "action": {
+        "type": "open",
+        "path": "notepad.exe"
+      }
+    },
+    "3": {
+      "icon": "public",
+      "color": "#90CAF9",
+      "label": "Web",
+      "action": {
+        "type": "url",
+        "url": "https://github.com"
+      }
+    },
+    "4": {
+      "icon": "timer",
+      "color": "#FFCC80",
+      "label": "Minut.",
+      "action": {
+        "type": "page",
+        "page": "minuteurs"
+      }
+    },
+    "5": {
+      "icon": "refresh",
+      "color": "#FFF59D",
+      "label": "F5",
+      "action": {
+        "type": "keys",
+        "keys": [
+          "f5"
+        ]
+      }
+    }
+  },
+  "encoders": {
+    "encoder_1_cw": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "up",
+        "step": 5
+      }
+    },
+    "encoder_1_ccw": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "down",
+        "step": 5
+      }
+    },
+    "encoder_1_button": {
+      "action": {
+        "type": "sysvolume",
+        "dir": "mute"
+      }
+    },
+    "encoder_4_cw": {
+      "action": {
+        "type": "brightness",
+        "dir": "up",
+        "step": 10
+      }
+    },
+    "encoder_4_ccw": {
+      "action": {
+        "type": "brightness",
+        "dir": "down",
+        "step": 10
+      }
+    },
+    "encoder_4_button": {
+      "action": {
+        "type": "brightness_toggle"
+      }
+    },
+    "encoder_2_cw": {
+      "action": {
+        "type": "page",
+        "page": "next"
+      }
+    },
+    "encoder_2_ccw": {
+      "action": {
+        "type": "page",
+        "page": "prev"
+      }
+    }
+  },
+  "pages": {
+    "minuteurs": {
+      "label": "Minuteur",
+      "icon": "timer",
+      "color": "#FFCC80",
+      "buttons": {
+        "1": {
+          "label": "1 min",
+          "action": {
+            "type": "timer",
+            "minutes": 1
+          }
+        },
+        "2": {
+          "label": "2 min",
+          "action": {
+            "type": "timer",
+            "minutes": 2
+          }
+        },
+        "3": {
+          "label": "5 min",
+          "action": {
+            "type": "timer",
+            "minutes": 5
+          }
+        },
+        "4": {
+          "label": "10 min",
+          "action": {
+            "type": "timer",
+            "minutes": 10
+          }
+        },
+        "5": {
+          "label": "20 min",
+          "action": {
+            "type": "timer",
+            "minutes": 20
+          }
+        },
+        "6": {
+          "label": "30 min",
+          "action": {
+            "type": "timer",
+            "minutes": 30
+          }
+        },
+        "7": {
+          "label": "Régl.",
+          "action": {
+            "type": "timer",
+            "minutes": 0
+          }
+        },
+        "8": {
+          "label": "Chrono",
+          "action": {
+            "type": "stopwatch"
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        },
+        "encoder_3_cw": {
+          "action": {
+            "type": "timer_adjust",
+            "dir": "up"
+          }
+        },
+        "encoder_3_ccw": {
+          "action": {
+            "type": "timer_adjust",
+            "dir": "down"
+          }
+        },
+        "encoder_3_button": {
+          "action": {
+            "type": "timer_start"
+          }
+        }
+      }
+    },
+    "raccourcis": {
+      "label": "Raccourcis",
+      "icon": "keyboard",
+      "color": "#9FA8DA",
+      "buttons": {
+        "1": {
+          "icon": "content_copy",
+          "color": "#90CAF9",
+          "label": "Ctrl C",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "c"
+            ]
+          }
+        },
+        "2": {
+          "icon": "content_paste",
+          "color": "#90CAF9",
+          "label": "Ctrl V",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "v"
+            ]
+          }
+        },
+        "3": {
+          "icon": "content_cut",
+          "color": "#90CAF9",
+          "label": "Ctrl X",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "x"
+            ]
+          }
+        },
+        "4": {
+          "icon": "select_all",
+          "color": "#A5D6A7",
+          "label": "Ctrl A",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "a"
+            ]
+          }
+        },
+        "5": {
+          "icon": "format_bold",
+          "color": "#FFF59D",
+          "label": "Gras",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "b"
+            ]
+          }
+        },
+        "6": {
+          "icon": "format_italic",
+          "color": "#FFF59D",
+          "label": "Italique",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "i"
+            ]
+          }
+        },
+        "7": {
+          "icon": "format_underlined",
+          "color": "#FFF59D",
+          "label": "Souligné",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "u"
+            ]
+          }
+        },
+        "8": {
+          "icon": "photo_camera",
+          "color": "#CE93D8",
+          "label": "Impr écr",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "printscreen"
+            ]
+          }
+        },
+        "9": {
+          "icon": "cancel",
+          "color": "#EF9A9A",
+          "label": "Esc",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "esc"
+            ]
+          }
+        },
+        "10": {
+          "icon": "undo",
+          "color": "#80CBC4",
+          "label": "Annuler",
+          "action": {
+            "type": "keys",
+            "keys": [
+              "ctrl",
+              "z"
+            ]
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      }
+    },
+    "qobuz": {
+      "label": "Qobuz",
+      "buttons": {
+        "1": {
+          "icon": "play_arrow",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Play",
+          "action": {
+            "type": "mediaplay"
+          }
+        },
+        "2": {
+          "icon": "skip_next",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Suiv.",
+          "action": {
+            "type": "medianext"
+          }
+        },
+        "3": {
+          "icon": "skip_previous",
+          "color": "#A5D6A7",
+          "bg": "#1b2e1b",
+          "label": "Prec.",
+          "action": {
+            "type": "mediaprev"
+          }
+        },
+        "4": {
+          "icon": "volume_off",
+          "color": "#EF9A9A",
+          "bg": "#331b1b",
+          "label": "Mute",
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      },
+      "icon": "music_note",
+      "color": "#81D4FA"
+    },
+    "hardware": {
+      "label": "Hardware",
+      "icon": "monitor_heart",
+      "color": "#FFB74D",
+      "refresh": 2,
+      "thresholds": [
+        70,
+        85
+      ],
+      "buttons": {
+        "1": {
+          "hw": "CPU Package",
+          "label": "CPU",
+          "icon": "device_thermostat",
+          "color": "#FF8A65"
+        },
+        "2": {
+          "hw": "GPU Core Temperature",
+          "label": "iGPU",
+          "icon": "device_thermostat",
+          "color": "#CE93D8"
+        },
+        "3": {
+          "hw": "GPU Temperature",
+          "label": "dGPU",
+          "icon": "device_thermostat",
+          "color": "#B39DDB"
+        },
+        "4": {
+          "hw": "PCH Temperature",
+          "label": "PCH",
+          "icon": "device_thermostat",
+          "color": "#80DEEA"
+        },
+        "5": {
+          "hw": "Total CPU Usage",
+          "label": "CPU %",
+          "icon": "speed",
+          "color": "#90CAF9"
+        },
+        "6": {
+          "hw": [
+            "C:]",
+            "Drive Temperature"
+          ],
+          "label": "SSD C:",
+          "icon": "save",
+          "color": "#80DEEA"
+        },
+        "7": {
+          "hw": [
+            "E:",
+            "Drive Temperature"
+          ],
+          "label": "SSD E:",
+          "icon": "save",
+          "color": "#4DD0E1"
+        }
+      },
+      "encoders": {
+        "encoder_1_cw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "up",
+            "step": 5
+          }
+        },
+        "encoder_1_ccw": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "down",
+            "step": 5
+          }
+        },
+        "encoder_1_button": {
+          "action": {
+            "type": "sysvolume",
+            "dir": "mute"
+          }
+        },
+        "encoder_4_cw": {
+          "action": {
+            "type": "brightness",
+            "dir": "up",
+            "step": 10
+          }
+        },
+        "encoder_4_ccw": {
+          "action": {
+            "type": "brightness",
+            "dir": "down",
+            "step": 10
+          }
+        },
+        "encoder_4_button": {
+          "action": {
+            "type": "brightness_toggle"
+          }
+        },
+        "encoder_2_cw": {
+          "action": {
+            "type": "page",
+            "page": "next"
+          }
+        },
+        "encoder_2_ccw": {
+          "action": {
+            "type": "page",
+            "page": "prev"
+          }
+        }
+      }
+    }
+  },
+  "label": "Accueil",
+  "icon": "home",
+  "color": "#80CBC4"
+}

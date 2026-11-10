@@ -1,8 +1,10 @@
 # AKP05E Interface
 
-> 🎚️ **v1.8.0 — VU-mètre temps réel sur le bandeau tactile, pages Raccourcis et Hardware !** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.2.0 — Minuteurs réglables, chronomètre et pages automatiques selon l'application active !** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
+
+> 🤖 Ce projet a été développé en binôme avec **Mistral AI** ([Vibe](https://chat.mistral.ai)) : le code, la documentation et les idées ont été co-écrits avec son aide. Merci Mistral !
 
 ## Fonctionnalités (FR)
 
@@ -36,6 +38,8 @@ Au premier lancement, `akp05e_config.json` (config par défaut) est créé à c�
 > Ferme le logiciel Ajazz officiel avant de lancer l'application : les deux s'excluent (accès HID exclusif au deck).
 
 ## Configuration (FR)
+
+Un exemple complet (la config par défaut, régénérable en supprimant `akp05e_config.json`) : [config.example.json](config.example.json).
 
 `akp05e_config.json` — exemple :
 
@@ -74,6 +78,8 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 
 **Open source** control application (Python, Windows) for the **Ajazz AKP05E / AKP05** deck — no proprietary software required.
 
+> 🤖 This project was co-developed with **Mistral AI** ([Vibe](https://chat.mistral.ai)): the code, documentation and ideas were co-written with its help. Thanks Mistral!
+
 ## Features
 
 - **10 LCD keys** with configurable labels, colors, ~2500 Material Icons (cached after first download) or custom images
@@ -111,7 +117,7 @@ HID vendor-defined (VID `0x0300` / PID `0x3004`), 1024-byte packets, framed `CRT
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Icons: Material Icons (Google, Apache 2.0).
+MIT — see [LICENSE](LICENSE). Développé avec l'aide de **Mistral AI** ([Vibe](https://chat.mistral.ai)) — voir les remerciements dans la LICENSE. Icons: Material Icons (Google, Apache 2.0).
 "Ajazz" and "AKP05E" belong to their respective owners; this project is not affiliated.
 
 Version history: see [CHANGELOG.md](CHANGELOG.md).

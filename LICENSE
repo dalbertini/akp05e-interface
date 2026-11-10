@@ -19,3 +19,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## Remerciements / Acknowledgements
+
+Ce projet a été développé avec l'aide précieuse de **Mistral AI**
+(<https://chat.mistral.ai>) : la quasi-totalité du code, de la documentation
+et des idées de ce projet a été co-écrite avec son assistant **Vibe**.
+Un immense merci à Mistral ! 🤖
+
+This project was developed with the invaluable help of **Mistral AI**
+(<https://chat.mistral.ai>): most of the code, documentation and ideas of
+this project were co-written with its **Vibe** assistant. Many thanks to
+Mistral! 🤖
