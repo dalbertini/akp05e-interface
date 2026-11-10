@@ -77,14 +77,19 @@ Spotify au premier plan bascule le deck sur la page "qobuz", et il revient
 pendant que l'application est active est respectée jusqu'au prochain
 changement d'application. Clé absente ou vide = fonction désactivée.
 INTÉGRATION LYRION MEDIA SERVER (LMS / Squeezebox) : la clé "lms"
-({"host": "192.168.1.24", "port": 9000}) active la page « lms » :
-lecteurs découverts automatiquement, favoris radios (LMS) sur les
-touches 5-10, knob 1 = volume du lecteur sélectionné (appui = muet),
-knob 3 = changer de lecteur (appui = allumer/éteindre), boutons
-« Veille » (tous allumer/éteindre), « Lecture » (pause/reprise) et
-« Maison » (synchroniser tous les lecteurs sur le sélectionné).
-Option "folder": "Radios" limite les touches au contenu de ce
-dossier de favoris (sinon tout l'arbre est aplati, dossiers compris).
+({"host": "192.168.1.24", "port": 9000}) active les pages « lms » :
+  • page « lms » : 6 boutons = 6 lecteurs, appui = ouvrir la page du
+    lecteur (nom raccourci, fond vert Lyrion si allumé) ;
+  • page « lms_player » (par lecteur) : identification (nom en couleur,
+    logo Lyrion), alim on/off individuel, lecture/pause + titre en cours,
+    favoris, mes applis, retour LMS ; knob 1 = volume de CE lecteur
+    (appui = muet) ; la zone 1 du bandeau tactile affiche son volume % ;
+  • page « lms_favs » : favoris radios de ce lecteur (knob 3 = défilement,
+    appui = retour ; touche 10 = retour) ;
+  • page « lms_apps » : Qobuz + Radio Paradise (URL configurable via
+    "lms": {"radio_paradise_url": ...}).
+Option "folder": "Radios" limite les favoris au contenu de ce dossier
+(sinon tout l'arbre est aplati, dossiers compris).
 API JSON-RPC de LMS, stdlib uniquement — hôte vide = désactivé.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
@@ -370,7 +375,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.3.1"
+APP_VERSION = "2.4.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1015,6 +1020,19 @@ def zoom_wheel(direction, notches=2):
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
+def short_player_name(name):
+    """« Squeezebox Touch Orange » → « Orange » : les touches sont
+    carrées, on retire les préfixes génériques des Squeezebox. Le préfixe
+    « Radio » est conservé : David a un Touch « Orange » ET un Radio
+    « Orange » (idem Vanille), il faut pouvoir les distinguer."""
+    for pref in ("Squeezebox Touch ", "Squeezebox ", "Squeezelite ",
+                 "Squeezelite-"):
+        if name.startswith(pref):
+            name = name[len(pref):]
+            break
+    return name.strip() or name
+
+
 class LMSClient:
     """Client Lyrion Media Server (LMS) via l'API JSON-RPC
     (http://host:9000/jsonrpc.js) — stdlib urllib, aucune dépendance.
@@ -1115,6 +1133,20 @@ class LMSClient:
 
     def mute_toggle(self, player):
         self.request(player, ["mixer", "muting", "toggle"])
+
+    def mute_state(self, player):
+        """État muet du lecteur (False si LMS ne répond pas)."""
+        res = self.request(player, ["mixer", "muting", "?"])
+        if isinstance(res, dict):
+            for v in res.values():
+                if str(v) in ("0", "1"):
+                    return str(v) == "1"
+        return False
+
+    def play_url(self, player, url):
+        """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
+        self.request(player, ["power", "1"])
+        self.request(player, ["playlist", "play", url])
 
     def playpause(self, player, playing):
         """Pause si en lecture, reprise sinon."""
@@ -1251,7 +1283,9 @@ DEFAULT_CONFIG = {
   },
   "lms": {
     "host": "",
-    "port": 9000
+    "port": 9000,
+    "folder": "",
+    "radio_paradise_url": "http://stream.radioparadise.com/aac-320"
   },
   "vu_meter": {
     "enabled": True,
@@ -1488,147 +1522,6 @@ DEFAULT_CONFIG = {
         "encoder_3_button": {
           "action": {
             "type": "timer_start"
-          }
-        }
-      }
-    },
-    "lms": {
-      "label": "LMS",
-      "icon": "speaker",
-      "color": "#A5D6A7",
-      "buttons": {
-        "1": {
-          "label": "Veille",
-          "action": {
-            "type": "lms_power_all"
-          }
-        },
-        "2": {
-          "label": "Lecteur",
-          "action": {
-            "type": "lms_select_player"
-          }
-        },
-        "3": {
-          "label": "Lecture",
-          "action": {
-            "type": "lms_playpause"
-          }
-        },
-        "4": {
-          "label": "Maison",
-          "action": {
-            "type": "lms_sync"
-          }
-        },
-        "5": {
-          "label": "Radio 1",
-          "action": {
-            "type": "lms_favorite",
-            "index": 0
-          }
-        },
-        "6": {
-          "label": "Radio 2",
-          "action": {
-            "type": "lms_favorite",
-            "index": 1
-          }
-        },
-        "7": {
-          "label": "Radio 3",
-          "action": {
-            "type": "lms_favorite",
-            "index": 2
-          }
-        },
-        "8": {
-          "label": "Radio 4",
-          "action": {
-            "type": "lms_favorite",
-            "index": 3
-          }
-        },
-        "9": {
-          "label": "Radio 5",
-          "action": {
-            "type": "lms_favorite",
-            "index": 4
-          }
-        },
-        "10": {
-          "label": "Radio 6",
-          "action": {
-            "type": "lms_favorite",
-            "index": 5
-          }
-        }
-      },
-      "encoders": {
-        "encoder_1_cw": {
-          "action": {
-            "type": "lms_volume",
-            "dir": "up",
-            "step": 5
-          }
-        },
-        "encoder_1_ccw": {
-          "action": {
-            "type": "lms_volume",
-            "dir": "down",
-            "step": 5
-          }
-        },
-        "encoder_1_button": {
-          "action": {
-            "type": "lms_mute"
-          }
-        },
-        "encoder_3_cw": {
-          "action": {
-            "type": "lms_select_player"
-          }
-        },
-        "encoder_3_ccw": {
-          "action": {
-            "type": "lms_select_player",
-            "dir": "prev"
-          }
-        },
-        "encoder_3_button": {
-          "action": {
-            "type": "lms_power_selected"
-          }
-        },
-        "encoder_2_cw": {
-          "action": {
-            "type": "page",
-            "page": "next"
-          }
-        },
-        "encoder_2_ccw": {
-          "action": {
-            "type": "page",
-            "page": "prev"
-          }
-        },
-        "encoder_4_cw": {
-          "action": {
-            "type": "brightness",
-            "dir": "up",
-            "step": 10
-          }
-        },
-        "encoder_4_ccw": {
-          "action": {
-            "type": "brightness",
-            "dir": "down",
-            "step": 10
-          }
-        },
-        "encoder_4_button": {
-          "action": {
-            "type": "brightness_toggle"
           }
         }
       }
@@ -2018,6 +1911,85 @@ def main():
     # --- pages de profils : "accueil" = la config classique, les pages
     #     supplémentaires sont définies dans la clé "pages" de la config.
     pages = config.get("pages") or {}
+
+    # Pages LMS générées par le code (v2.4.0) : elles remplacent une
+    # éventuelle définition « lms » de la config pour piloter chaque
+    # Squeezebox individuellement (6 boutons = 6 lecteurs).
+    def _enc_pages():
+        return {
+            "encoder_2_cw": {"action": {"type": "page", "page": "next"}},
+            "encoder_2_ccw": {"action": {"type": "page", "page": "prev"}},
+            "encoder_4_cw": {"action": {"type": "brightness", "dir": "up",
+                                         "step": 10}},
+            "encoder_4_ccw": {"action": {"type": "brightness", "dir": "down",
+                                         "step": 10}},
+            "encoder_4_button": {"action": {"type": "brightness_toggle"}},
+        }
+
+    _lms_cfg = config.get("lms") or {}
+    pages["lms"] = {
+        "label": "LMS", "icon": "speaker", "color": "#A5D6A7",
+        "buttons": {str(i + 1): {"action": {"type": "lms_open_player",
+                                            "index": i}} for i in range(6)},
+        "encoders": _enc_pages(),
+    }
+    pages["lms_player"] = {
+        "label": "Lecteur", "icon": "speaker", "color": "#81C784",
+        "buttons": {
+            "1": {"action": {"type": "lms_player_id"}},
+            "2": {"action": {"type": "lms_player_power"}},
+            "3": {"action": {"type": "lms_player_playpause"}},
+            "4": {"label": "Favoris",
+                  "action": {"type": "lms_open_favs"}},
+            "5": {"label": "Applis",
+                  "action": {"type": "lms_open_apps"}},
+            "6": {"label": "Retour",
+                  "action": {"type": "lms_back"}},
+        },
+        "encoders": {
+            "encoder_1_cw": {"action": {"type": "lms_volume", "dir": "up",
+                                        "step": 5}},
+            "encoder_1_ccw": {"action": {"type": "lms_volume", "dir": "down",
+                                        "step": 5}},
+            "encoder_1_button": {"action": {"type": "lms_mute"}},
+            **_enc_pages(),
+        },
+    }
+    pages["lms_favs"] = {
+        "label": "Favoris", "icon": "star", "color": "#FFF59D",
+        "buttons": {
+            **{str(i): {"action": {"type": "lms_fav_press", "slot": i - 1}}
+               for i in range(1, 10)},
+            "10": {"label": "Retour",
+                   "action": {"type": "lms_back_player"}},
+        },
+        "encoders": {
+            "encoder_3_cw": {"action": {"type": "lms_favs_scroll"}},
+            "encoder_3_ccw": {"action": {"type": "lms_favs_scroll",
+                                         "dir": "prev"}},
+            "encoder_3_button": {"action": {"type": "lms_back_player"}},
+            **_enc_pages(),
+        },
+    }
+    pages["lms_apps"] = {
+        "label": "Applis", "icon": "apps", "color": "#90CAF9",
+        "buttons": {
+            "1": {"icon": "library_music", "color": "#90CAF9",
+                  "label": "Qobuz",
+                  "action": {"type": "page", "page": "qobuz"}},
+            "2": {"icon": "radio", "color": "#CE93D8",
+                  "label": "Radio Par.",
+                  "action": {"type": "lms_play_url",
+                             "url": (_lms_cfg.get("radio_paradise_url")
+                                     or "http://stream.radioparadise.com/"
+                                        "aac-320")}},
+            "10": {"icon": "undo", "color": "#EF9A9A", "label": "Retour",
+                   "action": {"type": "lms_back_player"}},
+        },
+        "encoders": _enc_pages(),
+    }
+    LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps")
+
     page_names = ["accueil"] + [n for n in pages if n != "accueil"]
     current = {"name": config.get("page", "accueil")}
     vu_cfg = config.get("vu_meter") or {}
@@ -2174,7 +2146,13 @@ def main():
         """Redessine le bandeau : volume système + luminosité en direct,
         et nom de la page courante dans la zone 2."""
         vol, muted = None, None
-        if _HAS_PYCAW:
+        if current["name"] == "lms_player":
+            vp = lms_viewed()
+            if vp:
+                with lms_lock:
+                    vol = vp["volume"]
+                    muted = lms_state["viewed_muted"]
+        if vol is None and _HAS_PYCAW:
             try:
                 vol, muted = get_volume_pct(), get_mute()
             except Exception:
@@ -2528,6 +2506,9 @@ def main():
     lms_state = {"players": [],       # lecteurs découverts (poll)
                  "favorites": [],     # favoris radios LMS
                  "selected": 0,       # index du lecteur sélectionné
+                 "viewed": None,      # id du lecteur affiché (page détail)
+                 "fav_offset": 0,     # décalage de la page favoris
+                 "viewed_muted": False,  # état muet du lecteur affiché
                  "loaded": False}     # première découverte faite ?
     lms_lock = threading.RLock()
 
@@ -2538,20 +2519,74 @@ def main():
                 return None
             return ps[min(lms_state["selected"], len(ps) - 1)]
 
+    def lms_viewed():
+        """Lecteur affiché sur la page détail (None si aucun)."""
+        with lms_lock:
+            vid = lms_state["viewed"]
+            for p in lms_state["players"]:
+                if p["id"] == vid:
+                    return p
+        return None
+
     def paint_lms_button(n, entry):
-        """Touche LMS : libellés dynamiques (lecteur sélectionné, favoris,
-        états) rafraîchis par poll_lms."""
+        """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
+        rafraîchis par poll_lms."""
         t = (entry.get("action") or {}).get("type") or ""
-        label = entry.get("label") or "LMS"
+        label = entry.get("label") or ""
         sub = ""
+        bg, fg = (15, 15, 15), (240, 240, 240)
         with lms_lock:
             players = list(lms_state["players"])
             favs = list(lms_state["favorites"])
+            fav_off = lms_state["fav_offset"]
         sel = lms_selected()
+        vp = lms_viewed()
         if not lms.enabled:
             sub = "config off"
-        elif not players:
+        elif not players and t not in ("lms_open_favs", "lms_open_apps",
+                                       "lms_back", "lms_back_player",
+                                       "lms_play_url"):
             sub = "LMS ?"
+        elif t == "lms_open_player":
+            i = int((entry.get("action") or {}).get("index", 0))
+            if 0 <= i < len(players):
+                p = players[i]
+                label = short_player_name(p["name"])[:10]
+                if p["power"]:
+                    bg = (24, 68, 32)  # vert Lyrion si allumé
+                    sub = (">> " + p["title"][:8]) if p["playing"] else "allumé"
+                else:
+                    sub = "veille"
+            else:
+                label, sub = "-", "(vide)"
+        elif t == "lms_player_id":
+            if vp:
+                label = short_player_name(vp["name"])[:10]
+                sub = "Lyrion"
+                if vp["power"]:
+                    bg = (30, 92, 40)  # fond vert Lyrion si allumé
+            else:
+                label, sub = "Lecteur", "LMS ?"
+        elif t == "lms_player_power":
+            label = "Alim"
+            sub = "allumé" if vp and vp["power"] else "éteint"
+        elif t == "lms_player_playpause":
+            label = "Lecture"
+            if vp and vp["playing"]:
+                sub = ">> " + (vp["title"] or "?")[:8]
+            else:
+                sub = "|| pause"
+        elif t == "lms_fav_press":
+            i = fav_off + int((entry.get("action") or {}).get("slot", 0))
+            if 0 <= i < len(favs):
+                label = favs[i]["name"][:12]
+                if (vp and vp["playing"]
+                        and vp["title"] == favs[i]["name"]):
+                    sub = ">> en cours"
+                else:
+                    sub = "radio"
+            else:
+                label, sub = "-", "(vide)"
         elif t == "lms_power_all":
             on = sum(1 for q in players if q["power"])
             sub = f"{on}/{len(players)} allumés"
@@ -2575,7 +2610,18 @@ def main():
                     sub = "radio"
             else:
                 sub = "(vide)"
-        device.set_label(n, label, sub=sub)
+        if not label:
+            label = "LMS"
+        # boutons de navigation/applis : on garde leur icône statique
+        if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
+                  "lms_back_player", "lms_play_url")
+                and entry.get("icon")):
+            set_icon(device, n, entry["icon"],
+                     fg=entry.get("color", "#e0e0e0"),
+                     bg=entry.get("bg", "#101010"),
+                     label=entry.get("label"))
+            return
+        device.set_label(n, label, bg=bg, fg=fg, sub=sub)
 
     def paint_lms_page():
         """Repeint toutes les touches LMS de la page courante."""
@@ -2596,11 +2642,15 @@ def main():
             return
         t = action.get("type")
         sel = lms_selected()
-        if t == "lms_volume" and sel:
+        vp = lms_viewed()
+        # sur les pages détail/favoris/applis, volume et muet visent le
+        # lecteur AFFICHÉ, pas le « sélectionné »
+        tgt = (vp or sel) if current["name"] in LMS_PAGE_NAMES[1:] else sel
+        if t == "lms_volume" and tgt:
             step = int(action.get("step", 5))
-            lms.volume(sel["id"], step if action.get("dir") == "up" else -step)
-        elif t == "lms_mute" and sel:
-            lms.mute_toggle(sel["id"])
+            lms.volume(tgt["id"], step if action.get("dir") == "up" else -step)
+        elif t == "lms_mute" and tgt:
+            lms.mute_toggle(tgt["id"])
         elif t == "lms_power_all":
             with lms_lock:
                 players = list(lms_state["players"])
@@ -2630,13 +2680,55 @@ def main():
             i = int(action.get("index", 0))
             if 0 <= i < len(favs):
                 lms.play_favorite(sel["id"], favs[i]["id"])
-        # rafraîchit l'état (et l'affichage si on est sur la page lms)
+        elif t == "lms_open_player":
+            with lms_lock:
+                ps = list(lms_state["players"])
+            i = int(action.get("index", 0))
+            if 0 <= i < len(ps):
+                with lms_lock:
+                    lms_state["viewed"] = ps[i]["id"]
+                    lms_state["fav_offset"] = 0
+                switch_page("lms_player")
+        elif t == "lms_player_power" and vp:
+            lms.power(vp["id"], not vp["power"])
+        elif t == "lms_player_playpause" and vp:
+            lms.playpause(vp["id"], vp["playing"])
+        elif t == "lms_open_favs":
+            with lms_lock:
+                lms_state["fav_offset"] = 0
+            switch_page("lms_favs")
+        elif t == "lms_fav_press" and vp:
+            with lms_lock:
+                favs = list(lms_state["favorites"])
+                i = lms_state["fav_offset"] + int(action.get("slot", 0))
+            if 0 <= i < len(favs):
+                lms.play_favorite(vp["id"], favs[i]["id"])
+        elif t == "lms_favs_scroll":
+            with lms_lock:
+                nf = len(lms_state["favorites"])
+                d = -9 if action.get("dir") == "prev" else 9
+                lms_state["fav_offset"] = max(0, min(
+                    lms_state["fav_offset"] + d, max(0, nf - 9)))
+        elif t == "lms_open_apps":
+            switch_page("lms_apps")
+        elif t == "lms_play_url" and vp:
+            lms.play_url(vp["id"], action.get("url") or "")
+        elif t == "lms_back":
+            switch_page("lms")
+        elif t == "lms_back_player":
+            switch_page("lms_player")
+        # rafraîchit l'état (et l'affichage si on est sur une page LMS)
         with lms_lock:
             players = lms.players()
             if players:
                 lms_state["players"] = players
-        if current["name"] == "lms":
+        vp = lms_viewed()
+        if vp:
+            with lms_lock:
+                lms_state["viewed_muted"] = lms.mute_state(vp["id"])
+        if current["name"] in LMS_PAGE_NAMES:
             paint_lms_page()
+            refresh_strip()
 
     def poll_lms():
         """Découvre les lecteurs/favoris, rafraîchit la page LMS (2 s)."""
@@ -2655,8 +2747,14 @@ def main():
                                 print(f"[lms] connecté : {len(players)} "
                                       "lecteurs — "
                                       + ", ".join(q["name"] for q in players))
-                    if current["name"] == "lms":
+                    vp = lms_viewed()
+                    if vp:
+                        with lms_lock:
+                            lms_state["viewed_muted"] = lms.mute_state(
+                                vp["id"])
+                    if current["name"] in LMS_PAGE_NAMES:
                         paint_lms_page()
+                        refresh_strip()
             except Exception as e:
                 print(f"[erreur lms] {e}")
             time.sleep(2.0)

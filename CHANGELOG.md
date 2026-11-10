@@ -3,6 +3,17 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.0] — 2026-11-10
+
+### Modifié
+- **Page LMS repensée : un bouton par Squeezebox.** Fini le bouton « Veille » qui allumait/éteignait TOUS les lecteurs d'un coup : la page « lms » affiche désormais **6 boutons = 6 lecteurs** (nom raccourci automatiquement — « Squeezebox Touch Orange » → « Orange », fond vert Lyrion si allumé, titre en cours affiché) ; un appui ouvre la page du lecteur.
+
+### Ajouté
+- **Page lecteur (lms_player)** : identification (nom en couleur, vert Lyrion si allumé), alim on/off de ce lecteur SEUL, lecture/pause avec le titre en cours, favoris, mes applis, retour LMS. Knob 1 = volume de ce lecteur (appui = muet) ; la zone 1 du bandeau tactile affiche son volume % en temps réel.
+- **Page favoris (lms_favs)** : 9 touches de favoris radios du lecteur (indicateur « >> en cours »), knob 3 = défilement au-delà de 9 favoris, appui knob 3 ou touche 10 = retour.
+- **Page applis (lms_apps)** : Qobuz (page média) + Radio Paradise (flux joué sur le lecteur courant, URL configurable via \"lms\": {\"radio_paradise_url\": …}).
+- Les pages LMS sont désormais **générées par l'application** : une ancienne définition \"pages.lms\" dans akp05e_config.json est ignorée (aucune édition de config nécessaire). Les actions v2.3 (lms_power_all, lms_select_player, lms_favorite…) restent reconnues pour compatibilité.
+
 ## [2.3.1] — 2026-11-10
 
 ### Corrigé
@@ -190,6 +201,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
