@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.3] — 2026-11-10
+
+### Corrigé
+- **Console inondée par le diagnostic favoris** : tant que la liste des favoris restait vide, le message de diagnostic (réponse brute du serveur) et l'avertissement « dossier de favoris introuvable » étaient réimprimés à chaque cycle de rafraîchissement (toutes les 2 s). Ces messages ne s'affichent désormais plus qu'une seule fois.
+
 ## [2.4.2] — 2026-11-10
 
 ### Ajouté
@@ -216,6 +221,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
