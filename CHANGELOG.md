@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.5] — 2026-11-10
+
+### Corrigé
+- **Descente des dossiers d'applis SANS commande** (diagnostic : Main Mix de Radio Paradise, `type=outline`, clés `hasitems`/`id`, aucune `cmd`) : protocole CLI strict du xmlbrowser — pour descendre, on RENVOIE la commande du niveau courant en ajoutant `item_id:<id>` (comme les favoris). La pile de navigation mémorise désormais la commande et les paramètres de chaque niveau, donc l'imbrication (mixes Radio Paradise, dossiers Qobuz) s'enchaîne naturellement.
 ## [2.8.4] — 2026-11-10
 
 ### Corrigé
@@ -324,6 +328,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.8.0 — LMS : page Applis dynamique (Qobuz, Radio Paradise…) + navigateur générique qui joue sur le lecteur affiché.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.8.5 — LMS : navigation complète des applis (Radio Paradise, Qobuz) — descente des dossiers au protocole CLI strict du xmlbrowser (`item_id:`), pile de navigation avec mémoire des niveaux.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

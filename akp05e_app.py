@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.4"
+APP_VERSION = "2.8.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3229,9 +3229,14 @@ def main():
             if apps_l and 0 <= i < len(apps_l):
                 items = lms.app_items(vp["id"], apps_l[i]["cmd"],
                                       apps_l[i].get("params"))
+                appcmd = (list(apps_l[i]["cmd"])
+                          if isinstance(apps_l[i]["cmd"], (list, tuple))
+                          else str(apps_l[i]["cmd"]).split())
                 with lms_lock:
                     lms_state["browse"] = [{"title": apps_l[i]["name"],
-                                            "items": items}]
+                                            "items": items,
+                                            "cmd": appcmd,
+                                            "params": []}]
                     lms_state["browse_offset"] = 0
                 print(f"[lms] appli {apps_l[i]['name']} : "
                       f"{len(items)} éléments")
@@ -3261,8 +3266,26 @@ def main():
                         lms_state["browse"].append(
                             {"title": str(it.get("name")
                                           or it.get("title") or "?"),
-                             "items": items})
+                             "items": items,
+                             "cmd": cmd, "params": params})
                         lms_state["browse_offset"] = 0
+                elif lvl and it.get("id") is not None:
+                    # dossier SANS cmd (diagnostic David : Main Mix,
+                    # clés=[hasitems, id, isaudio, name, type]) :
+                    # protocole CLI strict — on RENVOIE la commande du
+                    # niveau courant + item_id:<id> (comme les favoris)
+                    dcmd = [str(w) for w in (lvl.get("cmd") or [])]
+                    if dcmd:
+                        dparams = ([str(p) for p in (lvl.get("params") or [])]
+                                   + [f"item_id:{it['id']}"])
+                        items = lms.app_items(vp["id"], dcmd, dparams)
+                        with lms_lock:
+                            lms_state["browse"].append(
+                                {"title": str(it.get("name")
+                                              or it.get("title") or "?"),
+                                 "items": items,
+                                 "cmd": dcmd, "params": dparams})
+                            lms_state["browse_offset"] = 0
                 else:
                     # diagnostic (comme les favoris v2.4) : à copier dans
                     # une conversation pour identifier le format du serveur
