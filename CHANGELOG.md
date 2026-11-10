@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.7.2] — 2026-11-10
+
+### Modifié
+- **Cœur pour les favoris** : les touches radios des pages Favoris arborent désormais l'icône « favorite » (petit cœur), le bouton « Favoris » aussi, et la pilule de page passe de l'étoile au cœur.
+- **Bouton « Applis »** : logo « grid_view » (grille fine), dans le bleu de la page.
+- **Boutons « Retour » unifiés** : flèche courbée « undo » stylisée en blanc sur fond noir sur toutes les pages LMS (lecteur, favoris, applis).
+
 ## [2.7.1] — 2026-11-10
 
 ### Modifié
@@ -282,6 +289,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.7.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

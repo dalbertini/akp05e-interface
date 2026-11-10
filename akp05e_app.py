@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.7.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2197,11 +2197,14 @@ def main():
             "1": {"action": {"type": "lms_player_id"}},
             "2": {"action": {"type": "lms_player_power"}},
             "3": {"action": {"type": "lms_player_playpause"}},
-            "4": {"label": "Favoris",
+            "4": {"icon": "favorite", "color": "#FF8A80",
+                  "label": "Favoris",
                   "action": {"type": "lms_open_favs"}},
-            "5": {"label": "Applis",
+            "5": {"icon": "grid_view", "color": "#90CAF9",
+                  "label": "Applis",
                   "action": {"type": "lms_open_apps"}},
-            "6": {"label": "Retour",
+            "6": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
+                  "label": "Retour",
                   "action": {"type": "lms_back"}},
         },
         "encoders": {
@@ -2214,11 +2217,12 @@ def main():
         },
     }
     pages["lms_favs"] = {
-        "label": "Favoris", "icon": "star", "color": "#FFF59D",
+        "label": "Favoris", "icon": "favorite", "color": "#FFF59D",
         "buttons": {
             **{str(i): {"action": {"type": "lms_fav_press", "slot": i - 1}}
                for i in range(1, 10)},
-            "10": {"label": "Retour",
+            "10": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
+                   "label": "Retour",
                    "action": {"type": "lms_back_player"}},
         },
         "encoders": {
@@ -2241,7 +2245,8 @@ def main():
                              "url": (_lms_cfg.get("radio_paradise_url")
                                      or "http://stream.radioparadise.com/"
                                         "aac-320")}},
-            "10": {"icon": "undo", "color": "#EF9A9A", "label": "Retour",
+            "10": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
+                   "label": "Retour",
                    "action": {"type": "lms_back_player"}},
         },
         "encoders": _enc_pages(),
@@ -2926,13 +2931,13 @@ def main():
             "lms_player_power": "power_settings_new",
             "lms_player_playpause": ("pause" if vp and vp.get("playing")
                                     else "play_arrow"),
-            "lms_fav_press": "radio",
+            "lms_fav_press": "favorite",
             "lms_power_all": "power_settings_new",
             "lms_select_player": "swap_horiz",
             "lms_playpause": ("pause" if sel and sel.get("playing")
                               else "play_arrow"),
             "lms_sync": "sync",
-            "lms_favorite": "radio",
+            "lms_favorite": "favorite",
         }
         icon = icons_lms.get(t)
         if t in ("lms_open_player", "lms_player_id"):
