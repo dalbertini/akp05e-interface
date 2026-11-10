@@ -3,6 +3,16 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.7.0] — 2026-11-10
+
+### Ajouté
+- **Touche « LMS » sur l'accueil** : ajoutée automatiquement au premier emplacement libre de la page d'accueil quand LMS est configuré — plus besoin de naviguer au knob 2 pour atteindre la page LMS. Message explicatif dans la console si l'accueil est complet.
+- **Petits logos d'action sur les touches LMS** (icônes Material, affichées en haut de la touche) : haut-parleur (lecteurs), alimentation, lecture ▶ / pause ⏸ selon l'état réel du lecteur, radio (favoris), synchronisation, échange de lecteur…
+- **Noms de lecteurs « Touch » conservés** : « Squeezebox Touch Salon » → « Touch Salon » (comme « Radio ») — plus compact, toujours identifiable.
+
+### Modifié
+- **Polices harmonisées** : la même police partout sur les touches — la petite (20 px), la seule qui tient entière dans les 112 px des petits écrans ; les noms longs restent coupés sur deux lignes équilibrées.
+
 ## [2.6.1] — 2026-11-10
 
 ### Corrigé
@@ -267,6 +277,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

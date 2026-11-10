@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.6.1"
+APP_VERSION = "2.7.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -896,10 +896,14 @@ class Akp05Device:
         self._upload_jpeg(STRIP_WIRE_KEY, jpeg)
 
     def set_label(self, button: int, text: str, bg=(15, 15, 15),
-                  fg=(240, 240, 240), sub: str = None, small: bool = False):
-        """Dessine une icône texte simple et l'envoie sur la touche.
-        small=True : police réduite et nom coupé sur DEUX lignes pour
-        afficher les noms longs (Squeezebox, radios) en entier."""
+                  fg=(240, 240, 240), sub: str = None, small: bool = False,
+                  icon: str = None):
+        """Touche texte HARMONISÉE (v2.7.0) : la MÊME police partout —
+        la petite (20 px), la seule qui tient entière dans les 112 px des
+        écrans de touches ; noms longs coupés sur deux lignes équilibrées,
+        sous-titre 13 px. icon= : nom d'icône Material dessiné en petit
+        en haut de la touche (alim, lecture, radio…). small= est accepté
+        pour compatibilité mais la police est toujours la petite."""
         w_bt, h_bt = BUTTON_IMAGE_SIZE
         if (isinstance(bg, (tuple, list)) and len(bg) == 2
                 and isinstance(bg[0], (tuple, list))
@@ -918,16 +922,28 @@ class Akp05Device:
             img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg)
             d = ImageDraw.Draw(img)
         try:
-            if small:
-                font_big = ImageFont.truetype("arial.ttf", 20)
-                font_small = ImageFont.truetype("arial.ttf", 13)
-            else:
-                font_big = ImageFont.truetype("arial.ttf", 30)
-                font_small = ImageFont.truetype("arial.ttf", 16)
+            font_big = ImageFont.truetype("arial.ttf", 20)
+            font_small = ImageFont.truetype("arial.ttf", 13)
         except OSError:
             font_big = font_small = ImageFont.load_default()
-        y0 = 44 if not sub else 38
-        if small and len(text) > 8 and " " in text:
+        if icon:
+            # petit logo Material en haut de la touche
+            try:
+                ipath = _download(
+                    ICON_FONT_URL,
+                    os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"))
+                ifont = ImageFont.truetype(ipath, 30)
+                base = fg if isinstance(fg, (tuple, list)) \
+                    else (240, 240, 240)
+                dim = tuple(min(255, int(c * 0.75) + 45)
+                            for c in tuple(base)[:3])
+                d.text((56, 21), _icon_char(icon), font=ifont,
+                       fill=dim, anchor="mm")
+            except Exception:
+                pass                      # hors ligne sans cache : texte seul
+        # avec un logo le texte descend, le sous-titre aussi
+        y0 = (60 if sub else 62) if icon else (44 if not sub else 38)
+        if len(text) > 8 and " " in text:
             # coupe au plus près du milieu pour équilibrer les 2 lignes
             words = text.split(" ")
             best, best_d, acc = 0, 10 ** 9, 0
@@ -940,13 +956,9 @@ class Akp05Device:
             d.text((56, y0 - 13), l1, font=font_big, fill=fg, anchor="mm")
             d.text((56, y0 + 13), l2, font=font_big, fill=fg, anchor="mm")
         else:
-            if small:
-                y0 = 44 if not sub else 38
-            else:
-                y0 = 56 if not sub else 40
             d.text((56, y0), text, font=font_big, fill=fg, anchor="mm")
         if sub:
-            d.text((56, 84 if small else 78), sub, font=font_small,
+            d.text((56, 92 if icon else 84), sub, font=font_small,
                    fill=(160, 160, 160), anchor="mm")
         self.set_image(button, img)
 
@@ -1143,13 +1155,33 @@ def lms_viewed_active_fav(vp, favs, launched_id=None, playing=None):
     return -1
 
 
+def inject_home_lms_button(config):
+    """v2.7.0 : quand LMS est configuré, ajoute une touche « LMS » sur la
+    page d'accueil (premier emplacement libre de 1 à 10). Accueil
+    complet -> message explicatif (remplacer une touche par l'action
+    {"type": "page", "page": "lms"})."""
+    if not (config.get("lms") or {}).get("host"):
+        return None
+    acc = config.get("buttons")
+    if not isinstance(acc, dict):
+        return None
+    for i in range(1, 11):
+        if not acc.get(str(i)):
+            acc[str(i)] = {"icon": "speaker", "color": "#A5D6A7",
+                           "label": "LMS",
+                           "action": {"type": "page", "page": "lms"}}
+            print(f"[lms] touche LMS ajoutée sur l'accueil (touche {i})")
+            return i
+    print("[lms] aucune touche libre sur l'accueil : remplace une touche "
+          'par {"type": "page", "page": "lms"} pour un accès direct')
+    return None
+
+
 def short_player_name(name):
-    """« Squeezebox Touch Orange » → « Orange » : les touches sont
-    carrées, on retire les préfixes génériques des Squeezebox. Le préfixe
-    « Radio » est conservé : David a un Touch « Orange » ET un Radio
-    « Orange » (idem Vanille), il faut pouvoir les distinguer."""
-    for pref in ("Squeezebox Touch ", "Squeezebox ", "Squeezelite ",
-                 "Squeezelite-"):
+    """« Squeezebox Touch Orange » → « Touch Orange » (v2.7.0 : le
+    préfixe « Touch » est conservé, comme « Radio »). Seuls les préfixes
+    génériques « Squeezebox »/« Squeezelite » sont retirés."""
+    for pref in ("Squeezebox ", "Squeezelite ", "Squeezelite-"):
         if name.startswith(pref):
             name = name[len(pref):]
             break
@@ -2141,6 +2173,7 @@ def main():
         }
 
     _lms_cfg = config.get("lms") or {}
+    inject_home_lms_button(config)
     pages["lms"] = {
         "label": "LMS", "icon": "speaker", "color": "#A5D6A7",
         "buttons": {str(i + 1): {"action": {"type": "lms_open_player",
@@ -2872,8 +2905,22 @@ def main():
                 sub = "(vide)"
         if not label:
             label = "LMS"
-        small = t in ("lms_open_player", "lms_player_id", "lms_fav_press",
-                     "lms_favorite")
+        # petits logos d'action (v2.7.0) — play/pause suit l'état réel
+        icons_lms = {
+            "lms_open_player": "speaker",
+            "lms_player_id": "speaker",
+            "lms_player_power": "power_settings_new",
+            "lms_player_playpause": ("pause" if vp and vp.get("playing")
+                                    else "play_arrow"),
+            "lms_fav_press": "radio",
+            "lms_power_all": "power_settings_new",
+            "lms_select_player": "swap_horiz",
+            "lms_playpause": ("pause" if sel and sel.get("playing")
+                              else "play_arrow"),
+            "lms_sync": "sync",
+            "lms_favorite": "radio",
+        }
+        icon = icons_lms.get(t)
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
                   "lms_back_player", "lms_play_url")
@@ -2883,7 +2930,8 @@ def main():
                      bg=entry.get("bg", "#101010"),
                      label=entry.get("label"))
             return
-        device.set_label(n, label, bg=bg, fg=fg, sub=sub, small=small)
+        device.set_label(n, label, bg=bg, fg=fg, sub=sub, small=True,
+                         icon=icon)
 
     def paint_lms_page():
         """Repeint toutes les touches LMS de la page courante."""
