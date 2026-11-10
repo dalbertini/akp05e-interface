@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.6.0] — 2026-11-10
+
+### Ajouté
+- **Dégradés sur toutes les couleurs d'état LMS** : lecteurs allumés en dégradé vert → noir (page des lecteurs et touche d'identification), radios actives en dégradé bleu → noir.
+
+### Corrigé
+- **Radio active non surlignée en arrivant sur la page Favoris** : l'application récupère désormais aussi le **nom de station** du `status` LMS (`title` de `playlist_loop`), plus fiable que le `current_title` (métadonnée du morceau) ; la query string des URLs est ignorée pour la comparaison (ex. `?_=123`).
+
 ## [2.5.2] — 2026-11-10
 
 ### Modifié
@@ -253,6 +261,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
