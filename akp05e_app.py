@@ -114,6 +114,7 @@ désactivable via {"vu_meter": {"enabled": false}} dans la config."""
 
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -379,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.4.6"
+APP_VERSION = "2.5.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1065,6 +1066,30 @@ def _to_int(v, default=-1):
         return default
 
 
+def fav_base_name(name):
+    """« FIP Rock (MP3) » -> « fip rock » : nom de radio normalisé pour
+    la comparaison avec le titre en cours (suffixe de format retiré)."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "",
+                 str(name or "")).strip().lower()
+
+
+def lms_active_fav(title, favs):
+    """Index du favori correspondant au titre en cours (-1 si aucun).
+    Le current_title d'une webradio vaut le nom de la station, parfois
+    étendu (métadonnées). Comparaison sur noms normalisés : égalité, ou
+    le titre COMMENCE par le nom du favori — le nom le plus long gagne
+    (pour ne pas confondre FIP et FIP Rock)."""
+    t = fav_base_name(title)
+    if not t:
+        return -1
+    best, blen = -1, 0
+    for i, f in enumerate(favs):
+        b = fav_base_name(f.get("name"))
+        if b and (t == b or t.startswith(b)) and len(b) > blen:
+            best, blen = i, len(b)
+    return best
+
+
 def short_player_name(name):
     """« Squeezebox Touch Orange » → « Orange » : les touches sont
     carrées, on retire les préfixes génériques des Squeezebox. Le préfixe
@@ -1416,54 +1441,3 @@ DEFAULT_CONFIG = {
     "1": {
       "icon": "terminal",
       "color": "#80CBC4",
-      "label": "CMD",
-      "action": {
-        "type": "run",
-        "cmd": "cmd"
-      }
-    },
-    "2": {
-      "icon": "description",
-      "color": "#9FA8DA",
-      "label": "Notepad",
-      "action": {
-        "type": "open",
-        "path": "notepad.exe"
-      }
-    },
-    "3": {
-      "icon": "public",
-      "color": "#90CAF9",
-      "label": "Web",
-      "action": {
-        "type": "url",
-        "url": "https://github.com"
-      }
-    },
-    "4": {
-      "icon": "timer",
-      "color": "#FFCC80",
-      "label": "Minut.",
-      "action": {
-        "type": "page",
-        "page": "minuteurs"
-      }
-    },
-    "5": {
-      "icon": "refresh",
-      "color": "#FFF59D",
-      "label": "F5",
-      "action": {
-        "type": "keys",
-        "keys": [
-          "f5"
-        ]
-      }
-    }
-  },
-  "encoders": {
-    "encoder_1_cw": {
-      "action": {
-        "type": "sysvolume",
-        "dir": "up",
-        "step": 5

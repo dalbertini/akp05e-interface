@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.5.0] — 2026-11-10
+
+### Ajouté
+- **Radio active surlignée en vert** : sur la page Favoris, la radio en cours de lecture sur le lecteur affiché passe en fond vert Lyrion (même code couleur que les lecteurs allumés) avec le sous-titre « >> en cours ». Détection robuste du titre en cours (noms normalisés — « FIP Rock (MP3) » ≈ « FIP Rock » —, le nom le plus long gagne pour ne pas confondre FIP et FIP Rock).
+
 ## [2.4.6] — 2026-11-10
 
 ### Corrigé
@@ -236,6 +241,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.5.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
