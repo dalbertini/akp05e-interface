@@ -375,7 +375,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.4.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -891,20 +891,43 @@ class Akp05Device:
         self._upload_jpeg(STRIP_WIRE_KEY, jpeg)
 
     def set_label(self, button: int, text: str, bg=(15, 15, 15),
-                  fg=(240, 240, 240), sub: str = None):
-        """Dessine une icône texte simple et l'envoie sur la touche."""
+                  fg=(240, 240, 240), sub: str = None, small: bool = False):
+        """Dessine une icône texte simple et l'envoie sur la touche.
+        small=True : police réduite et nom coupé sur DEUX lignes pour
+        afficher les noms longs (Squeezebox, radios) en entier."""
         img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg)
         d = ImageDraw.Draw(img)
         try:
-            font_big = ImageFont.truetype("arial.ttf", 30)
-            font_small = ImageFont.truetype("arial.ttf", 16)
+            if small:
+                font_big = ImageFont.truetype("arial.ttf", 20)
+                font_small = ImageFont.truetype("arial.ttf", 13)
+            else:
+                font_big = ImageFont.truetype("arial.ttf", 30)
+                font_small = ImageFont.truetype("arial.ttf", 16)
         except OSError:
             font_big = font_small = ImageFont.load_default()
-        d.text((56, 40 if sub else 56), text, font=font_big,
-               fill=fg, anchor="mm")
+        y0 = 44 if not sub else 38
+        if small and len(text) > 8 and " " in text:
+            # coupe au plus près du milieu pour équilibrer les 2 lignes
+            words = text.split(" ")
+            best, best_d, acc = 0, 10 ** 9, 0
+            for k in range(len(words) - 1):
+                acc += len(words[k]) + 1
+                dist = abs(acc - (len(text) + 1) / 2)
+                if dist < best_d:
+                    best_d, best = dist, acc
+            l1, l2 = text[:best].strip(), text[best:].strip()
+            d.text((56, y0 - 13), l1, font=font_big, fill=fg, anchor="mm")
+            d.text((56, y0 + 13), l2, font=font_big, fill=fg, anchor="mm")
+        else:
+            if small:
+                y0 = 44 if not sub else 38
+            else:
+                y0 = 56 if not sub else 40
+            d.text((56, y0), text, font=font_big, fill=fg, anchor="mm")
         if sub:
-            d.text((56, 78), sub, font=font_small, fill=(160, 160, 160),
-                   anchor="mm")
+            d.text((56, 84 if small else 78), sub, font=font_small,
+                   fill=(160, 160, 160), anchor="mm")
         self.set_image(button, img)
 
 # ---------------------------------------------------------------------------
@@ -1020,6 +1043,14 @@ def zoom_wheel(direction, notches=2):
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
+def _to_int(v, default=-1):
+    """Conversion robuste (« "55" » -> 55, absent/illisible -> défaut)."""
+    try:
+        return int(float(str(v)))
+    except (TypeError, ValueError):
+        return default
+
+
 def short_player_name(name):
     """« Squeezebox Touch Orange » → « Orange » : les touches sont
     carrées, on retire les préfixes génériques des Squeezebox. Le préfixe
@@ -1080,7 +1111,7 @@ class LMSClient:
                 "id": p.get("playerid"),
                 "name": p.get("name") or "?",
                 "power": bool(int(p.get("power", 0) or 0)),
-                "volume": int(p.get("mixer volume", 0) or 0),
+                "volume": _to_int(p.get("mixer volume"), -1),
                 "playing": bool(int(p.get("isplaying", 0) or 0)),
                 "title": p.get("current_title") or "",
                 "sync_master": bool(int(p.get("issyncmaster", 0) or 0)),
@@ -1106,18 +1137,48 @@ class LMSClient:
                             "url": f.get("url") or ""})
         return out
 
+    def _favorites_feed(self):
+        """Repli : feedMode=1 renvoie toute la hiérarchie imbriquée
+        (chaque niveau porte ses sous-éléments dans « items »)."""
+        res = self.request("", ["favorites", "items", 0, 100,
+                                "want_url:1", "feedMode:1"])
+        out = []
+
+        def walk(items):
+            for it in items or []:
+                if it.get("items"):
+                    walk(it["items"])
+                elif it.get("id") and not it.get("hasitems"):
+                    out.append({"id": str(it["id"]),
+                                "name": it.get("name") or "?",
+                                "url": it.get("url") or ""})
+
+        walk((res or {}).get("favorites_loop") or [])
+        walk((res or {}).get("items") or [])
+        return out
+
     def favorites(self, folder=None):
         """Radios des favoris LMS : [{id, name, url}].
         folder=None : toutes les feuilles de l'arbre (dossiers parcourus).
-        folder="Nom" : uniquement le contenu du dossier de favoris « Nom »."""
+        folder="Nom" : uniquement le contenu du dossier de favoris « Nom »
+        (comparaison insensible à la casse ; introuvable -> arbre complet)."""
+        loop = self._favorites_level()
         if folder:
-            for f in self._favorites_level():
+            want = str(folder).strip().lower()
+            for f in loop:
                 if (int(f.get("hasitems", 0) or 0)
-                        and f.get("name") == folder):
+                        and (f.get("name") or "").strip().lower() == want):
                     return self._favorite_leaves(f.get("id"))
-            print(f"[lms] dossier de favoris introuvable : {folder!r}")
-            return []
-        return self._favorite_leaves()
+            dirs = ", ".join(f.get("name", "?") for f in loop
+                             if int(f.get("hasitems", 0) or 0)) or "aucun"
+            print(f"[lms] dossier de favoris {folder!r} introuvable "
+                  f"(dossiers : {dirs}) — tout l'arbre est utilisé")
+        leaves = self._favorite_leaves()
+        if not leaves:
+            # certains serveurs ne renvoient pas la liste plate : on tente
+            # l'arborescence imbriquée (feedMode=1)
+            leaves = self._favorites_feed()
+        return leaves
 
     def power_all(self, on):
         """Allume ou éteigne tous les lecteurs."""
@@ -1133,6 +1194,20 @@ class LMSClient:
 
     def mute_toggle(self, player):
         self.request(player, ["mixer", "muting", "toggle"])
+
+    def volume_state(self, player):
+        """Volume absolu du lecteur (0-100), None si LMS ne répond pas.
+        La requête « players » ne renvoie PAS « mixer volume » : il faut
+        interroger « mixer volume ? » (réponse {«_volume»: «55»})."""
+        res = self.request(player, ["mixer", "volume", "?"])
+        if isinstance(res, dict):
+            if "_volume" in res:
+                return _to_int(res["_volume"], None)
+            for v in res.values():
+                iv = _to_int(v, None)
+                if iv is not None and 0 <= iv <= 100:
+                    return iv
+        return None
 
     def mute_state(self, player):
         """État muet du lecteur (False si LMS ne répond pas)."""
@@ -2509,6 +2584,7 @@ def main():
                  "viewed": None,      # id du lecteur affiché (page détail)
                  "fav_offset": 0,     # décalage de la page favoris
                  "viewed_muted": False,  # état muet du lecteur affiché
+                 "favs_logged": False,   # découverte des favoris loggée ?
                  "loaded": False}     # première découverte faite ?
     lms_lock = threading.RLock()
 
@@ -2527,6 +2603,19 @@ def main():
                 if p["id"] == vid:
                     return p
         return None
+
+    def lms_refresh_viewed():
+        """Met à jour le volume % et l'état muet RÉELS du lecteur affiché :
+        la requête « players » de LMS ne renvoie pas « mixer volume », on
+        interroge donc explicitement « mixer volume ? » (et muting ?)."""
+        vp = lms_viewed()
+        if not vp:
+            return
+        with lms_lock:
+            v = lms.volume_state(vp["id"])
+            if v is not None:
+                vp["volume"] = v
+            lms_state["viewed_muted"] = lms.mute_state(vp["id"])
 
     def paint_lms_button(n, entry):
         """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
@@ -2551,7 +2640,7 @@ def main():
             i = int((entry.get("action") or {}).get("index", 0))
             if 0 <= i < len(players):
                 p = players[i]
-                label = short_player_name(p["name"])[:10]
+                label = short_player_name(p["name"])
                 if p["power"]:
                     bg = (24, 68, 32)  # vert Lyrion si allumé
                     sub = (">> " + p["title"][:8]) if p["playing"] else "allumé"
@@ -2561,7 +2650,7 @@ def main():
                 label, sub = "-", "(vide)"
         elif t == "lms_player_id":
             if vp:
-                label = short_player_name(vp["name"])[:10]
+                label = short_player_name(vp["name"])
                 sub = "Lyrion"
                 if vp["power"]:
                     bg = (30, 92, 40)  # fond vert Lyrion si allumé
@@ -2579,7 +2668,7 @@ def main():
         elif t == "lms_fav_press":
             i = fav_off + int((entry.get("action") or {}).get("slot", 0))
             if 0 <= i < len(favs):
-                label = favs[i]["name"][:12]
+                label = favs[i]["name"][:16]
                 if (vp and vp["playing"]
                         and vp["title"] == favs[i]["name"]):
                     sub = ">> en cours"
@@ -2603,7 +2692,7 @@ def main():
         elif t == "lms_favorite":
             i = int((entry.get("action") or {}).get("index", 0))
             if 0 <= i < len(favs):
-                label = favs[i]["name"][:12]
+                label = favs[i]["name"][:16]
                 if sel and sel["playing"] and sel["title"] == favs[i]["name"]:
                     sub = ">> en cours"
                 else:
@@ -2612,6 +2701,8 @@ def main():
                 sub = "(vide)"
         if not label:
             label = "LMS"
+        small = t in ("lms_open_player", "lms_player_id", "lms_fav_press",
+                     "lms_favorite")
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
                   "lms_back_player", "lms_play_url")
@@ -2621,7 +2712,7 @@ def main():
                      bg=entry.get("bg", "#101010"),
                      label=entry.get("label"))
             return
-        device.set_label(n, label, bg=bg, fg=fg, sub=sub)
+        device.set_label(n, label, bg=bg, fg=fg, sub=sub, small=small)
 
     def paint_lms_page():
         """Repeint toutes les touches LMS de la page courante."""
@@ -2722,10 +2813,7 @@ def main():
             players = lms.players()
             if players:
                 lms_state["players"] = players
-        vp = lms_viewed()
-        if vp:
-            with lms_lock:
-                lms_state["viewed_muted"] = lms.mute_state(vp["id"])
+        lms_refresh_viewed()
         if current["name"] in LMS_PAGE_NAMES:
             paint_lms_page()
             refresh_strip()
@@ -2740,18 +2828,28 @@ def main():
                         if players:
                             lms_state["players"] = players
                             if not lms_state["favorites"]:
-                                lms_state["favorites"] = lms.favorites(
+                                favs = lms.favorites(
                                     (config.get("lms") or {}).get("folder"))
+                                lms_state["favorites"] = favs
+                                if not lms_state["favs_logged"]:
+                                    lms_state["favs_logged"] = True
+                                    if favs:
+                                        names = ", ".join(
+                                            f["name"] for f in favs[:6])
+                                        more = "…" if len(favs) > 6 else ""
+                                        print(f"[lms] {len(favs)} favoris — "
+                                              f"{names}{more}")
+                                    else:
+                                        print("[lms] aucun favori trouvé "
+                                              "sur le serveur — vérifie "
+                                              "l'écran Favoris de LMS "
+                                              "(Radios Internet, TuneIn…)")
                             if not lms_state["loaded"]:
                                 lms_state["loaded"] = True
                                 print(f"[lms] connecté : {len(players)} "
                                       "lecteurs — "
                                       + ", ".join(q["name"] for q in players))
-                    vp = lms_viewed()
-                    if vp:
-                        with lms_lock:
-                            lms_state["viewed_muted"] = lms.mute_state(
-                                vp["id"])
+                    lms_refresh_viewed()
                     if current["name"] in LMS_PAGE_NAMES:
                         paint_lms_page()
                         refresh_strip()

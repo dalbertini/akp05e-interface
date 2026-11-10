@@ -3,6 +3,15 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.1] — 2026-11-10
+
+### Corrigé
+- **Volume % du lecteur sur le bandeau tactile (zone 1)** : la requête « players » de LMS ne renvoie PAS « mixer volume » — le pourcentage restait à 0 alors que le knob fonctionnait. Le volume est désormais interrogé explicitement (« mixer volume ? ») pour le lecteur affiché.
+- **Noms des Squeezebox et des radios tronqués** : les touches LMS utilisent une police plus petite et coupent les noms longs sur deux lignes — tout s'affiche en entier.
+
+### Ajouté
+- **Favoris robustes** : dossier insensible à la casse, repli automatique sur l'arborescence imbriquée (feedMode) si le serveur ne renvoie pas la liste plate, message explicite dans la console (favoris trouvés, ou dossiers disponibles si le dossier configuré est introuvable — l'arbre complet est alors utilisé).
+
 ## [2.4.0] — 2026-11-10
 
 ### Modifié
@@ -201,6 +210,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
