@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.7.1] — 2026-11-10
+
+### Modifié
+- **Logos de lecteurs distinctifs** : les Squeezebox Touch affichent une icône « tablet » (tablette tactile — le plus proche d'un Touch), les Squeezebox Radio l'icône « radio », les autres lecteurs restent « speaker ». Distinction immédiate sur la page des lecteurs et la touche d'identification.
+
 ## [2.7.0] — 2026-11-10
 
 ### Ajouté
@@ -277,6 +282,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.7.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

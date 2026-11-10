@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.7.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1175,6 +1175,17 @@ def inject_home_lms_button(config):
     print("[lms] aucune touche libre sur l'accueil : remplace une touche "
           'par {"type": "page", "page": "lms"} pour un accès direct')
     return None
+
+
+def player_icon(player):
+    """Logo d'un lecteur : tablet pour un Squeezebox Touch (écran tactile),
+    radio pour un Squeezebox Radio, speaker sinon."""
+    n = (player or {}).get("name", "").lower()
+    if "touch" in n:
+        return "tablet"
+    if "radio" in n:
+        return "radio"
+    return "speaker"
 
 
 def short_player_name(name):
@@ -2802,6 +2813,7 @@ def main():
         rafraîchis par poll_lms."""
         t = (entry.get("action") or {}).get("type") or ""
         label = entry.get("label") or ""
+        btn_player = None  # lecteur représenté (pour le logo Touch/Radio)
         sub = ""
         bg, fg = (15, 15, 15), (240, 240, 240)
         with lms_lock:
@@ -2824,6 +2836,7 @@ def main():
             if 0 <= i < len(players):
                 p = players[i]
                 label = short_player_name(p["name"])
+                btn_player = p
                 if p["power"]:
                     bg = ((26, 80, 38), (5, 11, 7))  # dégradé vert->noir
                     sub = (">> " + p["title"][:8]) if p["playing"] else "allumé"
@@ -2832,6 +2845,7 @@ def main():
             else:
                 label, sub = "-", "(vide)"
         elif t == "lms_player_id":
+            btn_player = vp
             if vp:
                 label = short_player_name(vp["name"])
                 sub = "Lyrion"
@@ -2921,6 +2935,8 @@ def main():
             "lms_favorite": "radio",
         }
         icon = icons_lms.get(t)
+        if t in ("lms_open_player", "lms_player_id"):
+            icon = player_icon(btn_player)
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
                   "lms_back_player", "lms_play_url")
