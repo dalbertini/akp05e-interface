@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.1"
+APP_VERSION = "2.8.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1444,7 +1444,8 @@ class LMSClient:
                     seen.add(cmd)
                     out.append({"cmd": str(cmd),
                                 "name": str(a.get("name")
-                                            or a.get("title") or cmd)})
+                                            or a.get("title") or cmd),
+                                "params": a.get("params")})
 
         # contexte lecteur puis global (certaines versions exigent l'un
         # ou l'autre) — dédoublonné via `seen`
@@ -1461,14 +1462,23 @@ class LMSClient:
 
     def app_items(self, player, cmd, params=None, start=0, count=100):
         """Un niveau de navigation d'une appli LMS (xmlbrowser) :
-        [player] <cmd...> items <start> <count> [params:...]."""
+        [player] <cmd...> items <start> <count> [params:...].
+        Essaie AVEC les params de la découverte puis SANS (les plugins
+        ne les interprètent pas tous) — délai allongé à 10 s (les
+        plugins interrogent parfois des API distantes) + diagnostic si
+        le niveau reste vide."""
         words = list(cmd) if isinstance(cmd, (list, tuple)) \
             else str(cmd).split()
-        c = [str(w) for w in words] + [str(start), str(count)]
-        if params:
-            c.append(str(params))
-        res = self.request(player, c)
-        return self._loop_of(res)
+        base = [str(w) for w in words] + [str(start), str(count)]
+        attempts = ([base + [str(params)]] if params else []) + [base]
+        res = None
+        for c in attempts:
+            res = self.request(player, c, timeout=10.0)
+            items = self._loop_of(res)
+            if items:
+                return items
+        print(f"[lms] diagnostic navigation — {c!r} -> {str(res)[:400]}")
+        return []
 
     def sync_all(self, master):
         """Synchronise tous les lecteurs sur <master>."""
@@ -2331,7 +2341,11 @@ def main():
     LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps",
                       "lms_browse")
 
-    page_names = ["accueil"] + [n for n in pages if n != "accueil"]
+    # carrousel / knob 2 : les pages LMS en sont EXCLUES (accès direct
+    # par la touche « LMS » de l'accueil, navigation interne à LMS)
+    page_names = (["accueil"] + [n for n in pages
+                                 if n != "accueil"
+                                 and n not in LMS_PAGE_NAMES])
     current = {"name": config.get("page", "accueil")}
     vu_cfg = config.get("vu_meter") or {}
     vu_on = _HAS_PYCAW and bool(vu_cfg.get("enabled", True))
@@ -3171,7 +3185,8 @@ def main():
                 apps_l = list(lms_state["apps"])
                 i = lms_state["apps_offset"] + int(action.get("slot", 0))
             if apps_l and 0 <= i < len(apps_l):
-                items = lms.app_items(vp["id"], apps_l[i]["cmd"])
+                items = lms.app_items(vp["id"], apps_l[i]["cmd"],
+                                      apps_l[i].get("params"))
                 with lms_lock:
                     lms_state["browse"] = [{"title": apps_l[i]["name"],
                                             "items": items}]

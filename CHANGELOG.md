@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.2] — 2026-11-10
+
+### Corrigé
+- **Navigation dans les applis (Qobuz, Radio Paradise)** : le délai des requêtes passe à 10 s (les plugins interrogent parfois des API distantes), les `params` renvoyés par la découverte sont transmis puis réessayés sans, et si un niveau reste vide la console affiche `[lms] diagnostic navigation — commande -> réponse brute` à copier dans une issue.
+
+### Modifié
+- **Pages LMS retirées du carrousel** (et du knob 2 / swipe) : elles restent accessibles par la touche « LMS » de l'accueil et leur navigation interne.
 ## [2.8.1] — 2026-11-10
 
 ### Corrigé
@@ -308,6 +315,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
