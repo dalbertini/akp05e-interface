@@ -379,7 +379,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.4.4"
+APP_VERSION = "2.4.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1270,7 +1270,9 @@ class LMSClient:
     def play_favorite(self, player, fav_id):
         """Joue un favori (radio) sur le lecteur (l'allume au passage)."""
         self.request(player, ["power", "1"])
-        self.request(player, ["favorites", "play", str(fav_id)])
+        # commande LMS correcte : « favorites playlist play <id> »
+        # (« favorites play » n'existe pas -> le serveur ferme la connexion)
+        self.request(player, ["favorites", "playlist", "play", str(fav_id)])
 
     def sync_all(self, master):
         """Synchronise tous les lecteurs sur <master>."""
@@ -1471,12 +1473,3 @@ DEFAULT_CONFIG = {
         "step": 5
       }
     },
-    "encoder_1_button": {
-      "action": {
-        "type": "sysvolume",
-        "dir": "mute"
-      }
-    },
-    "encoder_4_cw": {
-      "action": {
-        "type": "brightness",

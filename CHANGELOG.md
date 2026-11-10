@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.5] — 2026-11-10
+
+### Corrigé
+- **Les radios des favoris ne se lançaient pas** (« requête échouée : Remote end closed connection without response ») : la commande CLI envoyée était `favorites play <id>`, qui n'existe pas dans l'API LMS. La commande correcte est `favorites playlist play <id>`.
+
 ## [2.4.4] — 2026-11-10
 
 ### Corrigé
@@ -226,6 +231,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
