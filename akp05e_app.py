@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.7.3"
+APP_VERSION = "2.8.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1266,6 +1266,11 @@ class LMSClient:
             v = res.get(key)
             if isinstance(v, list) and v:
                 return v
+        # boucle générique des navigateurs d'applis (xmlbrowser) :
+        # la clé porte le nom de la commande + "_loop" (ex. "qobuz_loop")
+        for key, v in (res or {}).items():
+            if key.endswith("_loop") and isinstance(v, list) and v:
+                return v
         return []
 
     def _favorites_level(self, folder_id=None):
@@ -1412,6 +1417,41 @@ class LMSClient:
         #  est joué à la place)
         self.request(player, ["favorites", "playlist", "play",
                               f"item_id:{fav_id}"])
+
+    def apps(self):
+        """Applis installées sur le serveur (CLI « apps 0 100 ») :
+        [{cmd, name}] — ex. Qobuz, Radio Paradise... (liste vide si le
+        serveur ne répond pas ou n'expose aucune appli)."""
+        res = self.request("", ["apps", 0, 100])
+        out = []
+        # certains serveurs renvoient la liste directement
+        if isinstance(res, list):
+            for a in res:
+                if isinstance(a, dict) and a.get("cmd") and a.get("name"):
+                    out.append({"cmd": str(a["cmd"]),
+                                "name": str(a["name"])})
+            return out
+        for key in ("apps_loop", "loop_loop"):
+            loop = (res or {}).get(key)
+            if isinstance(loop, list) and loop:
+                for a in loop:
+                    if a.get("cmd") and a.get("name"):
+                        out.append({"cmd": str(a["cmd"]),
+                                    "name": str(a["name"])})
+                if out:
+                    break
+        return out
+
+    def app_items(self, player, cmd, params=None, start=0, count=100):
+        """Un niveau de navigation d'une appli LMS (xmlbrowser) :
+        [player] <cmd...> items <start> <count> [params:...]."""
+        words = list(cmd) if isinstance(cmd, (list, tuple)) \
+            else str(cmd).split()
+        c = [str(w) for w in words] + [str(start), str(count)]
+        if params:
+            c.append(str(params))
+        res = self.request(player, c)
+        return self._loop_of(res)
 
     def sync_all(self, master):
         """Synchronise tous les lecteurs sur <master>."""
@@ -2234,24 +2274,45 @@ def main():
         },
     }
     pages["lms_apps"] = {
-        "label": "Applis", "icon": "apps", "color": "#90CAF9",
+        "label": "Applis", "icon": "grid_view", "color": "#90CAF9",
         "buttons": {
-            "1": {"icon": "library_music", "color": "#90CAF9",
-                  "label": "Qobuz",
-                  "action": {"type": "page", "page": "qobuz"}},
-            "2": {"icon": "radio", "color": "#CE93D8",
-                  "label": "Radio Par.",
-                  "action": {"type": "lms_play_url",
-                             "url": (_lms_cfg.get("radio_paradise_url")
-                                     or "http://stream.radioparadise.com/"
-                                        "aac-320")}},
+            **{str(i): {"action": {"type": "lms_app_press",
+                                   "slot": i - 1}}
+               for i in range(1, 10)},
             "10": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
                    "label": "Retour",
                    "action": {"type": "lms_back_player"}},
         },
-        "encoders": _enc_pages(),
+        "encoders": {
+            "encoder_3_cw": {"action": {"type": "lms_apps_scroll"}},
+            "encoder_3_ccw": {"action": {"type": "lms_apps_scroll",
+                                         "dir": "prev"}},
+            "encoder_3_button": {"action": {"type": "lms_back_player"}},
+            **_enc_pages(),
+        },
     }
-    LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps")
+    # navigateur générique : niveau courant de l'appli ouverte (Qobuz,
+    # Radio Paradise...) — touches 1-9 = éléments, retour = niveau/ampli
+    pages["lms_browse"] = {
+        "label": "Appli", "icon": "extension", "color": "#90CAF9",
+        "buttons": {
+            **{str(i): {"action": {"type": "lms_item_press",
+                                   "slot": i - 1}}
+               for i in range(1, 10)},
+            "10": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
+                   "label": "Retour",
+                   "action": {"type": "lms_browse_back"}},
+        },
+        "encoders": {
+            "encoder_3_cw": {"action": {"type": "lms_browse_scroll"}},
+            "encoder_3_ccw": {"action": {"type": "lms_browse_scroll",
+                                         "dir": "prev"}},
+            "encoder_3_button": {"action": {"type": "lms_browse_back"}},
+            **_enc_pages(),
+        },
+    }
+    LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps",
+                      "lms_browse")
 
     page_names = ["accueil"] + [n for n in pages if n != "accueil"]
     current = {"name": config.get("page", "accueil")}
@@ -2776,7 +2837,12 @@ def main():
                  "loaded": False,     # première découverte faite ?
                  "launched_fav": {},  # lecteur -> id favori lancé depuis le deck
                  "playing": None,     # status du flux en cours (lecteur affiché)
-                 "active_diag": False}  # diagnostic radio active déjà loggé ?
+                 "active_diag": False,  # diagnostic radio active déjà loggé ?
+                 "apps": [],           # applis LMS découvertes (poll)
+                 "apps_offset": 0,     # décalage de la page applis
+                 "apps_tries": 0,      # tentatives de découverte des applis
+                 "browse": [],         # pile de navigation appli courante
+                 "browse_offset": 0}   # décalage de la page navigation
     lms_lock = threading.RLock()
 
     def lms_selected():
@@ -2819,6 +2885,7 @@ def main():
         t = (entry.get("action") or {}).get("type") or ""
         label = entry.get("label") or ""
         btn_player = None  # lecteur représenté (pour le logo Touch/Radio)
+        btn_audio = False  # élément de navigation jouable (morceau) ?
         sub = ""
         bg, fg = (15, 15, 15), (240, 240, 240)
         with lms_lock:
@@ -2828,13 +2895,17 @@ def main():
             launched = dict(lms_state["launched_fav"])
             playing = lms_state["playing"]
             active_diag = lms_state["active_diag"]
+            apps_l = list(lms_state["apps"])
+            apps_off = lms_state["apps_offset"]
+            browse_l = list(lms_state["browse"])
+            browse_off = lms_state["browse_offset"]
         sel = lms_selected()
         vp = lms_viewed()
         if not lms.enabled:
             sub = "config off"
         elif not players and t not in ("lms_open_favs", "lms_open_apps",
                                        "lms_back", "lms_back_player",
-                                       "lms_play_url"):
+                                       "lms_play_url", "lms_browse_back"):
             sub = "LMS ?"
         elif t == "lms_open_player":
             i = int((entry.get("action") or {}).get("index", 0))
@@ -2895,6 +2966,26 @@ def main():
                     sub = "radio"
             else:
                 label, sub = "-", "(vide)"
+        elif t == "lms_app_press":
+            i = apps_off + int((entry.get("action") or {}).get("slot", 0))
+            if 0 <= i < len(apps_l):
+                label = apps_l[i]["name"]
+                sub = "appli"
+            else:
+                label, sub = "-", "(vide)"
+        elif t == "lms_item_press":
+            lvl = browse_l[-1] if browse_l else None
+            i = browse_off + int((entry.get("action") or {}).get("slot", 0))
+            if lvl and 0 <= i < len(lvl["items"]):
+                it = lvl["items"][i]
+                label = str(it.get("name") or it.get("title") or "?")
+                typ = str(it.get("type") or "").lower()
+                btn_audio = bool(it.get("url")) and ("audio" in typ
+                                                    or typ in ("", "playlist",
+                                                               "track"))
+                sub = "lecture" if btn_audio else "dossier"
+            else:
+                label, sub = "-", "(vide)"
         elif t == "lms_power_all":
             on = sum(1 for q in players if q["power"])
             sub = f"{on}/{len(players)} allumés"
@@ -2942,9 +3033,17 @@ def main():
         icon = icons_lms.get(t)
         if t in ("lms_open_player", "lms_player_id"):
             icon = player_icon(btn_player)
+        elif t == "lms_app_press":
+            i = apps_off + int((entry.get("action") or {}).get("slot", 0))
+            c = (apps_l[i]["cmd"].lower() if 0 <= i < len(apps_l) else "")
+            icon = ("library_music" if "qobuz" in c
+                    else "radio" if ("paradise" in c or "radio" in c)
+                    else "extension")
+        elif t == "lms_item_press":
+            icon = "music_note" if btn_audio else "folder_open"
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
-                  "lms_back_player", "lms_play_url")
+                  "lms_back_player", "lms_play_url", "lms_browse_back")
                 and entry.get("icon")):
             set_icon(device, n, entry["icon"],
                      fg=entry.get("color", "#e0e0e0"),
@@ -3047,7 +3146,75 @@ def main():
                 lms_state["fav_offset"] = max(0, min(
                     lms_state["fav_offset"] + d, max(0, nf - 9)))
         elif t == "lms_open_apps":
+            with lms_lock:
+                lms_state["apps_offset"] = 0
             switch_page("lms_apps")
+        elif t == "lms_app_press" and vp:
+            with lms_lock:
+                apps_l = list(lms_state["apps"])
+                i = lms_state["apps_offset"] + int(action.get("slot", 0))
+            if apps_l and 0 <= i < len(apps_l):
+                items = lms.app_items(vp["id"], apps_l[i]["cmd"])
+                with lms_lock:
+                    lms_state["browse"] = [{"title": apps_l[i]["name"],
+                                            "items": items}]
+                    lms_state["browse_offset"] = 0
+                print(f"[lms] appli {apps_l[i]['name']} : "
+                      f"{len(items)} éléments")
+                switch_page("lms_browse")
+        elif t == "lms_apps_scroll":
+            with lms_lock:
+                na = len(lms_state["apps"])
+                d = -9 if action.get("dir") == "prev" else 9
+                lms_state["apps_offset"] = max(0, min(
+                    lms_state["apps_offset"] + d, max(0, na - 9)))
+        elif t == "lms_item_press" and vp:
+            with lms_lock:
+                lvl = (lms_state["browse"][-1]
+                       if lms_state["browse"] else None)
+                i = lms_state["browse_offset"] + int(action.get("slot", 0))
+            it = (lvl["items"][i]
+                  if lvl and 0 <= i < len(lvl["items"]) else None)
+            if it:
+                url = str(it.get("url") or "")
+                typ = str(it.get("type") or "").lower()
+                if url and ("audio" in typ or typ in ("", "playlist",
+                                                     "track")):
+                    lms.play_url(vp["id"], url)
+                    print(f"[lms] lecture : "
+                          f"{it.get('name') or it.get('title') or url}")
+                elif it.get("cmd"):
+                    items = lms.app_items(vp["id"], it["cmd"],
+                                          it.get("params"))
+                    with lms_lock:
+                        lms_state["browse"].append(
+                            {"title": str(it.get("name")
+                                          or it.get("title") or "?"),
+                             "items": items})
+                        lms_state["browse_offset"] = 0
+                else:
+                    # diagnostic (comme les favoris v2.4) : à copier dans
+                    # une conversation pour identifier le format du serveur
+                    print(f"[lms] élément non jouable — nom="
+                          f"{(it.get('name') or it.get('title'))!r}, "
+                          f"type={it.get('type')!r}, "
+                          f"clés={sorted(it.keys())}")
+        elif t == "lms_browse_scroll":
+            with lms_lock:
+                lvl = (lms_state["browse"][-1]
+                       if lms_state["browse"] else None)
+                ni = len(lvl["items"]) if lvl else 0
+                d = -9 if action.get("dir") == "prev" else 9
+                lms_state["browse_offset"] = max(0, min(
+                    lms_state["browse_offset"] + d, max(0, ni - 9)))
+        elif t == "lms_browse_back":
+            with lms_lock:
+                if lms_state["browse"]:
+                    lms_state["browse"].pop()
+                lms_state["browse_offset"] = 0
+                empty = not lms_state["browse"]
+            if empty:
+                switch_page("lms_apps")
         elif t == "lms_play_url" and vp:
             lms.play_url(vp["id"], action.get("url") or "")
         elif t == "lms_back":
@@ -3069,6 +3236,30 @@ def main():
         while True:
             try:
                 if lms.enabled:
+                    # découverte des applis LMS (Qobuz, Radio Paradise...)
+                    # — réessayée tant que rien n'est trouvé (5 max)
+                    found_apps = None
+                    with lms_lock:
+                        if (not lms_state["apps"]
+                                and lms_state["apps_tries"] < 5):
+                            lms_state["apps_tries"] += 1
+                            tries = lms_state["apps_tries"]
+                        else:
+                            tries = 99
+                    if tries < 99:
+                        found_apps = lms.apps()
+                        if found_apps:
+                            with lms_lock:
+                                lms_state["apps"] = found_apps
+                            names = ", ".join(a["name"]
+                                              for a in found_apps[:6])
+                            more = ("…" if len(found_apps) > 6 else "")
+                            print(f"[lms] {len(found_apps)} applis — "
+                                  f"{names}{more}")
+                        elif tries >= 5:
+                            print("[lms] aucune appli trouvée (apps 0 100) "
+                                  "— vérifie que les plugins sont activés "
+                                  "dans les réglages LMS")
                     with lms_lock:
                         players = lms.players()
                         if players:

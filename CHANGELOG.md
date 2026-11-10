@@ -3,6 +3,15 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.0] — 2026-11-10
+
+### Ajouté
+- **Page « Applis » dynamique** : l'application découvre les applis installées sur le serveur LMS (Qobuz, Radio Paradise…) et en affiche jusqu'à 9 (knob 3 pour faire défiler). Plus besoin de boutons statiques.
+- **Navigateur d'applis générique** : ouvrir une appli liste ses éléments (Favoris Qobuz, mixes Radio Paradise…) ; un clic sur un dossier le parcourt, un clic sur un morceau/flux le joue sur le lecteur affiché — retour (touche 10 ou knob 3 appuyé) pour remonter d'un niveau, puis revenir aux applis.
+- **Lecture LMS des applis** : lecture via `playlist play` (allume le lecteur), avec diagnostic console `[lms] élément non jouable — …` si le serveur renvoie un format imprévu.
+
+### Modifié
+- L'ancien bouton « Qobuz » (touches média du PC) quitte la page LMS Applis — la page Qobuz reste disponible dans la config pour le PC.
 ## [2.7.3] — 2026-11-10
 
 ### Modifié
@@ -294,6 +303,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
