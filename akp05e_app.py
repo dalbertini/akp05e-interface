@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.2"
+APP_VERSION = "2.8.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1469,6 +1469,11 @@ class LMSClient:
         le niveau reste vide."""
         words = list(cmd) if isinstance(cmd, (list, tuple)) \
             else str(cmd).split()
+        # LE mot-clé « items » est OBLIGATOIRE : sans lui la commande
+        # est invalide et le serveur ferme la connexion (bug v2.8.0-2.8.2 :
+        # ['radioparadise', '0', '100'] au lieu de [..., 'items', '0', '100'])
+        if "items" not in words:
+            words = words + ["items"]
         base = [str(w) for w in words] + [str(start), str(count)]
         attempts = ([base + [str(params)]] if params else []) + [base]
         res = None

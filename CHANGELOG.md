@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.3] — 2026-11-10
+
+### Corrigé
+- **Navigation des applis enfin fonctionnelle** : le mot-clé `items` manquait dans la commande CLI (`radioparadise 0 100` au lieu de `radioparadise items 0 100`) — commande invalide, le serveur fermait la connexion. Il est désormais ajouté automatiquement (sans doublon si le menu du plugin le contient déjà), en like du correctif `favorites playlist play` v2.4.5.
 ## [2.8.2] — 2026-11-10
 
 ### Corrigé
@@ -315,6 +319,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
