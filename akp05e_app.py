@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.7.2"
+APP_VERSION = "2.7.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2931,13 +2931,13 @@ def main():
             "lms_player_power": "power_settings_new",
             "lms_player_playpause": ("pause" if vp and vp.get("playing")
                                     else "play_arrow"),
-            "lms_fav_press": "favorite",
+            "lms_fav_press": "radio",
             "lms_power_all": "power_settings_new",
             "lms_select_player": "swap_horiz",
             "lms_playpause": ("pause" if sel and sel.get("playing")
                               else "play_arrow"),
             "lms_sync": "sync",
-            "lms_favorite": "favorite",
+            "lms_favorite": "radio",
         }
         icon = icons_lms.get(t)
         if t in ("lms_open_player", "lms_player_id"):

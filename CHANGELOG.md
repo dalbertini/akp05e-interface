@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.7.3] — 2026-11-10
+
+### Modifié
+- **Radios : retour de l'icône radio stylisée** au-dessus des touches radios de la page Favoris (le cœur reste réservé au bouton « Favoris » et à la pilule de page).
+
 ## [2.7.2] — 2026-11-10
 
 ### Modifié
@@ -289,6 +294,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.7.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
