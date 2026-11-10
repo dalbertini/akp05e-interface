@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.6] — 2026-11-10
+
+### Corrigé
+- **Tous les favoris lançaient la même radio** : l'identifiant doit être passé avec le préfixe `item_id:` (`favorites playlist play item_id:<id>`). Sans ce préfixe, LMS ignore l'identifiant et joue le premier favori de la liste.
+
 ## [2.4.5] — 2026-11-10
 
 ### Corrigé
@@ -231,6 +236,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
