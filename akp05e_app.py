@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.3"
+APP_VERSION = "2.8.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1177,6 +1177,40 @@ def inject_home_lms_button(config):
     return None
 
 
+def lms_item_go(it):
+    """(url, cmd[], params[], jouable) d'un élément de menu d'appli LMS.
+    Gère le format PLAT (url / cmd / params) et le format « actions » du
+    xmlbrowser JSON : {actions: {go: {cmd: [...], params: [...],
+    itemsParams: [...]}}} — les commandes et paramètres y sont des
+    LISTES qu'il faut transmettre telles quelles au CLI."""
+    it = it or {}
+    acts = it.get("actions") if isinstance(it.get("actions"), dict) else {}
+    go = acts.get("go") if isinstance(acts.get("go"), dict) else {}
+
+    def words(c):
+        if isinstance(c, (list, tuple)):
+            return [str(x) for x in c if str(x) != ""]
+        return str(c or "").split()
+
+    def plist(p):
+        if p is None:
+            return []
+        if isinstance(p, (list, tuple)):
+            return [str(x) for x in p if str(x) != ""]
+        return [str(p)] if str(p) else []
+
+    url = str(it.get("url") or it.get("weblink") or "")
+    cmd = words(it.get("cmd") or go.get("cmd"))
+    params = (plist(it.get("params") if it.get("params") is not None
+                    else go.get("params"))
+              + plist(go.get("itemsParams")))
+    typ = str(it.get("type") or "").lower()
+    playable = bool(url) and ("audio" in typ or typ in ("", "playlist",
+                                                       "track")
+                             or bool(it.get("isaudio")))
+    return url, cmd, params, playable
+
+
 def player_icon(player):
     """Logo d'un lecteur : tablet pour un Squeezebox Touch (écran tactile),
     radio pour un Squeezebox Radio, speaker sinon."""
@@ -1475,7 +1509,13 @@ class LMSClient:
         if "items" not in words:
             words = words + ["items"]
         base = [str(w) for w in words] + [str(start), str(count)]
-        attempts = ([base + [str(params)]] if params else []) + [base]
+        if params is None:
+            plist_ = []
+        elif isinstance(params, (list, tuple)):
+            plist_ = [str(p) for p in params if str(p) != ""]
+        else:
+            plist_ = [str(params)] if str(params) else []
+        attempts = ([base + plist_] if plist_ else []) + [base]
         res = None
         for c in attempts:
             res = self.request(player, c, timeout=10.0)
@@ -3015,10 +3055,7 @@ def main():
             if lvl and 0 <= i < len(lvl["items"]):
                 it = lvl["items"][i]
                 label = str(it.get("name") or it.get("title") or "?")
-                typ = str(it.get("type") or "").lower()
-                btn_audio = bool(it.get("url")) and ("audio" in typ
-                                                    or typ in ("", "playlist",
-                                                               "track"))
+                btn_audio = lms_item_go(it)[3]
                 sub = "lecture" if btn_audio else "dossier"
             else:
                 label, sub = "-", "(vide)"
@@ -3213,16 +3250,13 @@ def main():
             it = (lvl["items"][i]
                   if lvl and 0 <= i < len(lvl["items"]) else None)
             if it:
-                url = str(it.get("url") or "")
-                typ = str(it.get("type") or "").lower()
-                if url and ("audio" in typ or typ in ("", "playlist",
-                                                     "track")):
+                url, cmd, params, playable = lms_item_go(it)
+                if playable and url:
                     lms.play_url(vp["id"], url)
                     print(f"[lms] lecture : "
                           f"{it.get('name') or it.get('title') or url}")
-                elif it.get("cmd"):
-                    items = lms.app_items(vp["id"], it["cmd"],
-                                          it.get("params"))
+                elif cmd:
+                    items = lms.app_items(vp["id"], cmd, params)
                     with lms_lock:
                         lms_state["browse"].append(
                             {"title": str(it.get("name")
@@ -3235,7 +3269,8 @@ def main():
                     print(f"[lms] élément non jouable — nom="
                           f"{(it.get('name') or it.get('title'))!r}, "
                           f"type={it.get('type')!r}, "
-                          f"clés={sorted(it.keys())}")
+                          f"clés={sorted(it.keys())}, "
+                          f"actions={str(it.get('actions'))[:250]}")
         elif t == "lms_browse_scroll":
             with lms_lock:
                 lvl = (lms_state["browse"][-1]

@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.4] — 2026-11-10
+
+### Corrigé
+- **Descente dans les dossiers des applis (Qobuz, Radio Paradise)** : les éléments de menu au format « actions » du xmlbrowser JSON (`{actions: {go: {cmd: [...], params: [...], itemsParams: [...]}}}`) sont désormais reconnus — commandes et paramètres en listes transmis tels quels au CLI, `params` **et** `itemsParams` concaténés, `weblink` en repli d'URL, `isaudio` compté comme jouable. Le diagnostic « élément non jouable » affiche aussi le résumé des `actions`.
 ## [2.8.3] — 2026-11-10
 
 ### Corrigé
@@ -319,6 +323,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
