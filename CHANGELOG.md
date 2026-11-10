@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.6] — 2026-11-10
+
+### Corrigé
+- **« Fatal Python error: _enter_buffered_busy » au Ctrl+C** : les threads démons (poll LMS, volume, hardware…) pouvaient encore écrire sur la console pendant la finalisation de l'interpréteur (bug CPython corrigé en 3.13). Après « Au revoir. », stdout/stderr sont détournés vers `/dev/null` : plus rien à verrouiller, plus de crash à la sortie — sans rien changer au comportement.
 ## [2.8.5] — 2026-11-10
 
 ### Corrigé
@@ -328,6 +332,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

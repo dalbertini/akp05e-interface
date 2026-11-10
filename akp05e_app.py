@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.5"
+APP_VERSION = "2.8.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3547,6 +3547,18 @@ def main():
     finally:
         device.close()
         print("Au revoir.")
+        # Anti-crash au shutdown : les threads démons (poll_lms, poll_volume…)
+        # peuvent encore écrire sur stdout/stderr pendant la finalisation de
+        # l'interpréteur -> « Fatal Python error: _enter_buffered_busy »
+        # (CPython < 3.13). On détourne les flux vers /dev/null APRÈS le
+        # dernier message utile : plus rien à verrouiller, plus de fatal error.
+        try:
+            import os as _os
+            _devnull = open(_os.devnull, "w")
+            sys.stdout = _devnull
+            sys.stderr = _devnull
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()
