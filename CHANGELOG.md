@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.1] — 2026-11-10
+
+### Corrigé
+- **Page « Applis » vide sur certains serveurs** : la découverte interroge désormais « apps » **puis** « radios » (où certaines versions rangent Radio Paradise), **avec un lecteur puis sans** (certaines versions exigent un contexte lecteur), accepte toute clé de boucle `*_loop` et les champs `go`/`title` en repli. Si rien n'est trouvé, la console affiche une ligne de diagnostic `[lms] diagnostic apps — réponse brute : …` à copier dans une issue.
+
 ## [2.8.0] — 2026-11-10
 
 ### Ajouté
@@ -303,6 +308,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.7.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

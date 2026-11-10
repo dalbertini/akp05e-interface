@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.0"
+APP_VERSION = "2.8.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1418,29 +1418,46 @@ class LMSClient:
         self.request(player, ["favorites", "playlist", "play",
                               f"item_id:{fav_id}"])
 
-    def apps(self):
-        """Applis installées sur le serveur (CLI « apps 0 100 ») :
-        [{cmd, name}] — ex. Qobuz, Radio Paradise... (liste vide si le
-        serveur ne répond pas ou n'expose aucune appli)."""
-        res = self.request("", ["apps", 0, 100])
-        out = []
-        # certains serveurs renvoient la liste directement
-        if isinstance(res, list):
-            for a in res:
-                if isinstance(a, dict) and a.get("cmd") and a.get("name"):
-                    out.append({"cmd": str(a["cmd"]),
-                                "name": str(a["name"])})
-            return out
-        for key in ("apps_loop", "loop_loop"):
-            loop = (res or {}).get(key)
-            if isinstance(loop, list) and loop:
+    def apps(self, player=None):
+        """Applis installées sur le serveur : interroge « apps » PUIS
+        « radios » (certaines versions y rangent Radio Paradise), sans
+        lecteur puis avec (certaines versions exigent un contexte
+        lecteur) — [{cmd, name}] dédupliqué, analyse tolérante."""
+        out, seen = [], set()
+
+        def absorb(res):
+            if isinstance(res, dict):
+                loops = [v for k, v in res.items()
+                         if (k.endswith("_loop") or k == "items")
+                         and isinstance(v, list)]
+            elif isinstance(res, list):
+                loops = [res]
+            else:
+                return
+            for loop in loops:
                 for a in loop:
-                    if a.get("cmd") and a.get("name"):
-                        out.append({"cmd": str(a["cmd"]),
-                                    "name": str(a["name"])})
+                    if not isinstance(a, dict):
+                        continue
+                    cmd = a.get("cmd") or a.get("go") or ""
+                    if not cmd or cmd in seen:
+                        continue
+                    seen.add(cmd)
+                    out.append({"cmd": str(cmd),
+                                "name": str(a.get("name")
+                                            or a.get("title") or cmd)})
+
+        # contexte lecteur puis global (certaines versions exigent l'un
+        # ou l'autre) — dédoublonné via `seen`
+        for pl in (([player] if player else []) + [""]):
+            for q in (["apps", 0, 100], ["radios", 0, 100]):
+                absorb(self.request(pl, q))
                 if out:
-                    break
+                    return out
         return out
+
+    def apps_raw(self, player=""):
+        """Réponse brute de « apps 0 100 » (diagnostic)."""
+        return self.request(player, ["apps", 0, 100])
 
     def app_items(self, player, cmd, params=None, start=0, count=100):
         """Un niveau de navigation d'une appli LMS (xmlbrowser) :
@@ -3247,7 +3264,9 @@ def main():
                         else:
                             tries = 99
                     if tries < 99:
-                        found_apps = lms.apps()
+                        with lms_lock:
+                            ps0 = (lms_state["players"] or [{}])[0]
+                        found_apps = lms.apps(ps0.get("id"))
                         if found_apps:
                             with lms_lock:
                                 lms_state["apps"] = found_apps
@@ -3257,9 +3276,13 @@ def main():
                             print(f"[lms] {len(found_apps)} applis — "
                                   f"{names}{more}")
                         elif tries >= 5:
-                            print("[lms] aucune appli trouvée (apps 0 100) "
-                                  "— vérifie que les plugins sont activés "
+                            print("[lms] aucune appli trouvée (apps 0 100, "
+                                  "radios 0 100, avec/sans lecteur) — "
+                                  "vérifie que les plugins sont activés "
                                   "dans les réglages LMS")
+                            raw = lms.apps_raw()
+                            print("[lms] diagnostic apps — réponse brute : "
+                                  f"{str(raw)[:600]}")
                     with lms_lock:
                         players = lms.players()
                         if players:
