@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.5.1] — 2026-11-10
+
+### Modifié
+- **Surlignage de la radio active plus visible** : fond **bleu vif** (texte blanc) au lieu du vert Lyrion trop sombre.
+- **Détection fiable** : le `current_title` d'une webradio est souvent la métadonnée du morceau en cours (pas le nom de la station), ce qui empêchait le surlignage. L'application mémorise désormais la dernière radio lancée depuis le deck pour chaque lecteur ; le titre en cours reste prioritaire s'il désigne une autre station (changement depuis l'interface web LMS).
+
 ## [2.5.0] — 2026-11-10
 
 ### Ajouté
@@ -241,6 +247,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.5]: https://github.com/dalbertini/akp05e-interface/commits/main/

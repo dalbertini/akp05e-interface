@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.5.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1090,6 +1090,23 @@ def lms_active_fav(title, favs):
     return best
 
 
+def lms_viewed_active_fav(vp, favs, launched_id=None):
+    """Index du favori actif pour le lecteur affiché : titre en cours si
+    le flux le dit (lms_active_fav), sinon la dernière radio LANCÉE DEPUIS
+    LE DECK (le current_title d'une webradio est souvent la métadonnée du
+    morceau en cours, pas le nom de la station). -1 si aucun/lecteur éteint."""
+    if not vp or not vp.get("playing"):
+        return -1
+    i = lms_active_fav(vp.get("title") or "", favs)
+    if i >= 0:
+        return i
+    if launched_id:
+        for j, f in enumerate(favs):
+            if f.get("id") == launched_id:
+                return j
+    return -1
+
+
 def short_player_name(name):
     """« Squeezebox Touch Orange » → « Orange » : les touches sont
     carrées, on retire les préfixes génériques des Squeezebox. Le préfixe
@@ -1411,33 +1428,3 @@ def run_action(action, device):
     elif t == "zoom":
         # zoom Ctrl+molette de la fenêtre active (knob 3 par défaut)
         d = action.get("dir", "in")
-        if d == "reset":
-            send_keys(["ctrl", "0"])
-        else:
-            zoom_wheel(1 if d == "in" else -1, action.get("step", 2))
-    else:
-        print(f"Type d'action inconnu : {t}")
-
-DEFAULT_CONFIG = {
-  "brightness": 30,
-  "auto_pages": {
-    "qobuz": "qobuz",
-    "spotify": "qobuz",
-    "vlc": "qobuz",
-    "hwinfo64": "hardware"
-  },
-  "lms": {
-    "host": "",
-    "port": 9000,
-    "folder": "",
-    "radios": [],
-    "radio_paradise_url": "http://stream.radioparadise.com/aac-320"
-  },
-  "vu_meter": {
-    "enabled": True,
-    "fps": 12
-  },
-  "buttons": {
-    "1": {
-      "icon": "terminal",
-      "color": "#80CBC4",
