@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1115,28 +1115,27 @@ def _url_key(url):
     return u.rstrip("/")
 
 
-def lms_viewed_active_fav(vp, favs, launched_id=None, playing_url=None,
-                          playing_title=None):
+def lms_viewed_active_fav(vp, favs, launched_id=None, playing=None):
     """Index du favori actif pour le lecteur affiché, -1 si aucun.
     1. URL du flux en cours == URL du favori (query string ignorée) ;
-    2. NOM DE STATION du status LMS (« title » de playlist_loop) ;
-    3. current_title (parfois le nom de la station, souvent la
-       métadonnée du morceau) ;
-    4. dernière radio LANCÉE DEPUIS LE DECK."""
+    2. NOM DE STATION (« title » du status, ex. « FIP ») ;
+    3. current_title (parfois la station, souvent la métadonnée) ;
+    4. titre remonté par « players » ;
+    5. dernière radio LANCÉE DEPUIS LE DECK."""
     if not vp or not vp.get("playing"):
         return -1
-    if playing_url:
-        pu = _url_key(playing_url)
+    playing = playing or {}
+    pu = _url_key(playing.get("url"))
+    if pu:
         for j, f in enumerate(favs):
             fu = _url_key(f.get("url"))
             if fu and fu == pu:
                 return j
-    i = lms_active_fav(playing_title or "", favs)
-    if i >= 0:
-        return i
-    i = lms_active_fav(vp.get("title") or "", favs)
-    if i >= 0:
-        return i
+    for t in (playing.get("title"), playing.get("current_title"),
+              vp.get("title")):
+        i = lms_active_fav(t or "", favs)
+        if i >= 0:
+            return i
     if launched_id:
         for j, f in enumerate(favs):
             if f.get("id") == launched_id:
@@ -1338,20 +1337,19 @@ class LMSClient:
         return False
 
     def playing_info(self, player):
-        """(url, titre de station) du flux en cours sur le lecteur.
-        Permet d'identifier la radio active MÊME AU DÉMARRAGE :
-        le current_title d'une webradio est souvent la métadonnée du
-        morceau, mais le « title » de playlist_loop est le NOM DE
-        STATION (ex. « FIP ») et « url » l'URL du flux."""
+        """Champs du flux en cours sur le lecteur : {url, title,
+        current_title}. Permet d'identifier la radio active MÊME AU
+        DÉMARRAGE. On lit playlist_loop[0] ET les champs racine (selon
+        la version du serveur, l'un ou l'autre est renseigné)."""
         res = self.request(player, ["status", "0", "1"])
         if not isinstance(res, dict):
-            return (None, None)
+            return None
         loop = res.get("playlist_loop") or []
-        if loop:
-            it = loop[0]
-            return (str(it.get("url") or "") or None,
-                    str(it.get("title") or "") or None)
-        return (res.get("url") or None, None)
+        it = loop[0] if loop else {}
+        return {"url": str(it.get("url") or res.get("url") or ""),
+                "title": str(it.get("title") or res.get("title") or ""),
+                "current_title": str(res.get("current_title")
+                                     or it.get("current_title") or "")}
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -2728,8 +2726,8 @@ def main():
                  "favs_logged": False,   # découverte des favoris loggée ?
                  "loaded": False,     # première découverte faite ?
                  "launched_fav": {},  # lecteur -> id favori lancé depuis le deck
-                 "playing_url": None,  # URL du flux en cours (lecteur affiché)
-                 "playing_title": None}  # nom de station en cours
+                 "playing": None,     # status du flux en cours (lecteur affiché)
+                 "active_diag": False}  # diagnostic radio active déjà loggé ?
     lms_lock = threading.RLock()
 
     def lms_selected():
@@ -2761,16 +2759,10 @@ def main():
                 vp["volume"] = v
             lms_state["viewed_muted"] = lms.mute_state(vp["id"])
             try:
-                if vp.get("playing"):
-                    purl, ptitle = lms.playing_info(vp["id"])
-                    lms_state["playing_url"] = purl
-                    lms_state["playing_title"] = ptitle
-                else:
-                    lms_state["playing_url"] = None
-                    lms_state["playing_title"] = None
+                lms_state["playing"] = (lms.playing_info(vp["id"])
+                                        if vp.get("playing") else None)
             except Exception:
-                lms_state["playing_url"] = None
-                lms_state["playing_title"] = None
+                lms_state["playing"] = None
 
     def paint_lms_button(n, entry):
         """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
@@ -2784,8 +2776,8 @@ def main():
             favs = list(lms_state["favorites"])
             fav_off = lms_state["fav_offset"]
             launched = dict(lms_state["launched_fav"])
-            playing_url = lms_state["playing_url"]
-            playing_title = lms_state["playing_title"]
+            playing = lms_state["playing"]
+            active_diag = lms_state["active_diag"]
         sel = lms_selected()
         vp = lms_viewed()
         if not lms.enabled:
@@ -2828,8 +2820,21 @@ def main():
             if 0 <= i < len(favs):
                 label = favs[i]["name"][:16]
                 lid = launched.get(vp["id"]) if vp else None
-                if (lms_viewed_active_fav(vp, favs, lid, playing_url,
-                                          playing_title) == i):
+                ai = lms_viewed_active_fav(vp, favs, lid, playing)
+                if ai < 0 and vp and vp.get("playing") and not active_diag:
+                    # DIAGNOSTIC (une seule fois) : le lecteur joue mais
+                    # aucun favori ne correspond -> on montre ce que le
+                    # serveur renvoie pour identifier le bon champ
+                    with lms_lock:
+                        lms_state["active_diag"] = True
+                    p = playing or {}
+                    print("[lms] diagnostic radio active — station="
+                          f"{p.get('title')!r}, titre="
+                          f"{p.get('current_title')!r}, "
+                          f"url={p.get('url')!r} ; favoris : "
+                          + ", ".join(f"{f['name']}={f.get('url')!r}"
+                                      for f in favs[:7]))
+                if ai == i:
                     # dégradé bleu (haut) -> noir (bas) : radio active
                     bg = ((24, 72, 190), (6, 10, 26))
                     fg = (255, 255, 255)
@@ -2856,8 +2861,7 @@ def main():
             if 0 <= i < len(favs):
                 label = favs[i]["name"][:16]
                 lid = launched.get(sel["id"]) if sel else None
-                if (lms_viewed_active_fav(sel, favs, lid, playing_url,
-                                          playing_title) == i):
+                if (lms_viewed_active_fav(sel, favs, lid, playing) == i):
                     # dégradé bleu (haut) -> noir (bas) : radio active
                     bg = ((24, 72, 190), (6, 10, 26))
                     fg = (255, 255, 255)

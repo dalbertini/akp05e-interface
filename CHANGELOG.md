@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.6.1] — 2026-11-10
+
+### Corrigé
+- **Radio active toujours pas surlignée au démarrage chez certains serveurs** : la détection lit désormais tous les champs du `status` LMS (`url`, `title` de `playlist_loop`, `current_title`, y compris au niveau racine — selon la version du serveur, l'un ou l'autre est renseigné).
+- **Diagnostic** : si le lecteur joue mais qu'aucun favori ne correspond, la console affiche une fois `[lms] diagnostic radio active — station=…, titre=…, url=…` avec les URL des favoris, à copier dans une issue.
+
 ## [2.6.0] — 2026-11-10
 
 ### Ajouté
@@ -261,6 +267,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.6.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.6.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.5.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
