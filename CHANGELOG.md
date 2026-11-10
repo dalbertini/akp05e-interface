@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.4.2] — 2026-11-10
+
+### Ajouté
+- **Radios manuelles dans la config** : `"lms": {"radios": [{"name": "FIP", "url": "http://…"}]}` — liste affichée en tête de la page Favoris (dédupliquée avec les favoris découverts). Débloque la page Favoris même si le serveur ne renvoie pas ses favoris ; les entrées manuelles sont jouées par URL directe.
+- **Diagnostic favoris** : si aucun favori exploitable n'est trouvé, la console affiche la réponse brute de LMS (`[lms] diagnostic — réponse favorites items : …`) à copier dans une issue pour comprendre la structure du serveur.
+
 ## [2.4.1] — 2026-11-10
 
 ### Corrigé
@@ -210,6 +216,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.4.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.4.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

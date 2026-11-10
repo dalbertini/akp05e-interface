@@ -10,6 +10,7 @@
     "host": "",
     "port": 9000,
     "folder": "",
+    "radios": [],
     "radio_paradise_url": "http://stream.radioparadise.com/aac-320"
   },
   "vu_meter": {

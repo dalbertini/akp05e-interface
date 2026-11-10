@@ -89,7 +89,11 @@ INTÉGRATION LYRION MEDIA SERVER (LMS / Squeezebox) : la clé "lms"
   • page « lms_apps » : Qobuz + Radio Paradise (URL configurable via
     "lms": {"radio_paradise_url": ...}).
 Option "folder": "Radios" limite les favoris au contenu de ce dossier
-(sinon tout l'arbre est aplati, dossiers compris).
+(sinon tout l'arbre est aplati, dossiers compris). Option "radios" :
+liste MANUELLE de webradios, affichée avant les favoris découverts (utile
+si le serveur ne renvoie pas ses favoris) :
+  "lms": {"host": "...", "radios": [{"name": "FIP",
+                                     "url": "http://fip.fr/fip.aac"}]}
 API JSON-RPC de LMS, stdlib uniquement — hôte vide = désactivé.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
@@ -375,7 +379,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.4.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1043,6 +1047,16 @@ def zoom_wheel(direction, notches=2):
 # ---------------------------------------------------------------------------
 # Moteur d'actions piloté par akp05e_config.json
 # ---------------------------------------------------------------------------
+def lms_play_fav_entry(lms, player, fav):
+    """Joue un favori ; id « url:<…> » = webradio manuelle (lecture par
+    URL directe), sinon favori LMS (favorites play)."""
+    fid = str(fav.get("id") or "")
+    if fid.startswith("url:"):
+        lms.play_url(player, fav.get("url") or fid[4:])
+    else:
+        lms.play_favorite(player, fid)
+
+
 def _to_int(v, default=-1):
     """Conversion robuste (« "55" » -> 55, absent/illisible -> défaut)."""
     try:
@@ -1178,6 +1192,15 @@ class LMSClient:
             # certains serveurs ne renvoient pas la liste plate : on tente
             # l'arborescence imbriquée (feedMode=1)
             leaves = self._favorites_feed()
+        if not leaves:
+            # plus rien à tenter : on logge la réponse BRUTE du serveur
+            # (et une 2e requête sans want_url) pour diagnostiquer
+            try:
+                res = self.request("", ["favorites", "items", 0, 100])
+                print("[lms] diagnostic — réponse favorites items : "
+                      + json.dumps(res, ensure_ascii=False)[:400])
+            except Exception as e:
+                print(f"[lms] diagnostic favoris impossible : {e}")
         return leaves
 
     def power_all(self, on):
@@ -1360,6 +1383,7 @@ DEFAULT_CONFIG = {
     "host": "",
     "port": 9000,
     "folder": "",
+    "radios": [],
     "radio_paradise_url": "http://stream.radioparadise.com/aac-320"
   },
   "vu_meter": {
@@ -2725,6 +2749,10 @@ def main():
                 except Exception as e:
                     print(f"[erreur lms peinture] {e}")
 
+    def lms_play_fav(player, fav):
+        """Joue un favori (id « url: » = webradio manuelle)."""
+        lms_play_fav_entry(lms, player, fav)
+
     def lms_action(action):
         """Exécutée dans un thread : commande LMS puis rafraîchissement."""
         if not lms.enabled:
@@ -2770,7 +2798,7 @@ def main():
                 favs = list(lms_state["favorites"])
             i = int(action.get("index", 0))
             if 0 <= i < len(favs):
-                lms.play_favorite(sel["id"], favs[i]["id"])
+                lms_play_fav(sel["id"], favs[i])
         elif t == "lms_open_player":
             with lms_lock:
                 ps = list(lms_state["players"])
@@ -2793,7 +2821,7 @@ def main():
                 favs = list(lms_state["favorites"])
                 i = lms_state["fav_offset"] + int(action.get("slot", 0))
             if 0 <= i < len(favs):
-                lms.play_favorite(vp["id"], favs[i]["id"])
+                lms_play_fav(vp["id"], favs[i])
         elif t == "lms_favs_scroll":
             with lms_lock:
                 nf = len(lms_state["favorites"])
@@ -2828,8 +2856,23 @@ def main():
                         if players:
                             lms_state["players"] = players
                             if not lms_state["favorites"]:
-                                favs = lms.favorites(
+                                manual = []
+                                for r in (_lms_cfg.get("radios") or []):
+                                    if (isinstance(r, dict)
+                                            and r.get("name")
+                                            and r.get("url")):
+                                        manual.append({
+                                            "id": "url:" + str(r["url"]),
+                                            "name": str(r["name"]),
+                                            "url": str(r["url"])})
+                                found = lms.favorites(
                                     (config.get("lms") or {}).get("folder"))
+                                known = {f["name"].strip().lower()
+                                         for f in manual}
+                                favs = manual + [
+                                    f for f in found
+                                    if (f["name"] or "").strip().lower()
+                                    not in known]
                                 lms_state["favorites"] = favs
                                 if not lms_state["favs_logged"]:
                                     lms_state["favs_logged"] = True
@@ -2837,13 +2880,26 @@ def main():
                                         names = ", ".join(
                                             f["name"] for f in favs[:6])
                                         more = "…" if len(favs) > 6 else ""
-                                        print(f"[lms] {len(favs)} favoris — "
-                                              f"{names}{more}")
+                                        src = (""
+                                               + (f"{len(manual)} manuelle(s)"
+                                                  if manual else "")
+                                               + (" + " if manual
+                                                  and len(found) else "")
+                                               + (f"{len(found)} favoris"
+                                                  if found else ""))
+                                        print(f"[lms] {len(favs)} radios "
+                                              f"({src}) — {names}{more}")
+                                    elif manual:
+                                        pass
                                     else:
                                         print("[lms] aucun favori trouvé "
-                                              "sur le serveur — vérifie "
-                                              "l'écran Favoris de LMS "
-                                              "(Radios Internet, TuneIn…)")
+                                              "sur le serveur — ajoute tes "
+                                              "radios dans la config "
+                                              '("lms": {"radios": [{"name": '
+                                              '"FIP", "url": "http://…"}]}), '
+                                              "ou vérifie l'écran Favoris "
+                                              "de LMS (Radios Internet, "
+                                              "TuneIn…)")
                             if not lms_state["loaded"]:
                                 lms_state["loaded"] = True
                                 print(f"[lms] connecté : {len(players)} "
