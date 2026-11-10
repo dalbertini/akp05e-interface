@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.3.1] — 2026-11-10
+
+### Corrigé
+- **Radios des touches LMS : les dossiers de favoris sont désormais parcourus** (récursivement, via `favorites items … item_id:<id>` — les favoris LMS utilisent des ids hiérarchiques). Avant, seuls les favoris de premier niveau apparaissaient : les radios rangées dans un dossier donnaient des touches « (vide) ».
+
+### Ajouté
+- Option `"folder": "Nom du dossier"` dans la clé `"lms"` de la config : limite les touches Radio au contenu de ce dossier de favoris précis (sinon tout l'arbre est aplati, dossiers compris).
+
 ## [2.3.0] — 2026-11-10
 
 ### Ajouté
@@ -182,6 +190,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.1.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.2.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.3.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [1.8.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

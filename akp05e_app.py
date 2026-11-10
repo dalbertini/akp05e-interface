@@ -83,6 +83,8 @@ touches 5-10, knob 1 = volume du lecteur sélectionné (appui = muet),
 knob 3 = changer de lecteur (appui = allumer/éteindre), boutons
 « Veille » (tous allumer/éteindre), « Lecture » (pause/reprise) et
 « Maison » (synchroniser tous les lecteurs sur le sélectionné).
+Option "folder": "Radios" limite les touches au contenu de ce
+dossier de favoris (sinon tout l'arbre est aplati, dossiers compris).
 API JSON-RPC de LMS, stdlib uniquement — hôte vide = désactivé.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
@@ -368,7 +370,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.3.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1067,20 +1069,37 @@ class LMSClient:
             })
         return out
 
-    def favorites(self):
-        """Favoris LMS de premier niveau (radios) : [{id, name, url}]."""
-        res = self.request("", ["favorites", "items", 0, 50])
-        if not res:
-            return []
+    def _favorites_level(self, folder_id=None):
+        """Un niveau de l'arbre des favoris LMS (favorites_loop)."""
+        cmd = ["favorites", "items", 0, 100, "want_url:1"]
+        if folder_id:
+            cmd.append(f"item_id:{folder_id}")
+        res = self.request("", cmd)
+        return (res or {}).get("favorites_loop") or []
+
+    def _favorite_leaves(self, folder_id=None):
+        """Feuilles de l'arbre des favoris (descend dans les dossiers)."""
         out = []
-        for f in res.get("favorites_loop") or []:
-            if int(f.get("hasitems", 0) or 0):    # sous-dossier : ignoré
-                continue
-            if not f.get("id"):
-                continue
-            out.append({"id": str(f["id"]), "name": f.get("name") or "?",
-                        "url": f.get("url") or ""})
+        for f in self._favorites_level(folder_id):
+            if int(f.get("hasitems", 0) or 0):
+                out.extend(self._favorite_leaves(f.get("id")))
+            elif f.get("id"):
+                out.append({"id": str(f["id"]), "name": f.get("name") or "?",
+                            "url": f.get("url") or ""})
         return out
+
+    def favorites(self, folder=None):
+        """Radios des favoris LMS : [{id, name, url}].
+        folder=None : toutes les feuilles de l'arbre (dossiers parcourus).
+        folder="Nom" : uniquement le contenu du dossier de favoris « Nom »."""
+        if folder:
+            for f in self._favorites_level():
+                if (int(f.get("hasitems", 0) or 0)
+                        and f.get("name") == folder):
+                    return self._favorite_leaves(f.get("id"))
+            print(f"[lms] dossier de favoris introuvable : {folder!r}")
+            return []
+        return self._favorite_leaves()
 
     def power_all(self, on):
         """Allume ou éteigne tous les lecteurs."""
@@ -2629,7 +2648,8 @@ def main():
                         if players:
                             lms_state["players"] = players
                             if not lms_state["favorites"]:
-                                lms_state["favorites"] = lms.favorites()
+                                lms_state["favorites"] = lms.favorites(
+                                    (config.get("lms") or {}).get("folder"))
                             if not lms_state["loaded"]:
                                 lms_state["loaded"] = True
                                 print(f"[lms] connecté : {len(players)} "
