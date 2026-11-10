@@ -26,6 +26,12 @@
 - **Keepalive automatique** (le deck coupe sinon la connexion au bout de ~15 s)
 - Gestion de la déconnexion (câble débranché)
 
+## Captures
+
+![Page « Raccourcis » — Ctrl C/V/X, Ctrl A, Gras, Italique, Souligné, Impr. écran, Échap…](akp05e_page_raccourcis.jpg)
+
+![Page « Hardware » — températures HWiNFO64 en direct (CPU, iGPU, dGPU, PCH, SSD…), bandeau volume / luminosité / VU-mètre](akp05e_page_hardware.jpg)
+
 ## Installation (FR)
 
 ```
@@ -98,6 +104,12 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling
+
+## Screenshots
+
+!["Shortcuts" page — Ctrl C/V/X, Ctrl A, bold, italic, underline, print screen, Esc…](akp05e_page_raccourcis.jpg)
+
+!["Hardware" page — live HWiNFO64 temperatures (CPU, iGPU, dGPU, PCH, SSD…), volume / brightness / VU-meter strip](akp05e_page_hardware.jpg)
 
 ## Install
 
