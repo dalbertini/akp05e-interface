@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.9.3 — Libellés jamais tronqués (v2.9.2), horloge, carrousel LMS, pages LMS propres, sortie 100 % silencieuse (Ctrl+C).** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.10.0 — Volume de la Squeezebox affichée partout (knob 1), retour accueil au knob 2, VU-mètre hors des pages LMS.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

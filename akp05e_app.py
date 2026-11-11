@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.9.3"
+APP_VERSION = "2.10.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -516,7 +516,8 @@ def draw_vu_zone(img, peak, hold, muted=False):
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
 
 def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
-               pages=None, page_icon=None, page_color=None):
+               pages=None, page_icon=None, page_color=None,
+               vol_name="Vol"):
     """Redessine le bandeau sous les 4 knobs : zone 1 = volume système
     (temps réel, + barre + %, "Muet" si coupé), zone 4 = luminosité
     avec barre + %. Zone 2 = carrousel de pages si pages=(prev, cur, next) :
@@ -547,7 +548,7 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
                             fill=(50, 50, 50))
         if is_muted:
             fill = (239, 154, 154)
-        elif name == "Vol":
+        elif vol_name == "Vol":
             fill = (129, 212, 250)
         else:
             fill = (255, 213, 79)
@@ -558,7 +559,7 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
 
     # zone 1 : volume système (ou libellé libre si pycaw absent)
     if volume is not None:
-        level_zone(100, "Vol", volume, muted, (129, 212, 250))
+        level_zone(100, vol_name, volume, muted, (129, 212, 250))
     else:
         d.text((100, 34), "K1", font=font, fill=(120, 120, 120), anchor="mm")
     # zone 2 : carrousel de pages (◄ page préc. | PAGE COURANTE | page suiv. ►)
@@ -1269,6 +1270,18 @@ def player_icon(player):
     if "radio" in n:
         return "radio"
     return "speaker"
+
+
+def player_code(player):
+    """Code court d'un lecteur pour le bandeau : « SBT Orange »
+    (Squeezebox Touch), « SBR Cuisine » (Squeezebox Radio) — sinon
+    le nom court tel quel."""
+    n = short_player_name((player or {}).get("name") or "")
+    for full, abbr in (("Touch", "SBT"), ("Radio", "SBR")):
+        if n.startswith(full):
+            rest = n[len(full):].strip()
+            return abbr + (" " + rest if rest else "")
+    return n
 
 
 def short_player_name(name):
@@ -2565,6 +2578,22 @@ def main():
                 return
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
+        # appui sur le knob 2 : RETOUR ACCUEIL, partout (v2.10.0)
+        if ev.name == "encoder_2_button":
+            switch_page("accueil")
+            return
+        # knob 1 : dès qu'un Squeezebox est affiché, sa rotation règle le
+        # volume de CE lecteur et son appui le muet — sur toutes les
+        # pages tant qu'on reste dessus (volume système sinon)
+        if (ev.name.startswith("encoder_1") and lms.enabled
+                and lms_viewed() is not None):
+            a1 = {"encoder_1_cw": {"type": "lms_volume", "dir": "up"},
+                  "encoder_1_ccw": {"type": "lms_volume", "dir": "down"},
+                  "encoder_1_button": {"type": "lms_mute"}}.get(ev.name)
+            if a1:
+                threading.Thread(target=lms_action, args=(a1,),
+                                 daemon=True).start()
+                return
         if ev.name.startswith("strip_"):
             threading.Thread(target=_handle_strip, args=(ev.name,),
                              daemon=True).start()
@@ -2608,20 +2637,22 @@ def main():
         """Redessine le bandeau : volume système + luminosité en direct,
         et nom de la page courante dans la zone 2."""
         gen = page_paint["gen"]
-        vol, muted = None, None
-        if current["name"] == "lms_player":
-            vp = lms_viewed()
-            if vp:
-                with lms_lock:
-                    vol = vp["volume"]
-                    muted = lms_state["viewed_muted"]
+        vol, muted, vol_name = None, None, "Vol"
+        vp = lms_viewed()
+        if vp:
+            # Squeezebox affiché : SON volume sur le bandeau, toutes pages
+            with lms_lock:
+                vol = vp["volume"]
+                muted = lms_state["viewed_muted"]
+            vol_name = "Vol " + player_code(vp)
         if vol is None and _HAS_PYCAW:
             try:
                 vol, muted = get_volume_pct(), get_mute()
             except Exception:
                 pass
         extras = (getattr(device, "_page_label", None) or "K2",
-                  "VU" if vu_on else "K3")
+                  "K3" if current["name"] in LMS_PAGE_NAMES
+                  else ("VU" if vu_on else "K3"))
         # carrousel : pages précédente / courante / suivante (zone 2)
         i = (page_names.index(current["name"])
              if current["name"] in page_names else 0)
@@ -2643,7 +2674,8 @@ def main():
         try:
             show_strip(device, device.brightness, volume=vol, muted=muted,
                        extras=extras, pages=pages_tri,
-                       page_icon=p_icon, page_color=p_color)
+                       page_icon=p_icon, page_color=p_color,
+                       vol_name=vol_name)
         except Exception as e:
             print(f"Bandeau non redessiné : {e}")
 
@@ -2690,6 +2722,12 @@ def main():
                 if not err_shown:
                     err_shown = True
                     print(f"[vu] niveau audio indisponible : {e}")
+            if current["name"] in LMS_PAGE_NAMES:
+                # pages LMS : pas de VU (v2.10.0) ; drawn=None force le
+                # repaint complet dès qu'on quitte une page LMS
+                drawn = None
+                time.sleep(period)
+                continue
             base = _strip_base
             if peak is not None and base is not None:
                 if peak >= hold - 0.004:
@@ -3452,7 +3490,9 @@ def main():
         elif t == "lms_play_url" and vp:
             lms.play_url(vp["id"], action.get("url") or "")
         elif t == "lms_back":
-            switch_page("lms")
+            with lms_lock:
+                lms_state["viewed"] = None  # quitte la squeezebox :
+            switch_page("lms")            # knob 1 -> volume système
         elif t == "lms_back_player":
             switch_page("lms_player")
         # rafraîchit l'état (et l'affichage si on est sur une page LMS)

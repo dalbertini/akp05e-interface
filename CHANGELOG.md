@@ -3,6 +3,16 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.10.0] — 2026-11-11
+
+### Ajouté
+- **Volume de la Squeezebox affichée, partout** : dès qu'un lecteur LMS est sélectionné, le knob 1 pilote son volume (appui = muet) **sur toutes les pages**, et la zone 1 du bandeau tactile affiche « Vol SBT Orange » / « Vol SBR Cuisine » (noms courts automatiques : Touch → SBT, Radio → SBR) avec le pourcentage en temps réel — plus seulement dans la page du lecteur.
+- **Retour accueil instantané** : un appui sur le knob 2 ramène toujours à l'accueil, quelle que soit la page (rotation et swipe du knob 2 conservent le carrousel).
+
+### Modifié
+- **VU-mètre retiré des pages LMS** (lecteur, favoris, applis, navigation) : la zone 3 du bandeau affiche « K3 » en attendant la future redéfinition des touches knob et de l'écran tactile ; le VU-mètre reste actif sur toutes les autres pages.
+- **Quitter la page du lecteur efface la squeezebox sélectionnée** : le bouton « Retour » vers la liste des lecteurs rend le knob 1 et la zone 1 au volume système Windows.
+
 ## [2.9.3] — 2026-11-11
 
 ### Corrigé
@@ -361,6 +371,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.10.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
