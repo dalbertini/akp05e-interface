@@ -45,24 +45,10 @@
         "url": "https://github.com"
       }
     },
-    "4": {
-      "icon": "timer",
-      "color": "#FFCC80",
-      "label": "Minut.",
-      "action": {
-        "type": "page",
-        "page": "minuteurs"
-      }
-    },
     "5": {
-      "icon": "refresh",
-      "color": "#FFF59D",
-      "label": "F5",
       "action": {
-        "type": "keys",
-        "keys": [
-          "f5"
-        ]
+        "type": "clock",
+        "color": "#81D4FA"
       }
     }
   },
