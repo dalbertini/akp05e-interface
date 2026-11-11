@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.14.0 — Zone 3 du bandeau : « Jouer l'album » intelligent (pause/reprise si l'album affiché joue, sinon lancement du nouvel album) ; pilule bleue « 3/12 » (morceau en cours) ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.14.1 — Zone 3 du bandeau : pause/reprise de l'album affiché, lancement d'un nouvel album sinon, pilule bleue « 3/12 » (morceau en cours) ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

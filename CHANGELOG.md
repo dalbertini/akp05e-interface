@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.1] — 2026-11-11
+
+### Corrigé
+- **« i/N » : position du morceau enfin récupérée** — le serveur LMS ne renvoie pas toujours « playlist_cur » dans « status » (diagnostic utilisateur : cur absent, tracks présent). La lecture utilise désormais « status - 1 » (piste EN COURS, pas la première de la liste) avec l'URL (tags u), et un fallback « playlist index ? » pour la position.
+- **Tap zone 3 : pause/reprise réparée** — même cause racine : sans l'URL de la piste en cours, l'app ne pouvait pas reconnaître que l'album affiché était celui qui jouait et relançait l'album à chaque tap. L'URL de la piste courante est maintenant connue, donc le tap pause l'album affiché en lecture, reprend en pause, et lance un autre album sinon.
 ## [2.14.0] — 2026-11-11
 
 ### Corrigé
@@ -490,6 +495,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.8]: https://github.com/dalbertini/akp05e-interface/commits/main/

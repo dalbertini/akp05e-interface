@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.0"
+APP_VERSION = "2.14.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1689,6 +1689,35 @@ class LMSClient:
         — v2.13.9 : tap zone 3 = pause/reprise pendant la lecture."""
         res = self.request(player, ["status", "0", "1"])
         return str(res.get("mode") or "") if isinstance(res, dict) else ""
+
+    def playing_track(self, player):
+        """v2.14.1 : piste EN COURS du lecteur : {url, title,
+        current_title, cur (1-based), tracks, mode}. Différence avec
+        playing_info : « status - 1 » part de la piste COURANTE (« - »)
+        et non de la 1re de la liste, et demande l'URL (tags u) — sans
+        ça, impossible de savoir si l'album affiché est celui qui joue.
+        La position (playlist_cur) manque chez certains serveurs ->
+        fallback « playlist index ? » (0-based)."""
+        res = self.request(player, ["status", "-", "1", "tags:u"])
+        if not isinstance(res, dict):
+            return None
+        loop = res.get("playlist_loop") or []
+        it = loop[0] if loop else {}
+        cur = _to_int(res.get("playlist_cur"), -1)
+        if cur < 0:
+            r2 = self.request(player, ["playlist", "index", "?"])
+            if isinstance(r2, dict):
+                for v in (r2.get("_index"), r2.get("index"),
+                          r2.get("playlist_cur")):
+                    cur = _to_int(v, -1)
+                    if cur >= 0:
+                        break
+        return {"url": str(it.get("url") or res.get("url") or ""),
+                "title": str(it.get("title") or res.get("title") or ""),
+                "current_title": str(res.get("current_title") or ""),
+                "cur": cur + 1,
+                "tracks": _to_int(res.get("playlist_tracks"), 0),
+                "mode": str(res.get("mode") or "")}
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -3062,7 +3091,9 @@ def main():
                     print(f"[lms] bandeau : position indisponible "
                           f"(cur={_pl.get('cur')!r}, "
                           f"tracks={_pl.get('tracks')!r}, "
-                          f"mode={_pl.get('mode')!r}) — copie cette ligne")
+                          f"mode={_pl.get('mode')!r}, "
+                          f"url={str(_pl.get('url'))[:60]!r}) — "
+                          "copie cette ligne")
             if (_pl is None and vp and vp.get("playing")
                     and not _Z3_DIAG["none"]):
                 # v2.14.0 : le lecteur joue mais pas d'info -> one-shot
@@ -3607,8 +3638,8 @@ def main():
             try:
                 # v2.13.9 : info maintenue aussi EN PAUSE (lecteur
                 # allumé) -> la zone 3 garde la position « i/N »
-                lms_state["playing"] = (lms.playing_info(vp["id"])
-                                        if vp.get("power") else None)
+                lms_state["playing"] = (lms.playing_track(vp["id"])
+                                         if vp.get("power") else None)
             except Exception as e:
                 lms_state["playing"] = None
                 if not _Z3_DIAG["err"]:
@@ -4039,7 +4070,7 @@ def main():
             if _pl and _pl.get("url"):
                 _pu = _url_key(_pl.get("url"))
             else:
-                _pi = lms.playing_info(vp["id"]) if lms.enabled else None
+                _pi = lms.playing_track(vp["id"]) if lms.enabled else None
                 _pu = _url_key(_pi.get("url")) if _pi else ""
             _in = bool(urls and _pu
                        and _pu in {_url_key(u) for u in urls})
