@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.12.1"
+APP_VERSION = "2.12.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2344,7 +2344,9 @@ def lms_discover(timeout=3.0):
     """Découverte des serveurs Lyrion Media Server sur le réseau local.
     Protocole officiel Squeezebox : un datagramme « e » en broadcast UDP
     sur le port 3483 ; chaque serveur répond avec son adresse (IPAD:)
-    et son port JSON (JSON:). Renvoie une liste [(ip, port)] uniques.
+    et son port JSON (JSON:) — ou, pour les LMS modernes,
+    un simple « E » dont l'adresse du serveur est l'IP émettrice du
+    datagramme. Renvoie une liste [(ip, port)] uniques.
     Retour de secours : liste vide si aucun serveur ou pas de réseau.
 
     v2.12.1 : le broadcast général 255.255.255.255 est souvent filtré
@@ -2392,9 +2394,15 @@ def lms_discover(timeout=3.0):
                     break
                 txt = data.decode("latin-1", "ignore")
                 mip = _RE_LMS_IPAD.search(txt)
-                if not mip:
-                    continue
-                ip = mip.group(1)
+                if mip:
+                    ip = mip.group(1)
+                else:
+                    # LMS modernes : la réponse est un simple "E" (les "e"
+                    # émis par les lecteurs sont ignorés) — l'adresse du
+                    # serveur est l'IP ÉMETTRICE du datagramme.
+                    if data[:1] != b"E":
+                        continue
+                    ip = _addr[0]
                 mp = _RE_LMS_JSONPORT.search(txt)
                 port = int(mp.group(1)) if mp else 9000
                 if (ip, port) not in seen:

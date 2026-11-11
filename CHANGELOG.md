@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.12.2] — 2026-11-11
+
+### Corrigé
+- **Assistant `--setup-lms` : le serveur était détecté à l'écran du réseau mais rejeté par l'application** — les LMS récents répondent à la découverte par un simple datagramme `E` : l'adresse du serveur est l'IP *émettrice* du paquet, pas un payload `IPAD:` (format ancien, toujours accepté). La découverte lit désormais aussi l'IP émettrice des réponses `E` (les émissions `e` des lecteurs Squeezebox sont ignorées).
+
 ## [2.12.1] — 2026-11-11
 
 ### Corrigé
@@ -410,6 +415,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.12.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.11.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
