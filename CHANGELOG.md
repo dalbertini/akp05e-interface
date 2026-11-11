@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.4] — 2026-11-11
+
+### Corrigé
+- **Page « album » : niveaux Qobuz mixtes** — la sonde des « morceaux-répertoires » accepte désormais les items qui possèdent DÉJÀ leur URL de lecture (want_url) à côté d'items à résoudre un par un ; seuls les items sans URL demandent une requête supplémentaire.
+- **Clic sur un morceau d'un feed Qobuz = lecture directe** — un sous-niveau contenant exactement 1 morceau jouable est désormais joué immédiatement, au lieu d'ouvrir une page « album » d'un seul titre.
+- **Diagnostic précis** : en cas d'échec de la détection, la console affiche l'item BLOQUANT et son index (`[lms] ... bloquant à l'index N : …`) en plus du premier élément du niveau.
+
 ## [2.13.3] — 2026-11-11
 
 ### Corrigé
@@ -445,6 +452,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

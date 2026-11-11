@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.3"
+APP_VERSION = "2.13.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1283,19 +1283,24 @@ def lms_item_go(it):
     return url, cmd, params, playable
 
 
-def lms_album_view(items):
+def lms_album_view(items, diag=None):
     """Vue « album » d'une liste d'items de navigation : si TOUS les
     items sont des morceaux jouables (url qobuz://... ou autre), renvoie
     {"tracks": [...], "urls": [...]} ; sinon None (navigation normale).
     C'est ce qui transforme le clic sur un album en page album (v2.13.0)
-    au lieu de continuer à descendre des répertoires."""
+    au lieu de continuer à descendre des répertoires.
+    v2.13.4 : si `diag` est un dict, il reçoit l'index et l'item
+    BLOQUANT (le premier non jouable hors en-têtes) pour le diagnostic."""
     tracks, urls = [], []
-    for it in (items or []):
+    for _pos, it in enumerate(items or []):
         typ = str(it.get("type") or "").lower()
         if typ in ("text", "header"):
             continue  # en-tête décoratif (xmlbrowser) : pas un morceau
         u, _c, _p, playable = lms_item_go(it)
         if not (playable and u):
+            if isinstance(diag, dict):
+                diag["index"] = _pos
+                diag["item"] = it
             return None
         tracks.append(it)
         urls.append(u)
@@ -1314,8 +1319,16 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
     ils sont passés explicitement (le helper est module-level)."""
     items = lms.app_items(vp["id"], cmd, params)
     title = str(it.get("name") or it.get("title") or "?")
-    av = lms_album_view(items)
+    diag = {}
+    av = lms_album_view(items, diag)
     if av:
+        if len(av["tracks"]) == 1:
+            # v2.13.4 : un « album » d'UN morceau = en fait un morceau
+            # (feed Qobuz : chaque morceau est un dossier de 1 item) ->
+            # on le JOUE, pas de page album d'un seul titre.
+            lms.play_url(vp["id"], av["urls"][0])
+            print(f"[lms] lecture : {title}")
+            return True
         with lms_lock:
             lms_state["album"] = {"title": title, "tracks": av["tracks"],
                                   "urls": av["urls"], "sel": 0, "off": 0}
@@ -1323,26 +1336,34 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
         switch_page("lms_album")
         return True
     if not av and items:
-        # v2.13.3 : feed Qobuz « morceaux-répertoires » — chaque morceau
-        # est un dossier (hasitems + isaudio, SANS url) contenant
-        # exactement 1 item jouable (l'url arrive un cran plus bas via
-        # want_url). SONDE : si le sous-niveau du 1er item est 1 morceau
-        # jouable, c'est une liste de morceaux -> on résout les urls de
-        # TOUS les items (1 requête chacun) -> page album complète. Une
-        # liste d'ALBUMS (sous-niveau = plusieurs éléments, p.ex. les 100
-        # « Nouveautés ») échoue à la sonde -> navigation normale.
-        cand = all(isinstance(x, dict) and x.get("isaudio")
-                   and x.get("hasitems") and x.get("id") is not None
-                   and not lms_item_go(x)[0] for x in items)
+        # v2.13.4 : niveaux « morceaux-répertoires » du feed Qobuz —
+        # chaque morceau est un dossier (hasitems + id) contenant
+        # exactement 1 item jouable ; l'url est soit directement sur
+        # l'item (want_url), soit un cran plus bas (à résoudre).
+        # SONDE : si le sous-niveau du 1er item drillable est 1 morceau
+        # jouable, c'est une liste de morceaux -> page album complète.
+        # Une liste d'ALBUMS (sous-niveau = plusieurs éléments, p.ex.
+        # les 100 « Nouveautés ») échoue à la sonde -> navigation.
+        cand = all(isinstance(x, dict)
+                   and (x.get("hasitems") or (lms_item_go(x)[3]
+                                              and lms_item_go(x)[0]))
+                   and x.get("id") is not None for x in items)
         if cand and len(items) <= 200:
             def _sub(x):
                 p = ([str(a) for a in (params or [])]
                      + [f"item_id:{x['id']}"])
                 return lms.app_items(vp["id"], cmd, p)
-            sav = lms_album_view(_sub(items[0]))
+            first_drill = next((x for x in items if x.get("hasitems")),
+                               None)
+            sav = (lms_album_view(_sub(first_drill))
+                   if first_drill is not None else None)
             if sav and len(sav["tracks"]) == 1:
-                urls, ok = list(sav["urls"]), True
-                for x in items[1:]:
+                urls, ok = [], True
+                for x in items:
+                    u, _c, _p, playable = lms_item_go(x)
+                    if playable and u:
+                        urls.append(u)  # url déjà là (want_url)
+                        continue
                     s = lms_album_view(_sub(x))
                     if s and s["urls"]:
                         urls.append(s["urls"][0])
@@ -1356,7 +1377,7 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
                                              "urls": urls,
                                              "sel": 0, "off": 0}
                     print(f"[lms] album « {title} » : {len(urls)} morceaux "
-                          "(URLs résolues un par un)")
+                          "(URLs résolues)")
                     switch_page("lms_album")
                     return True
                 print(f"[lms] album « {title} » : morceaux non résolus, "
@@ -1366,8 +1387,12 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
         print(f"[lms] lecture : {title}")
         return True
     _d = items[0] if items else None
+    _b = diag.get("item")
     print("[lms] pas une page album : "
           f"{len(items or [])} él., 1er={str(_d)[:200]}")
+    if _b is not None and _b is not _d:
+        print(f"[lms] ... bloquant à l'index {diag.get('index')} : "
+              f"{str(_b)[:200]}")
     with lms_lock:
         lms_state["browse"].append({"title": title, "items": items,
                                     "cmd": cmd, "params": params})
