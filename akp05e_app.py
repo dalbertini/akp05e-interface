@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.4"
+APP_VERSION = "2.13.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1305,6 +1305,21 @@ def lms_album_view(items, diag=None):
         tracks.append(it)
         urls.append(u)
     return {"tracks": tracks, "urls": urls} if tracks else None
+
+
+def lms_level_urls(items):
+    """URLs de lecture des items jouables d'un niveau de navigation
+    (v2.13.5 : « ▶ Jouer l'album » de la zone 3 sur la page morceaux —
+    en-têtes ignorés comme dans la détection d'album)."""
+    urls = []
+    for x in (items or []):
+        typ = str(x.get("type") or "").lower()
+        if typ in ("text", "header"):
+            continue
+        u, _c, _p, playable = lms_item_go(x)
+        if playable and u:
+            urls.append(u)
+    return urls
 
 
 def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
@@ -2734,7 +2749,10 @@ def main():
             "encoder_3_cw": {"action": {"type": "lms_browse_scroll"}},
             "encoder_3_ccw": {"action": {"type": "lms_browse_scroll",
                                          "dir": "prev"}},
-            "encoder_3_button": {"action": {"type": "lms_browse_back"}},
+            # v2.13.5 : tap zone 3 du bandeau (ou appui knob 3) =
+            # lecture COMPLÈTE du niveau affiché (l'album) ; le retour
+            # reste sur la touche 10
+            "encoder_3_button": {"action": {"type": "lms_play_level"}},
             **_enc_pages(),
         },
     }
@@ -2980,9 +2998,22 @@ def main():
                 vol, muted = get_volume_pct(), get_mute()
             except Exception:
                 pass
-        extras = (getattr(device, "_page_label", None) or "K2",
-                  "K3" if current["name"] in LMS_PAGE_NAMES
-                  else ("VU" if vu_on else "K3"))
+        if current["name"] in LMS_PAGE_NAMES:
+            z3 = "K3"
+            # v2.13.5 : page morceaux -> zone 3 = Jouer l'album ;
+            # page album -> zone 3 = jouer la sélection knob 3
+            if current["name"] == "lms_browse":
+                with lms_lock:
+                    lvl = (lms_state["browse"][-1]
+                           if lms_state["browse"] else None)
+                    items = lvl["items"] if lvl else []
+                if len(lms_level_urls(items)) >= 2:
+                    z3 = "▶ Album"
+            elif current["name"] == "lms_album":
+                z3 = "▶ Sélect."
+        else:
+            z3 = "VU" if vu_on else "K3"
+        extras = (getattr(device, "_page_label", None) or "K2", z3)
         # carrousel : pages précédente / courante / suivante (zone 2)
         i = (page_names.index(current["name"])
              if current["name"] in page_names else 0)
@@ -3917,6 +3948,27 @@ def main():
                     lms.request(vp["id"], ["playlist", "add", u])
                 print(f"[lms] album entier : {len(urls)} morceaux "
                       f"sur {vp['name']}")
+        elif t == "lms_play_level" and vp:
+            # v2.13.5 : zone 3 « ▶ Album » sur la page morceaux — joue
+            # TOUS les morceaux jouables du niveau de navigation courant
+            with lms_lock:
+                lvl = (lms_state["browse"][-1]
+                       if lms_state["browse"] else None)
+                items = list(lvl["items"]) if lvl else []
+                title = lvl["title"] if lvl else "?"
+            urls = lms_level_urls(items)
+            if len(urls) >= 2:
+                lms.play_url(vp["id"], urls[0])
+                for u in urls[1:]:
+                    lms.request(vp["id"], ["playlist", "add", u])
+                print(f"[lms] album entier « {title} » : {len(urls)} "
+                      f"morceaux sur {vp['name']}")
+            elif len(urls) == 1:
+                lms.play_url(vp["id"], urls[0])
+                print(f"[lms] lecture : {title} (1 morceau jouable)")
+            else:
+                print("[lms] rien à jouer sur cette page "
+                      "(pas de morceau avec URL)")
         elif t == "lms_album_press" and vp:
             with lms_lock:
                 album = lms_state["album"]

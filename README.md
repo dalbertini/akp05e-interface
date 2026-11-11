@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.13.4 — Page « album » dans la navigation Qobuz/applis : jouer l'album entier ou un morceau, sélection au knob 3 — gère les feeds mixtes (URLs directes ou morceaux-répertoires), clic morceau = lecture directe ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.13.5 — Navigation Qobuz/applis : « ▶ Jouer l'album » directement depuis le bandeau tactile (zone 3) sur la page des morceaux ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

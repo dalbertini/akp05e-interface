@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.5] — 2026-11-11
+
+### Ajouté
+- **« ▶ Jouer l'album » dans la zone 3 du bandeau tactile** (demande utilisateur) : sur la page des morceaux d'une appli (Qobuz…), la zone 3 affiche **« ▶ Album »** dès que le niveau courant contient au moins 2 morceaux jouables — **un tap dessus lance l'album complet** (1er morceau en lecture, les suivants en file). L'appui du knob 3 fait de même ; la rotation du knob 3 continue de faire défiler la liste, et le retour reste sur la touche 10.
+- **Page « album » : la zone 3 affiche « ▶ Sélect. »** (l'appui du knob 3 / le tap joue le morceau sélectionné).
+
 ## [2.13.4] — 2026-11-11
 
 ### Corrigé
@@ -452,6 +458,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
