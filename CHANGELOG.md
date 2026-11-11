@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.8] — 2026-11-11
+
+### Ajouté
+- **« i/N » sur la zone 3 du bandeau** : quand le lecteur affiché joue une liste d'au moins 2 pistes (album lancé via « ▶ Album »…), la zone 3 affiche la position du morceau en cours et le total (ex. « 3/12 »), mise à jour en temps réel.
+
+### Modifié
+- **Zone 3 redessinée** : pilule arrondie avec liseret bleu accent (même style que le carrousel de la zone 2), centrée verticalement dans la zone — l'ancien libellé gris était perdu en haut du petit écran. S'applique à « i/N », « ▶ Album » et « ▶ Sélect. ».
+
 ## [2.13.7] — 2026-11-11
 
 ### Corrigé
@@ -468,6 +476,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.5]: https://github.com/dalbertini/akp05e-interface/commits/main/

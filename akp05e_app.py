@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.7"
+APP_VERSION = "2.13.8"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -622,15 +622,30 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
             img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
     else:
         z3 = str(extras[1])
-        if z3.startswith("\u25b6"):
-            # v2.13.7 : le glyphe ▶ n'est pas dans Arial (hors WGL4) —
-            # triangle dessiné en polygone (comme les flèches du carrousel),
-            # puis le libellé à droite, en couleur d'accent pour indiquer
-            # que la zone est active
-            d.polygon([(494, 27), (494, 41), (507, 34)],
-                      fill=(129, 212, 250))
-            d.text((513, 34), z3[1:].strip(), font=font,
-                   fill=(129, 212, 250), anchor="lm")
+        # v2.13.8 : pilule avec liseret accent (même style que le
+        # carrousel de la zone 2), centrée VERTICALEMENT dans la zone
+        # (l'ancien libellé gris était perdu en haut) :
+        #  - « i/N » : morceau en cours / total de la liste jouée ;
+        #  - « ▶ … » : bouton actif (le glyphe U+25B6 est absent
+        #    d'Arial/WGL4 -> triangle dessiné en polygone).
+        if z3.startswith("\u25b6") or re.fullmatch(r"\d+/\d+", z3):
+            d.rounded_rectangle([412, 36, 588, 76], radius=13,
+                                fill=(40, 44, 52),
+                                outline=(129, 212, 250), width=2)
+            if z3.startswith("\u25b6"):
+                label = z3[1:].strip()
+                try:
+                    tw = d.textlength(label, font=font_mid)
+                except Exception:
+                    tw = 11 * len(label)
+                x0 = 500 - (18 + 8 + tw) / 2
+                d.polygon([(x0, 47), (x0, 65), (x0 + 16, 56)],
+                          fill=(129, 212, 250))
+                d.text((x0 + 24, 57), label, font=font_mid,
+                       fill=(129, 212, 250), anchor="lm")
+            else:
+                d.text((500, 57), z3, font=font_mid,
+                       fill=(129, 212, 250), anchor="mm")
         else:
             d.text((500, 34), z3, font=font,
                    fill=(120, 120, 120), anchor="mm")
@@ -1658,7 +1673,11 @@ class LMSClient:
         return {"url": str(it.get("url") or res.get("url") or ""),
                 "title": str(it.get("title") or res.get("title") or ""),
                 "current_title": str(res.get("current_title")
-                                     or it.get("current_title") or "")}
+                                     or it.get("current_title") or ""),
+                # v2.13.8 : position dans la liste en cours (1-based) et
+                # total des pistes — « 1/12 » sur la zone 3 du bandeau
+                "cur": _to_int(res.get("playlist_cur"), -1) + 1,
+                "tracks": _to_int(res.get("playlist_tracks"), 0)}
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -3017,9 +3036,15 @@ def main():
                 pass
         if current["name"] in LMS_PAGE_NAMES:
             z3 = "K3"
-            # v2.13.5 : page morceaux -> zone 3 = Jouer l'album ;
-            # page album -> zone 3 = jouer la sélection knob 3
-            if current["name"] == "lms_browse":
+            # v2.13.8 : morceau en cours « i/N » si le lecteur affiché
+            # joue une liste d'au moins 2 pistes (album lancé via
+            # « ▶ Album »…) — sinon bouton Jouer l'album / Sélect.
+            with lms_lock:
+                _pl = lms_state.get("playing")
+            if (_pl and _pl.get("tracks", 0) >= 2
+                    and 1 <= _pl.get("cur", 0) <= _pl["tracks"]):
+                z3 = f"{_pl['cur']}/{_pl['tracks']}"
+            elif current["name"] == "lms_browse":
                 with lms_lock:
                     lvl = (lms_state["browse"][-1]
                            if lms_state["browse"] else None)
