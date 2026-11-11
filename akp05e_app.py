@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.12.0"
+APP_VERSION = "2.12.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2340,35 +2340,68 @@ def load_config():
 _RE_LMS_IPAD = re.compile(r"IPAD:(\d{1,3}(?:\.\d{1,3}){3})")
 _RE_LMS_JSONPORT = re.compile(r"JSON:(\d+)")
 
-def lms_discover(timeout=2.0):
+def lms_discover(timeout=3.0):
     """Découverte des serveurs Lyrion Media Server sur le réseau local.
     Protocole officiel Squeezebox : un datagramme « e » en broadcast UDP
     sur le port 3483 ; chaque serveur répond avec son adresse (IPAD:)
     et son port JSON (JSON:). Renvoie une liste [(ip, port)] uniques.
-    Retour de secours : liste vide si aucun serveur ou pas de réseau."""
+    Retour de secours : liste vide si aucun serveur ou pas de réseau.
+
+    v2.12.1 : le broadcast général 255.255.255.255 est souvent filtré
+    (box, pare-feu Windows) — on émet AUSSI en broadcast dirigé vers le
+    sous-réseau local (p.ex. 192.168.1.255, calculé depuis l'IP locale),
+    en 3 salves espacées, pour laisser le temps au serveur de répondre."""
     out, seen = [], set()
     sock = None
     try:
+        # broadcast dirigé du sous-réseau local (aucun trafic réel envoyé :
+        # connect() sur une adresse extérieure sert juste à déterminer
+        # l'interface/adresse IP locale utilisée par défaut)
+        bcast_subnet = None
+        try:
+            _s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            _s.connect(("10.255.255.255", 1))
+            _ip = _s.getsockname()[0]
+            _s.close()
+            if _ip and not _ip.startswith("127."):
+                bcast_subnet = _ip.rsplit(".", 1)[0] + ".255"
+        except Exception:
+            bcast_subnet = None
+        targets = [("255.255.255.255", 3483)]
+        if bcast_subnet and bcast_subnet not in ("0.0.0.255",
+                                                 "255.255.255.255"):
+            targets.append((bcast_subnet, 3483))
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.settimeout(timeout)
-        sock.sendto(b"e", ("255.255.255.255", 3483))
+        sock.settimeout(0.3)
         end = time.time() + timeout
         while time.time() < end:
-            try:
-                data, _addr = sock.recvfrom(2048)
-            except socket.timeout:
-                break
-            txt = data.decode("latin-1", "ignore")
-            mip = _RE_LMS_IPAD.search(txt)
-            if not mip:
-                continue
-            ip = mip.group(1)
-            mp = _RE_LMS_JSONPORT.search(txt)
-            port = int(mp.group(1)) if mp else 9000
-            if (ip, port) not in seen:
-                seen.add((ip, port))
-                out.append((ip, port))
+            for tgt in targets:
+                try:
+                    sock.sendto(b"e", tgt)
+                except Exception:
+                    pass
+            # écoute ~1 s (salves), puis on re-émet jusqu'au timeout
+            sub_end = min(time.time() + 1.0, end)
+            while time.time() < sub_end:
+                try:
+                    data, _addr = sock.recvfrom(2048)
+                except socket.timeout:
+                    break
+                except OSError:
+                    break
+                txt = data.decode("latin-1", "ignore")
+                mip = _RE_LMS_IPAD.search(txt)
+                if not mip:
+                    continue
+                ip = mip.group(1)
+                mp = _RE_LMS_JSONPORT.search(txt)
+                port = int(mp.group(1)) if mp else 9000
+                if (ip, port) not in seen:
+                    seen.add((ip, port))
+                    out.append((ip, port))
+            if out:
+                break  # premier serveur trouvé : assez
     except Exception as e:
         print(f"[lms] découverte réseau impossible : {e}")
     finally:
@@ -2404,7 +2437,7 @@ def run_setup_lms(config, _input=input):
         ok, info = lms_check_server(cur, lms_cfg.get("port", 9000))
         st = f"OK ({info} lecteurs)" if ok else str(info)
         print(f"Serveur actuel : {cur}:{lms_cfg.get('port', 9000)} — {st}")
-    print("Recherche d'un serveur Lyrion sur le réseau local (~2 s)...")
+    print("Recherche d'un serveur Lyrion sur le réseau local (~3 s)...")
     found = lms_discover()
     valid = []
     for ip, port in found:

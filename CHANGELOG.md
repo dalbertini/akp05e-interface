@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.12.1] — 2026-11-11
+
+### Corrigé
+- **Assistant `--setup-lms` : « Aucun serveur détecté » alors que le serveur est joignable** — le broadcast général `255.255.255.255` est souvent filtré (box, pare-feu Windows). La découverte émet désormais AUSSI un broadcast dirigé vers le sous-réseau local (p.ex. `192.168.1.255`, calculé depuis l'adresse IP du PC), en plusieurs salves, avec un délai d'écoute allongé (~3 s).
+
 ## [2.12.0] — 2026-11-11
 
 ### Ajouté
@@ -405,6 +410,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.12.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.11.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
