@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.0] — 2026-11-11
+
+### Ajouté
+- **Page « album » dans la navigation des applis (Qobuz…)** : appuyer sur un album n'ouvre plus une cascade de répertoires — une page dédiée s'affiche avec **« ▶ Jouer l'album »** (touche 1 : l'album complet en playlist) et **les morceaux directement sur les touches 2-9** (« 01 Artiste – Titre », appui = lecture du morceau). **Knob 3** : rotation = sélection du morceau (touche mise en évidence, la liste défile au-delà de 8), **appui = lecture du morceau sélectionné**. Touche 10 = retour. Fonctionne avec toute appli LMS dont le sous-niveau est une liste de morceaux (Qobuz, Radio Paradise…).
+
 ## [2.12.3] — 2026-11-11
 
 ### Ajouté
@@ -420,6 +425,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

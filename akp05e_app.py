@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.12.3"
+APP_VERSION = "2.13.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1281,6 +1281,22 @@ def lms_item_go(it):
                                                        "track")
                              or bool(it.get("isaudio")))
     return url, cmd, params, playable
+
+
+def lms_album_view(items):
+    """Vue « album » d'une liste d'items de navigation : si TOUS les
+    items sont des morceaux jouables (url qobuz://... ou autre), renvoie
+    {"tracks": [...], "urls": [...]} ; sinon None (navigation normale).
+    C'est ce qui transforme le clic sur un album en page album (v2.13.0)
+    au lieu de continuer à descendre des répertoires."""
+    tracks, urls = [], []
+    for it in (items or []):
+        u, _c, _p, playable = lms_item_go(it)
+        if not (playable and u):
+            return None
+        tracks.append(it)
+        urls.append(u)
+    return {"tracks": tracks, "urls": urls} if tracks else None
 
 
 def player_icon(player):
@@ -2616,8 +2632,31 @@ def main():
             **_enc_pages(),
         },
     }
+    # page « album » (v2.13.0) : touche 1 = jouer l'album ENTIER,
+    # touches 2-9 = morceaux (« 01 Artiste - Titre »), knob 3 = sélection
+    # (la touche sélectionnée est mise en évidence, la liste défile),
+    # appui knob 3 = lecture du morceau sélectionné, touche 10 = retour.
+    pages["lms_album"] = {
+        "label": "Album", "icon": "album", "color": "#90CAF9",
+        "buttons": {
+            "1": {"action": {"type": "lms_album_play"}},
+            **{str(i): {"action": {"type": "lms_album_press",
+                                   "slot": i - 2}}
+               for i in range(2, 10)},
+            "10": {"icon": "undo", "color": "#FFFFFF", "bg": "#000000",
+                   "label": "Retour",
+                   "action": {"type": "lms_album_back"}},
+        },
+        "encoders": {
+            "encoder_3_cw": {"action": {"type": "lms_album_scroll"}},
+            "encoder_3_ccw": {"action": {"type": "lms_album_scroll",
+                                         "dir": "prev"}},
+            "encoder_3_button": {"action": {"type": "lms_album_play_sel"}},
+            **_enc_pages(),
+        },
+    }
     LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps",
-                      "lms_browse")
+                      "lms_browse", "lms_album")
 
     # carrousel / knob 2 : le raccourci « lms » (page d'accueil LMS) y
     # figure quand LMS est configuré ; les sous-pages (lecteur, favoris,
@@ -3326,7 +3365,8 @@ def main():
                  "apps_offset": 0,     # décalage de la page applis
                  "apps_tries": 0,      # tentatives de découverte des applis
                  "browse": [],         # pile de navigation appli courante
-                 "browse_offset": 0}   # décalage de la page navigation
+                 "browse_offset": 0,   # décalage de la page navigation
+                 "album": None}        # album affiché (page lms_album)
     lms_lock = threading.RLock()
 
     def lms_selected():
@@ -3384,13 +3424,16 @@ def main():
             apps_off = lms_state["apps_offset"]
             browse_l = list(lms_state["browse"])
             browse_off = lms_state["browse_offset"]
+            album = lms_state["album"]
         sel = lms_selected()
         vp = lms_viewed()
         if not lms.enabled:
             sub = "config off"
         elif not players and t not in ("lms_open_favs", "lms_open_apps",
                                        "lms_back", "lms_back_player",
-                                       "lms_play_url", "lms_browse_back"):
+                                       "lms_play_url", "lms_browse_back",
+                                       "lms_album_back",
+                                       "lms_album_scroll"):
             sub = "LMS ?"
         elif t == "lms_open_player":
             i = int((entry.get("action") or {}).get("index", 0))
@@ -3472,6 +3515,34 @@ def main():
             else:
                 label, sub = "", ""
                 empty = True
+        elif t == "lms_album_play":
+            if album:
+                label = "Jouer l'album"
+                sub = f"{len(album['tracks'])} morceaux"
+            else:
+                label, sub = "", ""
+                empty = True
+        elif t == "lms_album_press":
+            if album:
+                i = album["off"] + int((entry.get("action") or {})
+                                       .get("slot", 0))
+                if 0 <= i < len(album["tracks"]):
+                    it = album["tracks"][i]
+                    label = str(it.get("name") or it.get("title") or "?")
+                    if i == album["sel"]:
+                        # morceau sélectionné : dégradé bleu (comme la
+                        # radio active) pour montrer la sélection knob 3
+                        bg = ((24, 72, 190), (6, 10, 26))
+                        fg = (255, 255, 255)
+                        sub = ">> sélection"
+                    else:
+                        sub = "morceau"
+                else:
+                    label, sub = "", ""
+                    empty = True
+            else:
+                label, sub = "", ""
+                empty = True
         elif t == "lms_power_all":
             on = sum(1 for q in players if q["power"])
             sub = f"{on}/{len(players)} allumés"
@@ -3527,6 +3598,10 @@ def main():
                     else "extension")
         elif t == "lms_item_press":
             icon = "music_note" if btn_audio else "folder_open"
+        elif t == "lms_album_play":
+            icon = "album"
+        elif t == "lms_album_press":
+            icon = "music_note"
         if empty:
             # liste épuisée : touche éteinte, propre (pas de « (vide) »)
             device.set_image(n, Image.new("RGB", BUTTON_IMAGE_SIZE,
@@ -3534,7 +3609,8 @@ def main():
             return
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
-                  "lms_back_player", "lms_play_url", "lms_browse_back")
+                  "lms_back_player", "lms_play_url", "lms_browse_back",
+                  "lms_album_back")
                 and entry.get("icon")):
             set_icon(device, n, entry["icon"],
                      fg=entry.get("color", "#e0e0e0"),
@@ -3683,13 +3759,26 @@ def main():
                           f"{it.get('name') or it.get('title') or url}")
                 elif cmd:
                     items = lms.app_items(vp["id"], cmd, params)
-                    with lms_lock:
-                        lms_state["browse"].append(
-                            {"title": str(it.get("name")
-                                          or it.get("title") or "?"),
-                             "items": items,
-                             "cmd": cmd, "params": params})
-                        lms_state["browse_offset"] = 0
+                    av = lms_album_view(items)
+                    if av:
+                        # album : sous-niveau 100 % jouable -> page album
+                        with lms_lock:
+                            lms_state["album"] = {
+                                "title": str(it.get("name")
+                                             or it.get("title") or "?"),
+                                "tracks": av["tracks"], "urls": av["urls"],
+                                "sel": 0, "off": 0}
+                        print(f"[lms] album « {lms_state['album']['title']} »"
+                              f" : {len(av['tracks'])} morceaux")
+                        switch_page("lms_album")
+                    else:
+                        with lms_lock:
+                            lms_state["browse"].append(
+                                {"title": str(it.get("name")
+                                              or it.get("title") or "?"),
+                                 "items": items,
+                                 "cmd": cmd, "params": params})
+                            lms_state["browse_offset"] = 0
                 elif lvl and it.get("id") is not None:
                     # dossier SANS cmd (diagnostic David : Main Mix,
                     # clés=[hasitems, id, isaudio, name, type]) :
@@ -3700,13 +3789,27 @@ def main():
                         dparams = ([str(p) for p in (lvl.get("params") or [])]
                                    + [f"item_id:{it['id']}"])
                         items = lms.app_items(vp["id"], dcmd, dparams)
-                        with lms_lock:
-                            lms_state["browse"].append(
-                                {"title": str(it.get("name")
-                                              or it.get("title") or "?"),
-                                 "items": items,
-                                 "cmd": dcmd, "params": dparams})
-                            lms_state["browse_offset"] = 0
+                        av = lms_album_view(items)
+                        if av:
+                            # album : sous-niveau 100 % jouable -> page album
+                            with lms_lock:
+                                lms_state["album"] = {
+                                    "title": str(it.get("name")
+                                                 or it.get("title") or "?"),
+                                    "tracks": av["tracks"],
+                                    "urls": av["urls"],
+                                    "sel": 0, "off": 0}
+                            print(f"[lms] album « {it.get('name')} » : "
+                                  f"{len(av['tracks'])} morceaux")
+                            switch_page("lms_album")
+                        else:
+                            with lms_lock:
+                                lms_state["browse"].append(
+                                    {"title": str(it.get("name")
+                                                  or it.get("title") or "?"),
+                                     "items": items,
+                                     "cmd": dcmd, "params": dparams})
+                                lms_state["browse_offset"] = 0
                 else:
                     # diagnostic (comme les favoris v2.4) : à copier dans
                     # une conversation pour identifier le format du serveur
@@ -3731,6 +3834,48 @@ def main():
                 empty = not lms_state["browse"]
             if empty:
                 switch_page("lms_apps")
+        elif t == "lms_album_play" and vp:
+            with lms_lock:
+                album = lms_state["album"]
+                urls = list(album["urls"]) if album else []
+            if urls:
+                # album entier : power on (via play_url du 1er morceau)
+                # puis les suivants en file — LMS joue le 1er immédiatement
+                lms.play_url(vp["id"], urls[0])
+                for u in urls[1:]:
+                    lms.request(vp["id"], ["playlist", "add", u])
+                print(f"[lms] album entier : {len(urls)} morceaux "
+                      f"sur {vp['name']}")
+        elif t == "lms_album_press" and vp:
+            with lms_lock:
+                album = lms_state["album"]
+                i = (album["off"] + int(action.get("slot", 0))
+                     if album else -1)
+                url = album["urls"][i] if album and 0 <= i < len(
+                    album["urls"]) else None
+            if url:
+                lms.play_url(vp["id"], url)
+        elif t == "lms_album_scroll":
+            d = -1 if action.get("dir") == "prev" else 1
+            with lms_lock:
+                album = lms_state["album"]
+                if album:
+                    n = len(album["tracks"])
+                    album["sel"] = max(0, min(album["sel"] + d, n - 1))
+                    # garde la sélection visible dans la fenêtre 2-9
+                    if album["sel"] < album["off"]:
+                        album["off"] = album["sel"]
+                    elif album["sel"] > album["off"] + 7:
+                        album["off"] = album["sel"] - 7
+        elif t == "lms_album_play_sel" and vp:
+            with lms_lock:
+                album = lms_state["album"]
+                url = (album["urls"][album["sel"]]
+                       if album and album["urls"] else None)
+            if url:
+                lms.play_url(vp["id"], url)
+        elif t == "lms_album_back":
+            switch_page("lms_browse")
         elif t == "lms_play_url" and vp:
             lms.play_url(vp["id"], action.get("url") or "")
         elif t == "lms_back":
