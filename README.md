@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.13.6 — « ▶ Jouer l'album » depuis le bandeau tactile (zone 3) sur la page des morceaux ; correctif : le tap tactile exécute maintenant les actions LMS ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.13.7 — « Jouer l'album » depuis le bandeau tactile (zone 3) sur la page des morceaux (triangle bleu + libellé) ; tap tactile opérationnel pour les actions LMS ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

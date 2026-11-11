@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.7] — 2026-11-11
+
+### Corrigé
+- **Le symbole « ▶ » ne s'affichait pas sur le bandeau tactile** — le glyphe U+25B6 ne fait pas partie du jeu de caractères WGL4 de la police utilisée (Arial). Le triangle de « ▶ Album » / « ▶ Sélect. » (zone 3) est désormais dessiné en polygone (indépendant de la police), en couleur d'accent bleue avec son libellé, pour bien indiquer que la zone est active.
+
 ## [2.13.6] — 2026-11-11
 
 ### Corrigé
@@ -463,6 +468,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.4]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.6"
+APP_VERSION = "2.13.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -621,8 +621,19 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
         with _strip_last_lock:
             img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
     else:
-        d.text((500, 34), extras[1], font=font,
-               fill=(120, 120, 120), anchor="mm")
+        z3 = str(extras[1])
+        if z3.startswith("\u25b6"):
+            # v2.13.7 : le glyphe ▶ n'est pas dans Arial (hors WGL4) —
+            # triangle dessiné en polygone (comme les flèches du carrousel),
+            # puis le libellé à droite, en couleur d'accent pour indiquer
+            # que la zone est active
+            d.polygon([(494, 27), (494, 41), (507, 34)],
+                      fill=(129, 212, 250))
+            d.text((513, 34), z3[1:].strip(), font=font,
+                   fill=(129, 212, 250), anchor="lm")
+        else:
+            d.text((500, 34), z3, font=font,
+                   fill=(120, 120, 120), anchor="mm")
     # zone 4 : luminosité
     level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
                (240, 220, 130))
