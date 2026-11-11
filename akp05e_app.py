@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.0"
+APP_VERSION = "2.13.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1291,6 +1291,9 @@ def lms_album_view(items):
     au lieu de continuer à descendre des répertoires."""
     tracks, urls = [], []
     for it in (items or []):
+        typ = str(it.get("type") or "").lower()
+        if typ in ("text", "header"):
+            continue  # en-tête décoratif (xmlbrowser) : pas un morceau
         u, _c, _p, playable = lms_item_go(it)
         if not (playable and u):
             return None
@@ -3772,6 +3775,9 @@ def main():
                               f" : {len(av['tracks'])} morceaux")
                         switch_page("lms_album")
                     else:
+                        _d = items[0] if items else None
+                        print("[lms] pas une page album : "
+                              f"{len(items or [])} él., 1er={str(_d)[:200]}")
                         with lms_lock:
                             lms_state["browse"].append(
                                 {"title": str(it.get("name")
@@ -3803,6 +3809,9 @@ def main():
                                   f"{len(av['tracks'])} morceaux")
                             switch_page("lms_album")
                         else:
+                            _d = items[0] if items else None
+                            print("[lms] pas une page album : "
+                                  f"{len(items or [])} él., 1er={str(_d)[:200]}")
                             with lms_lock:
                                 lms_state["browse"].append(
                                     {"title": str(it.get("name")

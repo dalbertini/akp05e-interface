@@ -8,6 +8,12 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - **Page « album » dans la navigation des applis (Qobuz…)** : appuyer sur un album n'ouvre plus une cascade de répertoires — une page dédiée s'affiche avec **« ▶ Jouer l'album »** (touche 1 : l'album complet en playlist) et **les morceaux directement sur les touches 2-9** (« 01 Artiste – Titre », appui = lecture du morceau). **Knob 3** : rotation = sélection du morceau (touche mise en évidence, la liste défile au-delà de 8), **appui = lecture du morceau sélectionné**. Touche 10 = retour. Fonctionne avec toute appli LMS dont le sous-niveau est une liste de morceaux (Qobuz, Radio Paradise…).
 
+## [2.13.1] — 2026-11-11
+
+### Corrigé
+- **Page « album » : les en-têtes décoratifs du menu (type `text`/`header`, renvoyés par certains plugins comme Qobuz) ne font plus échouer la détection de la page album** — seuls les morceaux comptent désormais.
+- **Diagnostic console** : si un clic sur un album ouvre encore un répertoire au lieu de la page album, la ligne `[lms] pas une page album : N él., 1er=…` affiche le premier élément renvoyé par le serveur (à copier dans une issue).
+
 ## [2.12.3] — 2026-11-11
 
 ### Ajouté
@@ -425,6 +431,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
