@@ -11,6 +11,12 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - **Nouvelle « feuille » de menu jouable** : un item dont le sous-niveau est vide mais qui possède une URL de lecture est joué directement (utile pour les morceaux `hasitems` des feeds Qobuz).
 - Refactor : les branches cmd/item_id de la navigation partagent `lms_open_level()` (page album / lecture feuille / navigation + diagnostic).
 
+## [2.13.3] — 2026-11-11
+
+### Corrigé
+- **Page « album » : feeds Qobuz où chaque morceau est un répertoire** — certains feeds renvoient des morceaux `hasitems` SANS URL, l'URL de lecture étant un cran plus bas (dans un sous-niveau contenant exactement 1 item jouable). La navigation sonde désormais le premier morceau : si son sous-niveau est un morceau jouable, les URLs de TOUS les morceaux sont résolues (une requête chacune) et la page « album » complète s'ouvre. Une liste d'albums (sous-niveau de plusieurs éléments) échoue à la sonde et reste en navigation normale.
+- Journaux : `[lms] album « … » : N morceaux (URLs résolues un par un)`, et un message explicite si la résolution échoue en cours de route.
+
 ## [2.13.0] — 2026-11-11
 
 ### Ajouté
@@ -439,6 +445,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

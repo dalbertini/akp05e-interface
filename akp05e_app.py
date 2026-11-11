@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.2"
+APP_VERSION = "2.13.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1322,6 +1322,45 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
         print(f"[lms] album « {title} » : {len(av['tracks'])} morceaux")
         switch_page("lms_album")
         return True
+    if not av and items:
+        # v2.13.3 : feed Qobuz « morceaux-répertoires » — chaque morceau
+        # est un dossier (hasitems + isaudio, SANS url) contenant
+        # exactement 1 item jouable (l'url arrive un cran plus bas via
+        # want_url). SONDE : si le sous-niveau du 1er item est 1 morceau
+        # jouable, c'est une liste de morceaux -> on résout les urls de
+        # TOUS les items (1 requête chacun) -> page album complète. Une
+        # liste d'ALBUMS (sous-niveau = plusieurs éléments, p.ex. les 100
+        # « Nouveautés ») échoue à la sonde -> navigation normale.
+        cand = all(isinstance(x, dict) and x.get("isaudio")
+                   and x.get("hasitems") and x.get("id") is not None
+                   and not lms_item_go(x)[0] for x in items)
+        if cand and len(items) <= 200:
+            def _sub(x):
+                p = ([str(a) for a in (params or [])]
+                     + [f"item_id:{x['id']}"])
+                return lms.app_items(vp["id"], cmd, p)
+            sav = lms_album_view(_sub(items[0]))
+            if sav and len(sav["tracks"]) == 1:
+                urls, ok = list(sav["urls"]), True
+                for x in items[1:]:
+                    s = lms_album_view(_sub(x))
+                    if s and s["urls"]:
+                        urls.append(s["urls"][0])
+                    else:
+                        ok = False
+                        break
+                if ok:
+                    with lms_lock:
+                        lms_state["album"] = {"title": title,
+                                             "tracks": items,
+                                             "urls": urls,
+                                             "sel": 0, "off": 0}
+                    print(f"[lms] album « {title} » : {len(urls)} morceaux "
+                          "(URLs résolues un par un)")
+                    switch_page("lms_album")
+                    return True
+                print(f"[lms] album « {title} » : morceaux non résolus, "
+                      "navigation normale")
     if not items and url:
         lms.play_url(vp["id"], url)
         print(f"[lms] lecture : {title}")
