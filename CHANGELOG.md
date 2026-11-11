@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.2] — 2026-11-11
+
+### Corrigé
+- **Carrousel du bandeau : pilule « Accueil » avec l'icône d'une autre page sur les sous-pages LMS** — les sous-pages (lecteur, favoris, applis, navigation, album) ne font pas partie du cycle du carrousel : l'index retombait à 0 et la pilule affichait « Accueil »… avec l'icône de la sous-page réelle (haut-parleur du lecteur, pièce puzzle de la navigation), comme si les icônes changeaient toutes seules. La pilule affiche désormais la page ou la sous-page COURANTE (« Lecteur », « Applis », « Album »…), les voisines grises restant celles de l'ancre « LMS ».
+
 ## [2.14.1] — 2026-11-11
 
 ### Corrigé
@@ -496,6 +501,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
