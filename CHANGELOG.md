@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.10.1] — 2026-11-11
+
+### Corrigé
+- **VU-mètre encore visible sur les pages LMS et leurs sous-pages** (lecteur, favoris, applis, navigation) malgré la v2.10.0 : le bandeau recollait les pixels du VU en cache sans vérifier que la zone 3 devait bien l'afficher. Le recollage n'a désormais lieu que si la zone est « VU » — sur les pages LMS, la zone 3 affiche bien « K3 ».
+
 ## [2.10.0] — 2026-11-11
 
 ### Ajouté
@@ -371,6 +376,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.10.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/

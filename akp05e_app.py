@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.10.0"
+APP_VERSION = "2.10.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -603,7 +603,10 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     # (zéro scintillement quand un refresh volume/luminosité intervient,
     # et le fil VU n'a pas besoin de réenvoyer une frame juste après) —
     # sinon libellé libre
-    if _vu_active and _strip_last is not None:
+    if (_vu_active and extras[1] == "VU"
+            and _strip_last is not None):
+        # pages LMS : extras[1]=="K3" -> on NE recolle PAS
+        # le VU en cache, on affiche le libellé libre
         with _strip_last_lock:
             img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
     else:

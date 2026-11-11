@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.10.0 — Volume de la Squeezebox affichée partout (knob 1), retour accueil au knob 2, VU-mètre hors des pages LMS.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.10.1 — Volume de la Squeezebox affichée partout (knob 1), retour accueil au knob 2, VU-mètre réellement hors des pages LMS.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
