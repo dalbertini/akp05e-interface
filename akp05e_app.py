@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.10.3"
+APP_VERSION = "2.10.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2363,7 +2363,16 @@ def main():
         "label": "LMS", "icon": "speaker", "color": "#A5D6A7",
         "buttons": {str(i + 1): {"action": {"type": "lms_open_player",
                                             "index": i}} for i in range(6)},
-        "encoders": _enc_pages(),
+        # v2.10.4 : page principale LMS = knob 1 en volume SYSTÈME,
+        # comme à l'accueil (le lecteur n'est attaché qu'en sous-pages)
+        "encoders": {
+            "encoder_1_cw": {"action": {"type": "sysvolume", "dir": "up"}},
+            "encoder_1_ccw": {"action": {"type": "sysvolume",
+                                        "dir": "down"}},
+            "encoder_1_button": {"action": {"type": "sysvolume",
+                                           "dir": "mute"}},
+            **_enc_pages(),
+        },
     }
     pages["lms_player"] = {
         "label": "Lecteur", "icon": "speaker", "color": "#81C784",
@@ -2381,17 +2390,9 @@ def main():
                   "label": "Retour",
                   "action": {"type": "lms_back"}},
         },
-        "encoders": {
-            # v2.10.3 : page principale LMS = volume SYSTÈME, comme
-            # à l'accueil (le lecteur n'est attaché qu'en sous-pages,
-            # via l'interception dans handle())
-            "encoder_1_cw": {"action": {"type": "sysvolume", "dir": "up"}},
-            "encoder_1_ccw": {"action": {"type": "sysvolume",
-                                        "dir": "down"}},
-            "encoder_1_button": {"action": {"type": "sysvolume",
-                                           "dir": "mute"}},
-            **_enc_pages(),
-        },
+        # v2.10.4 : pas d'encoder_1 ici — l'interception dans handle()
+        # capte le knob 1 sur les sous-pages LMS (volume du lecteur affiché)
+        "encoders": _enc_pages(),
     }
     pages["lms_favs"] = {
         "label": "Favoris", "icon": "favorite", "color": "#FFF59D",
