@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.8.7 — LMS : navigation complète des applis (Radio Paradise, Qobuz) + affichage fiable au changement de page (fix des icônes obsolètes : les threads de rafraîchissement n'écrasent plus la page affichée).** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.9.0 — Touche horloge (liseré, heure + date FR), raccourci LMS dans le carrousel, icônes fiables au changement de page (v2.8.7).** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -122,7 +122,7 @@ python akp05e_app.py
 
 A default `akp05e_config.json` is created next to the script on first run; the icon font is downloaded once into `.icons_cache/`, then everything works offline. To get profile pages (including the Qobuz page), delete your old `akp05e_config.json` so it gets regenerated. Close the official Ajazz software first — both need exclusive HID access.
 
-Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page`, `timer` (0 = knob-3 adjustable duration), `stopwatch`, `timer_adjust` / `timer_start` (adjust / start the custom timer), `lms_power_all`, `lms_power_selected`, `lms_select_player`, `lms_playpause`, `lms_volume`, `lms_mute`, `lms_sync`, `lms_favorite`, `lms_open_player`, `lms_player_power`, `lms_player_playpause`, `lms_open_favs`, `lms_fav_press`, `lms_favs_scroll`, `lms_open_apps`, `lms_play_url`, `lms_back`, `lms_back_player` (Lyrion Media Server control). Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
+Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system volume, `dir`: `up`/`down`/`mute`, optional `step`), `volume` (media keys), `mediaplay`, `medianext`, `mediaprev`, `mediastop`, `brightness`, `brightness_toggle`, `page`, `timer` (0 = knob-3 adjustable duration), `stopwatch`, `clock` (touche horloge : heure + date), `timer_adjust` / `timer_start` (adjust / start the custom timer), `lms_power_all`, `lms_power_selected`, `lms_select_player`, `lms_playpause`, `lms_volume`, `lms_mute`, `lms_sync`, `lms_favorite`, `lms_open_player`, `lms_player_power`, `lms_player_playpause`, `lms_open_favs`, `lms_fav_press`, `lms_favs_scroll`, `lms_open_apps`, `lms_play_url`, `lms_back`, `lms_back_player` (Lyrion Media Server control). Events: `button_1`..`button_10`, `encoder_N_button`, `encoder_N_cw`, `encoder_N_ccw`.
 
 ## Protocol
 

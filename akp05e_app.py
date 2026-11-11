@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.7"
+APP_VERSION = "2.9.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1594,6 +1594,8 @@ def run_action(action, device):
         send_keys(["prev"])
     elif t == "mediastop":
         send_keys(["stop"])
+    elif t == "clock":
+        pass  # touche horloge : purement visuelle, rafraîchie par poll_clock
     elif t == "page":
         # bascule vers une autre page de profils (voir "pages" dans la config)
         cb = getattr(device, "on_page_change", None)
@@ -1698,14 +1700,9 @@ DEFAULT_CONFIG = {
       }
     },
     "5": {
-      "icon": "refresh",
-      "color": "#FFF59D",
-      "label": "F5",
       "action": {
-        "type": "keys",
-        "keys": [
-          "f5"
-        ]
+        "type": "clock",
+        "color": "#81D4FA"
       }
     }
   },
@@ -2386,11 +2383,13 @@ def main():
     LMS_PAGE_NAMES = ("lms", "lms_player", "lms_favs", "lms_apps",
                       "lms_browse")
 
-    # carrousel / knob 2 : les pages LMS en sont EXCLUES (accès direct
-    # par la touche « LMS » de l'accueil, navigation interne à LMS)
+    # carrousel / knob 2 : le raccourci « lms » (page d'accueil LMS) y
+    # figure quand LMS est configuré ; les sous-pages (lecteur, favoris,
+    # applis, navigation) restent en accès direct par navigation interne.
     page_names = (["accueil"] + [n for n in pages
                                  if n != "accueil"
-                                 and n not in LMS_PAGE_NAMES])
+                                 and n not in LMS_PAGE_NAMES]
+                  + (["lms"] if _lms_cfg.get("host") else []))
     current = {"name": config.get("page", "accueil")}
     # Génération de peinture : incrémentée à chaque changement de page.
     # Les threads de rafraîchissement (LMS, minuteurs, hardware, bandeau)
@@ -2428,6 +2427,10 @@ def main():
                 if (entry.get("action") or {}).get("type") == "stopwatch":
                     # touche chronomètre : rendu selon l'état du chrono
                     paint_chrono_state(n, entry)
+                    continue
+                if (entry.get("action") or {}).get("type") == "clock":
+                    # touche horloge : heure + date, rafraîchie par poll_clock
+                    paint_clock_button(n, entry)
                     continue
                 if str((entry.get("action") or {}).get("type")
                        or "").startswith("lms"):
@@ -2913,6 +2916,63 @@ def main():
             except Exception as e:
                 print(f"[erreur minuteur] {e}")
             time.sleep(0.25)
+
+    def paint_clock_button(n, entry):
+        """Touche horloge : liseré coloré double, heure HH:MM en grand,
+        date en français dessous — repeinte par poll_clock si nécessaire."""
+        col = parse_color(entry.get("color") or "#81D4FA",
+                          default=(129, 212, 250))
+        img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 18, 24))
+        d = ImageDraw.Draw(img)
+        # fond : léger dégradé vertical
+        for y in range(BUTTON_IMAGE_SIZE[1]):
+            mix = tuple(int(c * (1 - 0.22 * y / 112))
+                        for c in (16, 18, 24))
+            d.line([(0, y), (112, y)], fill=mix)
+        # liseré : cadre arrondi vif + halo discret en retrait
+        d.rounded_rectangle([3, 3, 108, 108], radius=16, outline=col,
+                            width=2)
+        d.rounded_rectangle([7, 7, 104, 104], radius=12,
+                            outline=tuple(int(c * 0.35) for c in col),
+                            width=1)
+        now = time.localtime()
+        try:
+            f_big = ImageFont.truetype("arial.ttf", 30)
+            f_date = ImageFont.truetype("arial.ttf", 13)
+        except OSError:
+            f_big = f_date = ImageFont.load_default()
+        d.text((56, 44), time.strftime("%H:%M", now), font=f_big,
+               fill=(240, 243, 248), anchor="mm")
+        jours = ("lun", "mar", "mer", "jeu", "ven", "sam", "dim")
+        mois = ("janv", "févr", "mars", "avr", "mai", "juin", "juil",
+                "août", "sept", "oct", "nov", "déc")
+        dstr = (f"{jours[now.tm_wday]}. {now.tm_mday} "
+                f"{mois[now.tm_mon - 1]}")
+        d.text((56, 84), dstr, font=f_date, fill=col, anchor="mm")
+        device.set_image(n, img)
+
+    def poll_clock():
+        """Rafraîchit la touche horloge de la page courante quand le
+        texte change (début de minute) — pas de trafic HID inutile."""
+        last_sig = None
+        while True:
+            try:
+                gen = page_paint["gen"]
+                page = page_cfg()
+                for bn, entry in (page.get("buttons") or {}).items():
+                    if (entry.get("action") or {}).get("type") != "clock":
+                        continue
+                    if page_paint["gen"] != gen:
+                        break  # page changée : ne pas écraser
+                    now = time.localtime()
+                    sig = (now.tm_hour, now.tm_min,
+                           now.tm_wday, now.tm_mday, now.tm_mon)
+                    if sig != last_sig:
+                        last_sig = sig
+                        paint_clock_button(int(bn), entry)
+            except Exception as e:
+                print(f"[erreur horloge] {e}")
+            time.sleep(1.0)
 
     device.on_brightness = lambda pct: refresh_strip()
     device.on_strip_refresh = refresh_strip
@@ -3539,6 +3599,7 @@ def main():
 
     threading.Thread(target=poll_hardware, daemon=True).start()
     threading.Thread(target=poll_timers, daemon=True).start()
+    threading.Thread(target=poll_clock, daemon=True).start()
     threading.Thread(target=poll_auto_pages, daemon=True).start()
     threading.Thread(target=poll_lms, daemon=True).start()
     if vu_on:

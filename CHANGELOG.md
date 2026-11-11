@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.9.0] — 2026-11-11
+
+### Ajouté
+- **Touche horloge** : nouvelle action `{"type": "clock", "color": "#81D4FA"}` — liseré arrondi double, heure `HH:MM` en grand et date en français (« mer. 11 nov. ») dessous. Repeinte automatiquement au changement de minute (aucun trafic HID inutile), protégée par la génération de peinture v2.8.7. Le clic est sans effet.
+
+### Modifié
+- **Le raccourci « LMS » entre dans le carrousel** (pilule du bandeau, knob 2, swipe) quand LMS est configuré ; les sous-pages LMS (lecteur, favoris, applis, navigation) restent en accès direct par navigation interne.
+- **La touche 5 « F5 / Rafraîchir » de l'accueil laisse place à l'horloge** dans la config par défaut (pour une config existante : remplacer la touche 5 par `{"action": {"type": "clock", "color": "#81D4FA"}}`).
 ## [2.8.7] — 2026-11-11
 
 ### Corrigé
@@ -338,6 +346,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.8.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
