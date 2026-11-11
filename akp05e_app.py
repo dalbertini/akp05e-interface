@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.8"
+APP_VERSION = "2.13.9"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -525,6 +525,9 @@ def draw_vu_zone(img, peak, hold, muted=False):
         d.rectangle([470, y0, 530, y1], fill=fill)
     if muted:
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
+
+_Z3_DIAG = {"warned": False}   # v2.13.9 : diag one-shot position zone 3
+
 
 def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
                pages=None, page_icon=None, page_color=None,
@@ -1677,7 +1680,14 @@ class LMSClient:
                 # v2.13.8 : position dans la liste en cours (1-based) et
                 # total des pistes — « 1/12 » sur la zone 3 du bandeau
                 "cur": _to_int(res.get("playlist_cur"), -1) + 1,
-                "tracks": _to_int(res.get("playlist_tracks"), 0)}
+                "tracks": _to_int(res.get("playlist_tracks"), 0),
+                "mode": str(res.get("mode") or "")}
+
+    def mode(self, player):
+        """Mode du lecteur : 'play', 'pause' ou 'stop' ('' si injoignable)
+        — v2.13.9 : tap zone 3 = pause/reprise pendant la lecture."""
+        res = self.request(player, ["status", "0", "1"])
+        return str(res.get("mode") or "") if isinstance(res, dict) else ""
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -3036,14 +3046,24 @@ def main():
                 pass
         if current["name"] in LMS_PAGE_NAMES:
             z3 = "K3"
-            # v2.13.8 : morceau en cours « i/N » si le lecteur affiché
-            # joue une liste d'au moins 2 pistes (album lancé via
-            # « ▶ Album »…) — sinon bouton Jouer l'album / Sélect.
+            # v2.13.9 : morceau en cours « i/N » si le lecteur affiché
+            # lit (ou met en pause) une liste d'au moins 2 pistes —
+            # sinon bouton Jouer l'album / Sélect.
             with lms_lock:
                 _pl = lms_state.get("playing")
-            if (_pl and _pl.get("tracks", 0) >= 2
-                    and 1 <= _pl.get("cur", 0) <= _pl["tracks"]):
-                z3 = f"{_pl['cur']}/{_pl['tracks']}"
+            _pos = ""
+            if _pl and _pl.get("tracks", 0) >= 2:
+                if 1 <= _pl.get("cur", 0) <= _pl["tracks"]:
+                    _pos = f"{_pl['cur']}/{_pl['tracks']}"
+                elif not _Z3_DIAG["warned"]:
+                    # v2.13.9 : pourquoi pas de position ? one-shot
+                    _Z3_DIAG["warned"] = True
+                    print(f"[lms] bandeau : position indisponible "
+                          f"(cur={_pl.get('cur')!r}, "
+                          f"tracks={_pl.get('tracks')!r}, "
+                          f"mode={_pl.get('mode')!r}) — copie cette ligne")
+            if _pos:
+                z3 = _pos
             elif current["name"] == "lms_browse":
                 with lms_lock:
                     lvl = (lms_state["browse"][-1]
@@ -3577,8 +3597,10 @@ def main():
                 vp["volume"] = v
             lms_state["viewed_muted"] = lms.mute_state(vp["id"])
             try:
+                # v2.13.9 : info maintenue aussi EN PAUSE (lecteur
+                # allumé) -> la zone 3 garde la position « i/N »
                 lms_state["playing"] = (lms.playing_info(vp["id"])
-                                        if vp.get("playing") else None)
+                                        if vp.get("power") else None)
             except Exception:
                 lms_state["playing"] = None
 
@@ -3991,8 +4013,17 @@ def main():
                 print(f"[lms] album entier : {len(urls)} morceaux "
                       f"sur {vp['name']}")
         elif t == "lms_play_level" and vp:
-            # v2.13.5 : zone 3 « ▶ Album » sur la page morceaux — joue
-            # TOUS les morceaux jouables du niveau de navigation courant
+            # v2.13.9 : zone 3 — EN LECTURE = pause, EN PAUSE = reprise,
+            # sinon (v2.13.5) joue TOUS les morceaux jouables du niveau
+            m = lms.mode(vp["id"])
+            if m == "play":
+                lms.playpause(vp["id"], True)
+                print(f"[lms] pause ({vp['name']})")
+                return
+            if m == "pause":
+                lms.playpause(vp["id"], False)
+                print(f"[lms] reprise ({vp['name']})")
+                return
             with lms_lock:
                 lvl = (lms_state["browse"][-1]
                        if lms_state["browse"] else None)

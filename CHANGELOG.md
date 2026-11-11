@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.9] — 2026-11-11
+
+### Ajouté
+- **Tap zone 3 = pause / reprise** : pendant la lecture d'un album, un tap sur la zone 3 met en pause (console `[lms] pause (…)`) ; un nouveau tap reprend ; lecteur arrêté = lancement de l'album complet comme avant.
+
+### Corrigé
+- **« i/N » désormais maintenu en pause** (l'info de lecture était coupée dès que le lecteur ne jouait plus) et **diagnostic one-shot** en console si la position du morceau reste indisponible (ligne `[lms] bandeau : position indisponible (cur=…, tracks=…, mode=…)` à copier en cas de problème).
+
 ## [2.13.8] — 2026-11-11
 
 ### Ajouté
@@ -476,6 +484,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

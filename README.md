@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.13.8 — Zone 3 du bandeau en pilule avec liseret bleu : « 3/12 » (morceau en cours) ou « Jouer l'album » depuis la page des morceaux ; tap tactile opérationnel pour les actions LMS ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.13.9 — Zone 3 du bandeau : pilule bleue « 3/12 » (morceau en cours) qui sert aussi de pause/reprise d'un tap ; « Jouer l'album » depuis la page des morceaux ; lecture directe d'un morceau au clic ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
