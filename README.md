@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.10.4 — Knob 1 = volume de la Squeezebox sur les pages du lecteur, volume système partout ailleurs (page principale LMS incluse) ; retour accueil au knob 2.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.11.0 — Écran d'infos version sur la touche horloge, accueil épuré, volume Squeezebox sur les pages du lecteur, retour accueil au knob 2.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

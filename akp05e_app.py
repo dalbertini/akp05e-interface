@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.10.4"
+APP_VERSION = "2.11.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1216,6 +1216,14 @@ def inject_home_lms_button(config):
     if not (config.get("lms") or {}).get("host"):
         return None
     acc = config.get("buttons")
+    # v2.11.0 : une touche « LMS » existe déjà -> ne pas en rajouter une
+    # (sinon elle squatterait le premier slot libre, p.ex. une touche
+    # d'accueil qu'on vient de retirer de la config)
+    if isinstance(acc, dict) and any(
+            ((e or {}).get("action") or {}).get("type") == "page"
+            and ((e or {}).get("action") or {}).get("page") == "lms"
+            for e in acc.values()):
+        return None
     if not isinstance(acc, dict):
         return None
     for i in range(1, 11):
@@ -1753,15 +1761,6 @@ DEFAULT_CONFIG = {
       "action": {
         "type": "url",
         "url": "https://github.com"
-      }
-    },
-    "4": {
-      "icon": "timer",
-      "color": "#FFCC80",
-      "label": "Minut.",
-      "action": {
-        "type": "page",
-        "page": "minuteurs"
       }
     },
     "5": {
@@ -2583,6 +2582,12 @@ def main():
                 except Exception as e:
                     print(f"[erreur chronomètre] {e}")
                 return
+            if t_act and t_act.get("type") == "clock":
+                # v2.11.0 : appui = écran d'infos version (easter egg),
+                # retour automatique à l'horloge après ~8 s
+                if ev.state:
+                    clock_show_info(ev.name.split("_")[1])
+                return
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
         # appui sur le knob 2 : RETOUR ACCUEIL, partout (v2.10.0)
@@ -3050,6 +3055,47 @@ def main():
         d.text((56, 84), dstr, font=f_date, fill=col, anchor="mm")
         device.set_image(n, img)
 
+    def paint_clock_info(n):
+        """Écran d'infos affiché quand on appuie sur la touche horloge
+        (v2.11.0) : version de l'application, licence, crédit — la touche
+        revient à l'horloge toute seule après ~8 s (poll_clock)."""
+        img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 18, 24))
+        d = ImageDraw.Draw(img)
+        for y in range(BUTTON_IMAGE_SIZE[1]):
+            mix = tuple(int(c * (1 - 0.22 * y / 112))
+                        for c in (16, 18, 24))
+            d.line([(0, y), (112, y)], fill=mix)
+        d.rounded_rectangle([3, 3, 108, 108], radius=16,
+                            outline=(129, 212, 250), width=2)
+        try:
+            f_tiny = ImageFont.truetype("arial.ttf", 11)
+            f_big = ImageFont.truetype("arial.ttf", 26)
+            f_small = ImageFont.truetype("arial.ttf", 12)
+        except OSError:
+            f_tiny = f_big = f_small = ImageFont.load_default()
+        d.text((56, 18), "AKP05E", font=f_small,
+               fill=(129, 212, 250), anchor="mm")
+        d.text((56, 44), f"v{APP_VERSION}", font=f_big,
+               fill=(240, 243, 248), anchor="mm")
+        d.text((56, 68), "open source - MIT", font=f_tiny,
+               fill=(176, 182, 192), anchor="mm")
+        d.text((56, 88), "avec Mistral AI", font=f_small,
+               fill=(129, 212, 250), anchor="mm")
+        device.set_image(n, img)
+
+    # état de l'écran d'infos horloge : touche, échéance, génération page
+    clock_info = {"btn": None, "until": 0.0, "gen": -1}
+
+    def clock_show_info(n_str):
+        """Appui sur la touche horloge : affiche l'écran d'infos version."""
+        try:
+            clock_info["gen"] = page_paint["gen"]
+            clock_info["btn"] = n_str
+            clock_info["until"] = time.monotonic() + 8.0
+            paint_clock_info(int(n_str))
+        except Exception as e:
+            print(f"[erreur infos horloge] {e}")
+
     def poll_clock():
         """Rafraîchit la touche horloge de la page courante quand le
         texte change (début de minute) — pas de trafic HID inutile."""
@@ -3058,9 +3104,24 @@ def main():
             try:
                 gen = page_paint["gen"]
                 page = page_cfg()
+                # écran d'infos (easter egg horloge) : retour auto
+                # à l'horloge après ~8 s, abandonné si la page a changé
+                if clock_info["btn"] is not None:
+                    expired = time.monotonic() >= clock_info["until"]
+                    if expired or page_paint["gen"] != clock_info["gen"]:
+                        if (expired and page_paint["gen"] == clock_info["gen"]
+                                and clock_info["btn"] in (page.get("buttons")
+                                                          or {})):
+                            entry = page["buttons"][clock_info["btn"]]
+                            if (entry.get("action") or {}).get("type") == "clock":
+                                paint_clock_button(int(clock_info["btn"]),
+                                                   entry)
+                        clock_info["btn"] = None
                 for bn, entry in (page.get("buttons") or {}).items():
                     if (entry.get("action") or {}).get("type") != "clock":
                         continue
+                    if bn == clock_info["btn"]:
+                        continue  # écran d'infos affiché : ne pas écraser
                     if page_paint["gen"] != gen:
                         break  # page changée : ne pas écraser
                     now = time.localtime()

@@ -3,6 +3,15 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.11.0] — 2026-11-11
+
+### Ajouté
+- **Écran d'infos caché sur la touche horloge** : un appui affiche la version de l'application, la licence (MIT) et un petit crédit — la touche revient automatiquement à l'horloge au bout de ~8 secondes.
+
+### Modifié
+- **Raccourci « Minut. » retiré de la page d'accueil** (nouvelles configurations) : la touche est éteinte ; la page des minuteurs reste entièrement accessible via le carrousel du knob 2. Les configurations existantes gardent leurs touches — supprimer simplement l'entrée correspondante dans `akp05e_config.json`.
+- **Touche « LMS » d'accueil : plus d'ajout automatique en double** — si une touche pointe déjà vers la page LMS, l'application n'en ajoute pas une seconde dans le premier emplacement libre.
+
 ## [2.10.4] — 2026-11-11
 
 ### Corrigé
@@ -391,6 +400,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.11.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
