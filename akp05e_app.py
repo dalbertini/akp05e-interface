@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.10.1"
+APP_VERSION = "2.10.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2585,10 +2585,12 @@ def main():
         if ev.name == "encoder_2_button":
             switch_page("accueil")
             return
-        # knob 1 : dès qu'un Squeezebox est affiché, sa rotation règle le
-        # volume de CE lecteur et son appui le muet — sur toutes les
-        # pages tant qu'on reste dessus (volume système sinon)
+        # knob 1 : sur les SOUS-PAGES LMS uniquement (lecteur, favoris,
+        # applis, navigation), la rotation règle le volume du lecteur
+        # AFFICHÉ et l'appui le muet. Partout ailleurs (accueil, page
+        # principale LMS, autres pages) : volume système (v2.10.2)
         if (ev.name.startswith("encoder_1") and lms.enabled
+                and current["name"] in LMS_PAGE_NAMES[1:]
                 and lms_viewed() is not None):
             a1 = {"encoder_1_cw": {"type": "lms_volume", "dir": "up"},
                   "encoder_1_ccw": {"type": "lms_volume", "dir": "down"},
@@ -2641,9 +2643,12 @@ def main():
         et nom de la page courante dans la zone 2."""
         gen = page_paint["gen"]
         vol, muted, vol_name = None, None, "Vol"
-        vp = lms_viewed()
+        # Squeezebox attachée UNIQUEMENT sur les sous-pages LMS (v2.10.2) ;
+        # ailleurs (accueil, page principale LMS...) : volume système
+        vp = (lms_viewed()
+              if current["name"] in LMS_PAGE_NAMES[1:] else None)
         if vp:
-            # Squeezebox affiché : SON volume sur le bandeau, toutes pages
+            # Squeezebox affichée : SON volume sur le bandeau, sous-pages LMS
             with lms_lock:
                 vol = vp["volume"]
                 muted = lms_state["viewed_muted"]

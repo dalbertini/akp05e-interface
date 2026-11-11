@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.10.2] — 2026-11-11
+
+### Corrigé
+- **Knob 1 : volume de la Squeezebox uniquement sur les sous-pages LMS** (lecteur, favoris, applis, navigation). Sur la page principale LMS et partout ailleurs (accueil, autres pages), le knob 1 et la zone 1 du bandeau tactile reviennent au volume général de Windows — y compris après un retour accueil au knob 2, qui ne reste plus bloqué sur « Vol SBT … ».
+
 ## [2.10.1] — 2026-11-11
 
 ### Corrigé
@@ -376,6 +381,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.10.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
