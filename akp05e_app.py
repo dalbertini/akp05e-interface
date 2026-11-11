@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.9.0"
+APP_VERSION = "2.9.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3039,6 +3039,7 @@ def main():
         label = entry.get("label") or ""
         btn_player = None  # lecteur représenté (pour le logo Touch/Radio)
         btn_audio = False  # élément de navigation jouable (morceau) ?
+        empty = False       # touche de liste sans contenu -> éteinte
         sub = ""
         bg, fg = (15, 15, 15), (240, 240, 240)
         with lms_lock:
@@ -3072,7 +3073,8 @@ def main():
                 else:
                     sub = "veille"
             else:
-                label, sub = "-", "(vide)"
+                label, sub = "", ""
+                empty = True
         elif t == "lms_player_id":
             btn_player = vp
             if vp:
@@ -3118,14 +3120,16 @@ def main():
                 else:
                     sub = "radio"
             else:
-                label, sub = "-", "(vide)"
+                label, sub = "", ""
+                empty = True
         elif t == "lms_app_press":
             i = apps_off + int((entry.get("action") or {}).get("slot", 0))
             if 0 <= i < len(apps_l):
                 label = apps_l[i]["name"]
                 sub = "appli"
             else:
-                label, sub = "-", "(vide)"
+                label, sub = "", ""
+                empty = True
         elif t == "lms_item_press":
             lvl = browse_l[-1] if browse_l else None
             i = browse_off + int((entry.get("action") or {}).get("slot", 0))
@@ -3135,7 +3139,8 @@ def main():
                 btn_audio = lms_item_go(it)[3]
                 sub = "lecture" if btn_audio else "dossier"
             else:
-                label, sub = "-", "(vide)"
+                label, sub = "", ""
+                empty = True
         elif t == "lms_power_all":
             on = sum(1 for q in players if q["power"])
             sub = f"{on}/{len(players)} allumés"
@@ -3191,6 +3196,11 @@ def main():
                     else "extension")
         elif t == "lms_item_press":
             icon = "music_note" if btn_audio else "folder_open"
+        if empty:
+            # liste épuisée : touche éteinte, propre (pas de « (vide) »)
+            device.set_image(n, Image.new("RGB", BUTTON_IMAGE_SIZE,
+                                          (12, 12, 12)))
+            return
         # boutons de navigation/applis : on garde leur icône statique
         if (t in ("lms_open_favs", "lms_open_apps", "lms_back",
                   "lms_back_player", "lms_play_url", "lms_browse_back")

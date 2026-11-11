@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.9.1] — 2026-11-11
+
+### Modifié
+- **Touches de liste LMS sans contenu = touches éteintes** : sur les pages Applis, Favoris, Navigation (et lecteurs au-delà de la liste), les emplacements sans élément n'affichent plus « - / (vide) » avec une icône — la touche est simplement éteinte (aplat noir, propre). Exemple : 3 applis installées (Radio Paradise, Qobuz, Effets sonores) → touches 4 à 9 éteintes, la touche 10 (Retour) reste inchangée.
 ## [2.9.0] — 2026-11-11
 
 ### Ajouté
@@ -347,6 +351,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.8.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
