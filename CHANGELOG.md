@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.8.7] — 2026-11-11
+
+### Corrigé
+- **Icônes obsolètes ou en doublon au changement de page** : les threads de rafraîchissement (LMS, minuteurs, chronomètre, capteurs HWiNFO, bandeau) vérifient la page AVANT de peindre, mais l'envoi des images arrivait APRÈS le changement de page — des touches gardaient alors des icônes de l'ancienne page. Nouveau mécanisme de « génération de peinture » : chaque changement de page invalide les peintures en cours et chaque thread abandonne l'envoi si la page a changé entre-temps (12 gardes).
 ## [2.8.6] — 2026-11-10
 
 ### Corrigé
@@ -333,6 +337,8 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.3.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.8.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
+ https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.8.6 — LMS : navigation complète des applis (Radio Paradise, Qobuz) + sortie propre au Ctrl+C (fix du fatal error CPython des threads démons).** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.8.7 — LMS : navigation complète des applis (Radio Paradise, Qobuz) + affichage fiable au changement de page (fix des icônes obsolètes : les threads de rafraîchissement n'écrasent plus la page affichée).** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

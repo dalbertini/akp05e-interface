@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.8.6"
+APP_VERSION = "2.8.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2392,6 +2392,12 @@ def main():
                                  if n != "accueil"
                                  and n not in LMS_PAGE_NAMES])
     current = {"name": config.get("page", "accueil")}
+    # Génération de peinture : incrémentée à chaque changement de page.
+    # Les threads de rafraîchissement (LMS, minuteurs, hardware, bandeau)
+    # capturent la génération avant de peindre et ABANDONNENT si la page
+    # a changé entre-temps — sinon des touches gardent des icônes de
+    # l'ancienne page (race peinture vs switch).
+    page_paint = {"gen": 0}
     vu_cfg = config.get("vu_meter") or {}
     vu_on = _HAS_PYCAW and bool(vu_cfg.get("enabled", True))
     global _vu_active
@@ -2405,7 +2411,10 @@ def main():
     def paint_page():
         """(Re)peint les 10 touches et le bandeau pour la page courante."""
         buttons = page_cfg().get("buttons") or {}
+        gen = page_paint["gen"]
         for n in range(1, 11):
+            if page_paint["gen"] != gen:
+                return  # page changée pendant la peinture : abandon
             entry = buttons.get(str(n))
             try:
                 if not entry:
@@ -2455,6 +2464,7 @@ def main():
             name = page_names[(i + (1 if name == "next" else -1))
                                % len(page_names)]
         if name == "accueil" or name in pages:
+            page_paint["gen"] += 1  # invalide les peintures en cours
             current["name"] = name
             print(f"[page] {name}")
             device._page_label = (page_cfg().get("label") or name)[:9]
@@ -2545,6 +2555,7 @@ def main():
     def refresh_strip():
         """Redessine le bandeau : volume système + luminosité en direct,
         et nom de la page courante dans la zone 2."""
+        gen = page_paint["gen"]
         vol, muted = None, None
         if current["name"] == "lms_player":
             vp = lms_viewed()
@@ -2575,6 +2586,8 @@ def main():
                 if current["name"] in pages else config)
         p_icon = meta.get("icon")
         p_color = parse_color(meta.get("color"), default=(129, 212, 250))
+        if page_paint["gen"] != gen:
+            return  # page changée : bandeau déjà repeint par le switch
         try:
             show_strip(device, device.brightness, volume=vol, muted=muted,
                        extras=extras, pages=pages_tri,
@@ -2856,6 +2869,7 @@ def main():
         last_sig = None
         while True:
             try:
+                gen = page_paint["gen"]
                 with timer_lock:
                     btn = timer_state["btn"]
                     running = timer_state["running"]
@@ -2876,6 +2890,8 @@ def main():
                         sig = (int(rem), alarm, blink if alarm else 0)
                         if sig != last_sig:
                             last_sig = sig
+                            if page_paint["gen"] != gen:
+                                continue  # page changée : ne pas écraser
                             if alarm and not blink:
                                 paint_timer_state(int(btn), entry,
                                                   status_override="idle")
@@ -2891,7 +2907,8 @@ def main():
                                 csig = int(chrono_elapsed() * 2)
                                 if csig != _chrono_last[0]:
                                     _chrono_last[0] = csig
-                                    paint_chrono_state(int(bn), e2)
+                                    if page_paint["gen"] == gen:
+                                        paint_chrono_state(int(bn), e2)
                             break
             except Exception as e:
                 print(f"[erreur minuteur] {e}")
@@ -3129,7 +3146,10 @@ def main():
     def paint_lms_page():
         """Repeint toutes les touches LMS de la page courante."""
         buttons = page_cfg().get("buttons") or {}
+        gen = page_paint["gen"]
         for bn, entry in buttons.items():
+            if page_paint["gen"] != gen:
+                return  # page changée pendant la peinture : abandon
             if str((entry.get("action") or {}).get("type")
                    or "").startswith("lms"):
                 try:
@@ -3485,6 +3505,7 @@ def main():
         while True:
             try:
                 page = page_cfg()
+                gen = page_paint["gen"]
                 hw_btns = {n: e for n, e in (page.get("buttons") or {}).items()
                            if "hw" in e}
                 if not hw_btns:
@@ -3501,6 +3522,8 @@ def main():
                     warned_off = False
                     thresholds = page.get("thresholds", [70, 85])
                     for n, entry in hw_btns.items():
+                        if page_paint["gen"] != gen:
+                            break  # page changée : ne pas écraser
                         r = hw_match(readings, entry["hw"])
                         if r is None and n not in warned_missing:
                             warned_missing.add(n)
