@@ -519,7 +519,6 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.10.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
- https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
