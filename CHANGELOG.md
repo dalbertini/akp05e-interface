@@ -8,6 +8,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Corrigé
 - **« i/N » : position du morceau enfin récupérée** — le serveur LMS ne renvoie pas toujours « playlist_cur » dans « status » (diagnostic utilisateur : cur absent, tracks présent). La lecture utilise désormais « status - 1 » (piste EN COURS, pas la première de la liste) avec l'URL (tags u), et un fallback « playlist index ? » pour la position.
 - **Tap zone 3 : pause/reprise réparée** — même cause racine : sans l'URL de la piste en cours, l'app ne pouvait pas reconnaître que l'album affiché était celui qui jouait et relançait l'album à chaque tap. L'URL de la piste courante est maintenant connue, donc le tap pause l'album affiché en lecture, reprend en pause, et lance un autre album sinon.
+
 ## [2.14.0] — 2026-11-11
 
 ### Corrigé
