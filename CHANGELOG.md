@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.6] — 2026-11-11
+
+### Corrigé
+- **Tap sur le bandeau tactile : les actions LMS ne s'exécutaient pas** (retour « Type d'action inconnu ») — le tap sur une zone appelait le distributeur d'actions générique, qui ne connaît pas les types `lms_*`. Il suit désormais le même routage que l'appui physique sur l'encodeur : les actions LMS vont au gestionnaire LMS. Concerne notamment « ▶ Jouer l'album » (zone 3) introduit en 2.13.5.
+
 ## [2.13.5] — 2026-11-11
 
 ### Ajouté
@@ -458,6 +463,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

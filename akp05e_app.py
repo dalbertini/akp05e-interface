@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.5"
+APP_VERSION = "2.13.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2891,7 +2891,13 @@ def main():
         enc = f"encoder_{zone}_button"
         action = page_cfg().get("encoders", {}).get(enc, {}).get("action")
         if action:
-            run_action(action, device)
+            # v2.13.6 : les actions lms_* sont gérées par lms_action, pas
+            # par run_action (qui ne les connaît pas) — le tap tactile
+            # suit le même routage que l'appui physique sur l'encodeur.
+            if str(action.get("type") or "").startswith("lms"):
+                lms_action(action)  # déjà dans un thread dédié
+            else:
+                run_action(action, device)
         elif zone == 2:
             switch_page("next")  # zone du carrousel sans action dédiée
 
