@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.13.2] — 2026-11-11
+
+### Corrigé
+- **Page « album » : détection et lecture enfin fonctionnelles avec les feeds sans URL (Qobuz)** — le serveur ne renvoie pas l'URL de lecture des morceaux par défaut : la navigation envoie désormais `want_url:1` (mécanisme xmlbrowser standard de LMS), ce qui fournit l'URL réelle de chaque morceau (`playlist play <url>`).
+- **Un item drillable (`hasitems`) n'est plus joué en direct** même s'il possède une URL — sinon le clic sur un album l'aurait lu sans jamais ouvrir la page « album ».
+- **Nouvelle « feuille » de menu jouable** : un item dont le sous-niveau est vide mais qui possède une URL de lecture est joué directement (utile pour les morceaux `hasitems` des feeds Qobuz).
+- Refactor : les branches cmd/item_id de la navigation partagent `lms_open_level()` (page album / lecture feuille / navigation + diagnostic).
+
 ## [2.13.0] — 2026-11-11
 
 ### Ajouté
@@ -431,6 +439,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.13.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.13.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

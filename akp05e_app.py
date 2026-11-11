@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.1"
+APP_VERSION = "2.13.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1302,6 +1302,40 @@ def lms_album_view(items):
     return {"tracks": tracks, "urls": urls} if tracks else None
 
 
+def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
+                   switch_page):
+    """Ouvre le sous-niveau d'un élément de navigation LMS (v2.13.2) :
+    page « album » si le sous-niveau est 100 % jouable ; lecture directe si
+    le sous-niveau est VIDE mais que l'élément a une URL de lecture
+    (« feuille » du menu, p.ex. un morceau hasitems d'un feed Qobuz) ;
+    sinon navigation répertoires normale + diagnostic. Factorise les
+    branches cmd/item_id de lms_item_press — testable isolément.
+    lms/lms_state/lms_lock/switch_page sont des FERMETURES de run_action :
+    ils sont passés explicitement (le helper est module-level)."""
+    items = lms.app_items(vp["id"], cmd, params)
+    title = str(it.get("name") or it.get("title") or "?")
+    av = lms_album_view(items)
+    if av:
+        with lms_lock:
+            lms_state["album"] = {"title": title, "tracks": av["tracks"],
+                                  "urls": av["urls"], "sel": 0, "off": 0}
+        print(f"[lms] album « {title} » : {len(av['tracks'])} morceaux")
+        switch_page("lms_album")
+        return True
+    if not items and url:
+        lms.play_url(vp["id"], url)
+        print(f"[lms] lecture : {title}")
+        return True
+    _d = items[0] if items else None
+    print("[lms] pas une page album : "
+          f"{len(items or [])} él., 1er={str(_d)[:200]}")
+    with lms_lock:
+        lms_state["browse"].append({"title": title, "items": items,
+                                    "cmd": cmd, "params": params})
+        lms_state["browse_offset"] = 0
+    return True
+
+
 def player_icon(player):
     """Logo d'un lecteur : tablet pour un Squeezebox Touch (écran tactile),
     radio pour un Squeezebox Radio, speaker sinon."""
@@ -1611,7 +1645,12 @@ class LMSClient:
         # ['radioparadise', '0', '100'] au lieu de [..., 'items', '0', '100'])
         if "items" not in words:
             words = words + ["items"]
-        base = [str(w) for w in words] + [str(start), str(count)]
+        # want_url:1 (v2.13.2) : demande à LMS l'URL de LECTURE de chaque
+        # item (playlist play <url>) — sans elle, les feeds Qobuz renvoient
+        # des morceaux SANS url (isaudio=1 mais rien à jouer) ; les tags
+        # inconnus sont ignorés par les plugins qui ne le gèrent pas.
+        base = ([str(w) for w in words]
+                + [str(start), str(count), "want_url:1"])
         if params is None:
             plist_ = []
         elif isinstance(params, (list, tuple)):
@@ -3756,35 +3795,17 @@ def main():
                   if lvl and 0 <= i < len(lvl["items"]) else None)
             if it:
                 url, cmd, params, playable = lms_item_go(it)
-                if playable and url:
+                # v2.13.2 : un item « hasitems » (drillable) n'est pas joué
+                # en direct même s'il a une URL — sinon le clic sur un ALBUM
+                # (qobuz renvoie des URLs d'album avec want_url) lirait
+                # l'album sans jamais ouvrir la page « album ».
+                if playable and url and not it.get("hasitems"):
                     lms.play_url(vp["id"], url)
                     print(f"[lms] lecture : "
                           f"{it.get('name') or it.get('title') or url}")
                 elif cmd:
-                    items = lms.app_items(vp["id"], cmd, params)
-                    av = lms_album_view(items)
-                    if av:
-                        # album : sous-niveau 100 % jouable -> page album
-                        with lms_lock:
-                            lms_state["album"] = {
-                                "title": str(it.get("name")
-                                             or it.get("title") or "?"),
-                                "tracks": av["tracks"], "urls": av["urls"],
-                                "sel": 0, "off": 0}
-                        print(f"[lms] album « {lms_state['album']['title']} »"
-                              f" : {len(av['tracks'])} morceaux")
-                        switch_page("lms_album")
-                    else:
-                        _d = items[0] if items else None
-                        print("[lms] pas une page album : "
-                              f"{len(items or [])} él., 1er={str(_d)[:200]}")
-                        with lms_lock:
-                            lms_state["browse"].append(
-                                {"title": str(it.get("name")
-                                              or it.get("title") or "?"),
-                                 "items": items,
-                                 "cmd": cmd, "params": params})
-                            lms_state["browse_offset"] = 0
+                    lms_open_level(vp, it, cmd, params, url,
+                                   lms, lms_state, lms_lock, switch_page)
                 elif lvl and it.get("id") is not None:
                     # dossier SANS cmd (diagnostic David : Main Mix,
                     # clés=[hasitems, id, isaudio, name, type]) :
@@ -3794,31 +3815,8 @@ def main():
                     if dcmd:
                         dparams = ([str(p) for p in (lvl.get("params") or [])]
                                    + [f"item_id:{it['id']}"])
-                        items = lms.app_items(vp["id"], dcmd, dparams)
-                        av = lms_album_view(items)
-                        if av:
-                            # album : sous-niveau 100 % jouable -> page album
-                            with lms_lock:
-                                lms_state["album"] = {
-                                    "title": str(it.get("name")
-                                                 or it.get("title") or "?"),
-                                    "tracks": av["tracks"],
-                                    "urls": av["urls"],
-                                    "sel": 0, "off": 0}
-                            print(f"[lms] album « {it.get('name')} » : "
-                                  f"{len(av['tracks'])} morceaux")
-                            switch_page("lms_album")
-                        else:
-                            _d = items[0] if items else None
-                            print("[lms] pas une page album : "
-                                  f"{len(items or [])} él., 1er={str(_d)[:200]}")
-                            with lms_lock:
-                                lms_state["browse"].append(
-                                    {"title": str(it.get("name")
-                                                  or it.get("title") or "?"),
-                                     "items": items,
-                                     "cmd": dcmd, "params": dparams})
-                                lms_state["browse_offset"] = 0
+                        lms_open_level(vp, it, dcmd, dparams, url,
+                                       lms, lms_state, lms_lock, switch_page)
                 else:
                     # diagnostic (comme les favoris v2.4) : à copier dans
                     # une conversation pour identifier le format du serveur
