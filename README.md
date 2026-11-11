@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.14.3 — artefacts « carrés de pixels » du bandeau corrigés (JPEG sous la limite firmware avec marge, déli inter-paquets adaptatif, diagnostic intégré) ; carrousel corrigé sur les sous-pages LMS ; pause/reprise de l'album affiché, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.14.4 — volume LMS instantané sur le bandeau (fini le lag de 2 s au knob 1), encodage du bandeau accéléré ; artefacts « carrés de pixels » corrigés, carrousel corrigé sur les sous-pages LMS, pause/reprise de l'album affiché, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

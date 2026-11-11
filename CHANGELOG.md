@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.4] — 2026-11-11
+
+### Corrigé
+- **Volume LMS : fin du lag de 2 secondes sur le bandeau** — tourner le knob 1 sur une sous-page LMS envoyait bien la commande au serveur, mais le bandeau n'affichait le nouveau volume qu'au prochain cycle de rafraîchissement (toutes les 2 s). Le bandeau se met maintenant à jour immédiatement (valeur optimiste + redessin sans attendre le poll, qui resynchronise l'état réel du serveur) ; idem pour le bouton muet.
+
+### Optimisé
+- **Encodage du bandeau : un seul passage par rafraîchissement** — la compression adaptative (2.14.3) retâtait jusqu'à 4 qualités à chaque redessin ; la dernière qualité valide est désormais mémorisée (rendu aussi plus stable visuellement).
+
 ## [2.14.3] — 2026-11-11
 
 ### Corrigé
@@ -506,6 +514,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -389,7 +389,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.3"
+APP_VERSION = "2.14.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -399,6 +399,7 @@ _strip_last = None        # dernière image RÉELLEMENT affichée (avec le VU)
 _strip_last_lock = threading.Lock()
 _vu_active = False        # levé par main() quand le fil VU tourne
 _strip_size_logged = False  # v2.14.3 : log one-shot taille JPEG bandeau
+_strip_last_quality = 80    # v2.14.4 : qualité JPEG bandeau mémorisée
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -917,15 +918,25 @@ class Akp05Device:
     def _pil_to_jpeg_capped(img, max_size=STRIP_MAX_JPEG):
         """Encode en JPEG en réduisant la qualité jusqu'à tenir sous
         max_size octets : un JPEG trop gros déborde du buffer du firmware
-        (le milieu du bandeau se corrompt)."""
+        (le milieu du bandeau se corrompt).
+        v2.14.4 : repart de la dernière qualité qui a tenu sous le cap —
+        en régime établi un SEUL encodage par repaint (au lieu de 2-4
+        essais) et un rendu visuel stable (pas de saut de qualité)."""
         import io
-        jpeg = None
-        for q in STRIP_JPEG_QUALITIES:
+        global _strip_last_quality
+        start = (_strip_last_quality
+                 if _strip_last_quality in STRIP_JPEG_QUALITIES
+                 else STRIP_JPEG_QUALITIES[0])
+        # la qualité mémorisée d'abord, puis les qualités INFÉRIEURES
+        # dans l'ordre (si l'image redevient plus grosse, on redescend)
+        order = [start] + [q for q in STRIP_JPEG_QUALITIES if q < start]
+        for q in order:
             buf = io.BytesIO()
             img.save(buf, format="JPEG", quality=q, optimize=True)
             jpeg = buf.getvalue()
             if len(jpeg) <= max_size:
-                break
+                _strip_last_quality = q
+                return jpeg
         return jpeg
 
     def set_image(self, button: int, img: Image.Image):
@@ -3919,9 +3930,23 @@ def main():
         tgt = (vp or sel) if current["name"] in LMS_PAGE_NAMES[1:] else sel
         if t == "lms_volume" and tgt:
             step = int(action.get("step", 5))
-            lms.volume(tgt["id"], step if action.get("dir") == "up" else -step)
+            d = step if action.get("dir") == "up" else -step
+            lms.volume(tgt["id"], d)
+            # v2.14.4 : le bandeau suivait le knob avec jusqu'à 2 s de
+            # retard (refresh seulement au cycle poll_lms) -> mise à
+            # jour OPTIMISTE + repaint immédiat ; le poll resynchronise
+            # le volume réel du serveur (lms_refresh_viewed)
+            with lms_lock:
+                tgt["volume"] = max(0, min(100, int(tgt.get("volume", 50)) + d))
+            if current["name"] in LMS_PAGE_NAMES[1:]:
+                refresh_strip()
         elif t == "lms_mute" and tgt:
             lms.mute_toggle(tgt["id"])
+            # v2.14.4 : idem, repaint immédiat de l'état muet
+            with lms_lock:
+                lms_state["viewed_muted"] = not lms_state["viewed_muted"]
+            if current["name"] in LMS_PAGE_NAMES[1:]:
+                refresh_strip()
         elif t == "lms_power_all":
             with lms_lock:
                 players = list(lms_state["players"])
