@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.9.2] — 2026-11-11
+
+### Corrigé
+- **Libellés tronqués sur les touches** (Radio Paradise : « World/Eclectic Mix », « Global Mix A (World/Eclectic) »…) : le texte est désormais découpé en 2 lignes équilibrées, la police s'ajuste automatiquement (20 → 11 px par crans de 1) jusqu'à ce que la plus large ligne tienne dans les 112 px, et un mot composé trop long est recoupé en 3 lignes au plancher. Aucun rafraîchissement supplémentaire : le rendu reste statique, donc aucun impact sur le débit HID.
 ## [2.9.1] — 2026-11-11
 
 ### Modifié
@@ -352,6 +356,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.8.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

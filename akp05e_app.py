@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.9.1"
+APP_VERSION = "2.9.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -943,6 +943,22 @@ class Akp05Device:
                 pass                      # hors ligne sans cache : texte seul
         # avec un logo le texte descend, le sous-titre aussi
         y0 = (60 if sub else 62) if icon else (44 if not sub else 38)
+        # v2.9.2 : le texte ne doit JAMAIS déborder des 112 px —
+        # découpage en 2 lignes équilibrées, puis police auto-ajustée
+        # (20 -> 14 px) jusqu'à ce que la plus large ligne tienne.
+        max_w = 100  # 6 px de marge de chaque côté
+
+        def _fnt(sz):
+            try:
+                return ImageFont.truetype("arial.ttf", sz)
+            except OSError:
+                return ImageFont.load_default()
+
+        def _tw(s, f):
+            bb = d.textbbox((0, 0), s, font=f)
+            return bb[2] - bb[0]
+
+        lines = [text]
         if len(text) > 8 and " " in text:
             # coupe au plus près du milieu pour équilibrer les 2 lignes
             words = text.split(" ")
@@ -952,11 +968,40 @@ class Akp05Device:
                 dist = abs(acc - (len(text) + 1) / 2)
                 if dist < best_d:
                     best_d, best = dist, acc
-            l1, l2 = text[:best].strip(), text[best:].strip()
-            d.text((56, y0 - 13), l1, font=font_big, fill=fg, anchor="mm")
-            d.text((56, y0 + 13), l2, font=font_big, fill=fg, anchor="mm")
+            lines = [text[:best].strip(), text[best:].strip()]
+        elif _tw(text, font_big) > max_w:
+            # mot unique trop long : coupe au milieu (jamais de débord)
+            m = max(1, len(text) // 2)
+            lines = [text[:m].strip(), text[m:].strip()]
+        size = 20
+        while True:
+            too = [l for l in lines if _tw(l, _fnt(size)) > max_w]
+            if not too:
+                break
+            if size > 11:
+                size -= 1
+                continue
+            # au plancher de police : recoupe la ligne la plus large
+            # au prorata de la place disponible (3 lignes max)
+            l = max(too, key=lambda x: _tw(x, _fnt(size)))
+            nchar = max(2, int(len(l) * max_w / _tw(l, _fnt(size))))
+            i = lines.index(l)
+            lines[i:i + 1] = [l[:nchar].strip(), l[nchar:].strip()]
+            if len(lines) > 3:
+                break
+        font_txt = _fnt(size)
+        if len(lines) == 1:
+            d.text((56, y0), lines[0], font=font_txt, fill=fg,
+                   anchor="mm")
+        elif len(lines) == 2:
+            d.text((56, y0 - 13), lines[0], font=font_txt, fill=fg,
+                   anchor="mm")
+            d.text((56, y0 + 13), lines[1], font=font_txt, fill=fg,
+                   anchor="mm")
         else:
-            d.text((56, y0), text, font=font_big, fill=fg, anchor="mm")
+            for j, l in enumerate(lines):
+                d.text((56, y0 - 16 + 16 * j), l, font=font_txt,
+                       fill=fg, anchor="mm")
         if sub:
             d.text((56, 92 if icon else 84), sub, font=font_small,
                    fill=(160, 160, 160), anchor="mm")

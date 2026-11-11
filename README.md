@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.9.1 — Touche horloge (liseré, heure + date FR), raccourci LMS dans le carrousel, touches de liste vides éteintes (pages LMS propres).** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.9.2 — Libellés des touches jamais tronqués (police auto-ajustée 20→11 px, 2-3 lignes), horloge, carrousel LMS, pages LMS propres.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
