@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.3] — 2026-11-11
+
+### Corrigé
+- **Bandeau tactile : artefacts « carrés de pixels » pendant la lecture** — après l'apparition de la pilule « ▶ Album » (bandeau enrichi : pilule à liseret, triangle, carrousel avec icône, noms de lecteur longs), le JPEG du bandeau frôlait la limite du buffer firmware : la zone 1 (fin du JPEG = gauche physique après rotation 180°) se corrompait en blocs, puis les artefacts se propageaient vers la zone 4 au fil des rafraîchissements (knob 1). Marge de sécurité : taille max abaissée de 12000 à 9000 octets, qualités de compression étendues (80→20), délai inter-paquets doublé (4 ms) pour les gros transferts, et une ligne de diagnostic « [bandeau] JPEG du bandeau : N octets » affichée au premier envoi.
+
 ## [2.14.2] — 2026-11-11
 
 ### Corrigé
@@ -501,6 +506,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
