@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.13.9"
+APP_VERSION = "2.14.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -526,7 +526,8 @@ def draw_vu_zone(img, peak, hold, muted=False):
     if muted:
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
 
-_Z3_DIAG = {"warned": False}   # v2.13.9 : diag one-shot position zone 3
+_Z3_DIAG = {"warned": False, "none": False, "err": False}
+# v2.13.9/2.14.0 : diagnostics one-shot position zone 3
 
 
 def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
@@ -3062,6 +3063,13 @@ def main():
                           f"(cur={_pl.get('cur')!r}, "
                           f"tracks={_pl.get('tracks')!r}, "
                           f"mode={_pl.get('mode')!r}) — copie cette ligne")
+            if (_pl is None and vp and vp.get("playing")
+                    and not _Z3_DIAG["none"]):
+                # v2.14.0 : le lecteur joue mais pas d'info -> one-shot
+                _Z3_DIAG["none"] = True
+                print(f"[lms] bandeau : pas d'info de lecture "
+                      f"(playing=None) pour {vp['name']!r} — "
+                      "copie cette ligne")
             if _pos:
                 z3 = _pos
             elif current["name"] == "lms_browse":
@@ -3601,8 +3609,12 @@ def main():
                 # allumé) -> la zone 3 garde la position « i/N »
                 lms_state["playing"] = (lms.playing_info(vp["id"])
                                         if vp.get("power") else None)
-            except Exception:
+            except Exception as e:
                 lms_state["playing"] = None
+                if not _Z3_DIAG["err"]:
+                    _Z3_DIAG["err"] = True
+                    print(f"[lms] playing_info a échoué : {e!r} — "
+                          "copie cette ligne")
 
     def paint_lms_button(n, entry):
         """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
@@ -4013,23 +4025,33 @@ def main():
                 print(f"[lms] album entier : {len(urls)} morceaux "
                       f"sur {vp['name']}")
         elif t == "lms_play_level" and vp:
-            # v2.13.9 : zone 3 — EN LECTURE = pause, EN PAUSE = reprise,
-            # sinon (v2.13.5) joue TOUS les morceaux jouables du niveau
-            m = lms.mode(vp["id"])
-            if m == "play":
-                lms.playpause(vp["id"], True)
-                print(f"[lms] pause ({vp['name']})")
-                return
-            if m == "pause":
-                lms.playpause(vp["id"], False)
-                print(f"[lms] reprise ({vp['name']})")
-                return
+            # v2.14.0 : zone 3 — pause/reprise UNIQUEMENT si la piste en
+            # cours appartient au NIVEAU AFFICHÉ (sinon album2 lance
+            # album2 même si album1 joue) ; autre contenu ou lecteur
+            # arrêté -> lancement du niveau complet (v2.13.5)
             with lms_lock:
                 lvl = (lms_state["browse"][-1]
                        if lms_state["browse"] else None)
                 items = list(lvl["items"]) if lvl else []
                 title = lvl["title"] if lvl else "?"
+                _pl = lms_state.get("playing")
             urls = lms_level_urls(items)
+            if _pl and _pl.get("url"):
+                _pu = _url_key(_pl.get("url"))
+            else:
+                _pi = lms.playing_info(vp["id"]) if lms.enabled else None
+                _pu = _url_key(_pi.get("url")) if _pi else ""
+            _in = bool(urls and _pu
+                       and _pu in {_url_key(u) for u in urls})
+            m = lms.mode(vp["id"])
+            if _in and m == "play":
+                lms.playpause(vp["id"], True)
+                print(f"[lms] pause ({vp['name']})")
+                return
+            if _in and m == "pause":
+                lms.playpause(vp["id"], False)
+                print(f"[lms] reprise ({vp['name']})")
+                return
             if len(urls) >= 2:
                 lms.play_url(vp["id"], urls[0])
                 for u in urls[1:]:
