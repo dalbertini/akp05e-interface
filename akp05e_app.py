@@ -95,6 +95,11 @@ si le serveur ne renvoie pas ses favoris) :
   "lms": {"host": "...", "radios": [{"name": "FIP",
                                      "url": "http://fip.fr/fip.aac"}]}
 API JSON-RPC de LMS, stdlib uniquement — hôte vide = désactivé.
+CONFIGURATION ASSISTÉE : `python akp05e_app.py --setup-lms` détecte
+automatiquement le serveur Lyrion sur le réseau local (découverte
+Squeezebox : broadcast UDP 3483), vérifie la connexion et enregistre
+son adresse dans akp05e_config.json — l'application démarre ensuite
+normalement avec la nouvelle configuration.
 Une page supplémentaire est fournie par défaut : "qobuz" (play/stop/suiv./
 prec./mute + retour accueil), pilotée par les touches média système (SMTC) —
 fonctionne avec Qobuz, Spotify, VLC, etc.
@@ -115,6 +120,7 @@ désactivable via {"vu_meter": {"enabled": false}} dans la config."""
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -380,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.11.0"
+APP_VERSION = "2.12.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2329,6 +2335,119 @@ def load_config():
         return json.load(f)
 
 # ---------------------------------------------------------------------------
+# Configuration assistée LMS (--setup-lms) — v2.12.0
+# ---------------------------------------------------------------------------
+_RE_LMS_IPAD = re.compile(r"IPAD:(\d{1,3}(?:\.\d{1,3}){3})")
+_RE_LMS_JSONPORT = re.compile(r"JSON:(\d+)")
+
+def lms_discover(timeout=2.0):
+    """Découverte des serveurs Lyrion Media Server sur le réseau local.
+    Protocole officiel Squeezebox : un datagramme « e » en broadcast UDP
+    sur le port 3483 ; chaque serveur répond avec son adresse (IPAD:)
+    et son port JSON (JSON:). Renvoie une liste [(ip, port)] uniques.
+    Retour de secours : liste vide si aucun serveur ou pas de réseau."""
+    out, seen = [], set()
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.settimeout(timeout)
+        sock.sendto(b"e", ("255.255.255.255", 3483))
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                data, _addr = sock.recvfrom(2048)
+            except socket.timeout:
+                break
+            txt = data.decode("latin-1", "ignore")
+            mip = _RE_LMS_IPAD.search(txt)
+            if not mip:
+                continue
+            ip = mip.group(1)
+            mp = _RE_LMS_JSONPORT.search(txt)
+            port = int(mp.group(1)) if mp else 9000
+            if (ip, port) not in seen:
+                seen.add((ip, port))
+                out.append((ip, port))
+    except Exception as e:
+        print(f"[lms] découverte réseau impossible : {e}")
+    finally:
+        if sock:
+            try:
+                sock.close()
+            except Exception:
+                pass
+    return out
+
+def lms_check_server(host, port=9000):
+    """Vérifie qu'un serveur LMS répond à cette adresse (compte les
+    lecteurs). Renvoie (True, nb_lecteurs) si joignable, sinon
+    (False, message)."""
+    cli = LMSClient(host, port, timeout=3.0)
+    res = cli.request("", ["players", 0, 50])
+    if res is None:
+        return False, "sans réponse"
+    return True, len(res.get("players_loop") or [])
+
+def run_setup_lms(config, _input=input):
+    """Assistant --setup-lms : état actuel, découverte réseau, choix
+    (Entrée = accepter le serveur détecté), vérification, puis
+    enregistrement dans akp05e_config.json. L'application continue
+    ensuite son démarrage avec la nouvelle configuration."""
+    print("\n=== Configuration Lyrion Media Server (LMS) ===")
+    lms_cfg = config.get("lms")
+    if not isinstance(lms_cfg, dict):
+        lms_cfg = dict(DEFAULT_CONFIG.get("lms") or {})
+        config["lms"] = lms_cfg
+    cur = lms_cfg.get("host") or ""
+    if cur:
+        ok, info = lms_check_server(cur, lms_cfg.get("port", 9000))
+        st = f"OK ({info} lecteurs)" if ok else str(info)
+        print(f"Serveur actuel : {cur}:{lms_cfg.get('port', 9000)} — {st}")
+    print("Recherche d'un serveur Lyrion sur le réseau local (~2 s)...")
+    found = lms_discover()
+    valid = []
+    for ip, port in found:
+        ok, info = lms_check_server(ip, port)
+        st = f"OK ({info} lecteurs)" if ok else str(info)
+        print(f"  trouvé : {ip}:{port} — {st}")
+        if ok:
+            valid.append((ip, port))
+    choice = ""
+    if valid:
+        d_ip, d_port = valid[0]
+        raw = _input(f"Utiliser {d_ip}:{d_port} ? "
+                     "(Entrée = oui, sinon autre IP ou IP:port) : ").strip()
+        choice = raw or d_ip
+    else:
+        choice = _input("Aucun serveur détecté. Adresse IP du serveur LMS "
+                        "(ex. 192.168.1.24 ou vide pour annuler) : ").strip()
+    if not choice:
+        print("Configuration inchangée.")
+        return
+    host = choice
+    port = 9000
+    if ":" in choice:
+        host, _, ps = choice.partition(":")
+        if ps.strip().isdigit():
+            port = int(ps.strip())
+    ok, info = lms_check_server(host, port)
+    if not ok:
+        print(f"  {host}:{port} ne répond pas ({info}) — configuration "
+              "inchangée.")
+        return
+    lms_cfg["host"] = host
+    lms_cfg["port"] = port
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        print(f"✔ Serveur Lyrion enregistré : {host}:{port} "
+              f"({info} lecteurs) dans {os.path.basename(CONFIG_PATH)}")
+    except Exception as e:
+        print(f"Impossible d'enregistrer la config ({e}) — l'adresse "
+              f"{host}:{port} reste active pour cette session.")
+
+# ---------------------------------------------------------------------------
 # Point d'entrée
 # ---------------------------------------------------------------------------
 def main():
@@ -2336,6 +2455,10 @@ def main():
         run_list_sensors()
         return
     config = load_config()
+    if "--setup-lms" in sys.argv:
+        # assistant : détecte le serveur Lyrion, l'enregistre dans la
+        # config, puis le démarrage continue normalement avec (v2.12.0)
+        run_setup_lms(config)
     device = Akp05Device(brightness=config.get("brightness", DEFAULT_BRIGHTNESS))
 
     # --- pages de profils : "accueil" = la config classique, les pages
@@ -3140,6 +3263,9 @@ def main():
     # --- LYRION MEDIA SERVER (LMS / Squeezebox) --------------------------
     lms = LMSClient((config.get("lms") or {}).get("host", ""),
                     (config.get("lms") or {}).get("port", 9000))
+    if not lms.enabled:
+        print("[lms] LMS non configuré — pour détecter votre serveur "
+              "Lyrion :  python akp05e_app.py --setup-lms")
     lms_state = {"players": [],       # lecteurs découverts (poll)
                  "favorites": [],     # favoris radios LMS
                  "selected": 0,       # index du lecteur sélectionné

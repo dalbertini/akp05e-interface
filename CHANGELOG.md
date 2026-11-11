@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.12.0] — 2026-11-11
+
+### Ajouté
+- **Assistant de configuration LMS `--setup-lms`** : `python akp05e_app.py --setup-lms` détecte automatiquement le serveur Lyrian Media Server sur le réseau local (découverte Squeezebox : broadcast UDP 3483), vérifie la connexion (nombre de lecteurs), propose le serveur trouvé ou accepte une saisie manuelle (IP ou IP:port), puis enregistre l'adresse dans `akp05e_config.json` — l'application démarre ensuite normalement. Au lancement, un indice rappelle la commande si LMS n'est pas configuré. Plus besoin d'éditer le JSON à la main.
+
 ## [2.11.0] — 2026-11-11
 
 ### Ajouté
@@ -400,6 +405,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.12.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.11.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
