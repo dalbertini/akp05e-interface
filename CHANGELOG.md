@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.12.3] — 2026-11-11
+
+### Ajouté
+- **Support du mode compilé (EXE PyInstaller)** : une fois l'application figée en `.exe`, la configuration (`akp05e_config.json`) et le cache d'icônes (`.icons_cache/`) sont rangés **à côté de l'EXE** — plus dans le dossier temporaire interne de PyInstaller, qui était effacé à chaque lancement.
+
 ## [2.12.2] — 2026-11-11
 
 ### Corrigé
@@ -415,6 +420,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.12.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.12.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

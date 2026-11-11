@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.12.2 — Configuration LMS assistée (`--setup-lms` : détection automatique du serveur Lyrian sur le réseau), écran d'infos version sur la touche horloge, accueil épuré.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.12.3 — Configuration LMS assistée (`--setup-lms`), support du mode compilé (EXE PyInstaller), écran d'infos version sur la touche horloge, accueil épuré.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -106,6 +106,22 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Configurable actions** via `akp05e_config.json`: launch programs, open URLs, keyboard shortcuts, type text, run commands, system volume, media, brightness, page switching
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling
+
+## EXE compilé (optionnel)
+
+Pour utiliser l'application sans installer Python (Windows) :
+
+```bash
+python -m pip install pyinstaller
+python -m PyInstaller --onefile --name akp05e_interface ^
+  --collect-all pywinusb --collect-all comtypes --collect-all pycaw akp05e_app.py
+```
+
+L'EXE est produit dans `dist/akp05e_interface.exe`. La configuration
+(`akp05e_config.json`) et le cache d'icônes (`.icons_cache/`) se créent
+automatiquement **à côté de l'EXE** (v2.12.3). Compter ~40–60 Mo — Windows
+SmartScreen peut signaler l'EXE non signé (« Informations complémentaires →
+Exécuter quand même »).
 
 ## Screenshots
 

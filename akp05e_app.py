@@ -386,7 +386,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.12.2"
+APP_VERSION = "2.12.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -422,7 +422,12 @@ KEY_DOWN, KEY_UP = 1, 0
 # Téléchargée et mise en cache au premier usage dans .icons_cache/,
 # puis totalement hors ligne. Noms disponibles : https://fonts.google.com/icons
 # ---------------------------------------------------------------------------
-ICON_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".icons_cache")
+# Dossier d'installation : à côté de l'EXE si compilé (PyInstaller met
+# __file__ dans un dossier temporaire _MEIPASS), sinon à côté du script.
+_APP_BASE = (os.path.dirname(sys.executable)
+             if getattr(sys, "frozen", False)
+             else os.path.dirname(os.path.abspath(__file__)))
+ICON_CACHE = os.path.join(_APP_BASE, ".icons_cache")
 ICON_FONT_URL = ("https://github.com/google/material-design-icons/"
                  "raw/master/font/MaterialIcons-Regular.ttf")
 ICON_CODEPOINTS_URL = ("https://github.com/google/material-design-icons/"
@@ -2322,8 +2327,7 @@ DEFAULT_CONFIG = {
   "color": "#80CBC4"
 }
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "akp05e_config.json")
+CONFIG_PATH = os.path.join(_APP_BASE, "akp05e_config.json")
 
 def load_config():
     if not os.path.exists(CONFIG_PATH):
