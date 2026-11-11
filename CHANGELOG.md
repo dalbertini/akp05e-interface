@@ -3,6 +3,10 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.9.3] — 2026-11-11
+
+### Corrigé
+- **« [erreur lms peinture] 'NoneType' object has no attribute 'find_output_reports' » au quit** : à la fermeture (Ctrl+C), `device.close()` met le périphérique HID à `None`, mais les threads démons de rafraîchissement (poll LMS toutes les 2 s, minuteurs…) pouvaient encore tenter une peinture pendant le shutdown. L'envoi HID (`_send`) devient un no-op silencieux quand le deck est fermé — plus d'erreur ni de traceback à la sortie, en complément du correctif v2.8.6.
 ## [2.9.2] — 2026-11-11
 
 ### Corrigé
@@ -357,6 +361,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.9.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
  https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.8.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.9.2"
+APP_VERSION = "2.9.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -761,6 +761,10 @@ class Akp05Device:
             self.dev = None
 
     def _send(self, data):
+        if getattr(self, "dev", None) is None:
+            return  # deck fermé (Ctrl+C) : no-op silencieux — les
+            # threads démons (poll_lms…) peuvent encore peindre un
+            # instant pendant le shutdown, sans erreur ni traceback
         reports = self.dev.find_output_reports()
         if not reports:
             raise IOError("Aucun rapport de sortie HID.")
