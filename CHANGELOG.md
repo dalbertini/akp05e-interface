@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.10.3] — 2026-11-11
+
+### Corrigé
+- **Page principale LMS : la rotation du knob 1 ne changeait pas le volume général** — la page mappait le knob 1 sur le volume du lecteur LMS « sélectionné », souvent absent. Le knob 1 pilote désormais le volume système (rotation et appui/muet), à l'identique de l'accueil ; le volume de la squeezebox reste réservé aux pages du lecteur (lecteur, favoris, applis, navigation).
+
 ## [2.10.2] — 2026-11-11
 
 ### Corrigé
@@ -381,6 +386,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.10.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.10.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

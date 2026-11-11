@@ -380,7 +380,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 12000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.10.2"
+APP_VERSION = "2.10.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2382,11 +2382,14 @@ def main():
                   "action": {"type": "lms_back"}},
         },
         "encoders": {
-            "encoder_1_cw": {"action": {"type": "lms_volume", "dir": "up",
-                                        "step": 5}},
-            "encoder_1_ccw": {"action": {"type": "lms_volume", "dir": "down",
-                                        "step": 5}},
-            "encoder_1_button": {"action": {"type": "lms_mute"}},
+            # v2.10.3 : page principale LMS = volume SYSTÈME, comme
+            # à l'accueil (le lecteur n'est attaché qu'en sous-pages,
+            # via l'interception dans handle())
+            "encoder_1_cw": {"action": {"type": "sysvolume", "dir": "up"}},
+            "encoder_1_ccw": {"action": {"type": "sysvolume",
+                                        "dir": "down"}},
+            "encoder_1_button": {"action": {"type": "sysvolume",
+                                           "dir": "mute"}},
             **_enc_pages(),
         },
     }
