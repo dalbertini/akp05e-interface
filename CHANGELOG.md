@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.6] — 2026-11-12
+
+### Revenu en arrière
+- **Page Hardware : retour à l'affichage sans décimale** — testé sur le deck, le format « 45.7 °C » était moins lisible que « 46 °C » et les capteurs progressent par paliers de 0,5 : la demi-unité n'apportait rien. Le format de la 2.14.4 est restauré (décimale uniquement sous 9,95).
+
 ## [2.14.5] — 2026-11-12
 
 ### Modifié
@@ -519,6 +524,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

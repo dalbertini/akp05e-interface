@@ -389,7 +389,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.5"
+APP_VERSION = "2.14.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -695,8 +695,8 @@ def paint_hw_button(device, button, label, reading, thresholds=(70, 85)):
                 col = (255, 213, 79)
             else:
                 col = (239, 83, 80)
-        # v2.14.5 : toujours un chiffre après la virgule (45.7 °C)
-        txt = f"{v:.1f}"
+        # v2.14.6 : retour au format 2.14.4 (décimale seulement < 9,95)
+        txt = f"{v:.0f}" if abs(v) >= 9.95 else f"{v:.1f}"
         d.text((56, 66), txt, font=f_big, fill=col, anchor="mm")
         if reading["unit"]:
             d.text((56, 98), reading["unit"], font=f_unit,
