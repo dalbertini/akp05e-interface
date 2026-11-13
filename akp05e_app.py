@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.18.3"
+APP_VERSION = "2.18.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3350,13 +3350,27 @@ def _hidd_get_feature(handle, report_id, size):
     firmware répond au GET_REPORT : DeckBridge/mirajazz lisent le feature
     report id 0x01 (~20 octets) via hid_get_feature_report, qui appelle
     HidD_GetFeature sous le capot. Renvoie les octets lus ou None."""
+    return _hid_call("HidD_GetFeature", handle, report_id, size)
+
+
+def _hidd_get_input_report(handle, report_id, size):
+    """GET_REPORT sur le report INPUT : HidD_GetInputReport — dernière
+    piste documentée (ajazz-control-center : « the VER response is pulled
+    via GET_REPORT (HIDIOCGINPUT/HIDIOCGFEATURE) »). Renvoie les octets
+    lus ou None."""
+    return _hid_call("HidD_GetInputReport", handle, report_id, size)
+
+
+def _hid_call(api, handle, report_id, size):
+    """Appel direct d'une API GET_REPORT de hid.dll (sans passer par le
+    descripteur HID). Renvoie les octets lus ou None."""
     global _HID_DIRECT_DLL
     if not handle:
         return None
     try:
         if _HID_DIRECT_DLL is None:
             _HID_DIRECT_DLL = ctypes.WinDLL("hid.dll")
-        fn = _HID_DIRECT_DLL.HidD_GetFeature
+        fn = getattr(_HID_DIRECT_DLL, api)
         fn.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
         fn.restype = ctypes.c_int
     except Exception:
@@ -3457,22 +3471,52 @@ def run_identify():
         # 0x01 (DeckBridge/mirajazz), puis 0x00, avec des tailles
         # croissantes (la longueur exacte est imposée par HidD_GetFeature).
         if not results:
-            handle = getattr(target, "hid_handle", None)
+            # v2.18.4 : handle robuste (nom d'attribut selon la version de
+            # pywinusb), puis GET_REPORT Feature, puis GET_REPORT Input
+            # (dernière piste documentée : HIDIOCGINPUT), et diagnostic
+            # d'échec pour que le test réel tranche définitivement.
+            handle = None
+            for attr in ("hid_handle", "_hid_handle", "handle"):
+                v = getattr(target, attr, None)
+                if v:
+                    handle = v
+                    break
             caps = getattr(target, "capabilities", None)
             frbl = int(getattr(caps, "FeatureReportByteLength", 0) or 0)
-            sizes = []
+            irbl = int(getattr(caps, "InputReportByteLength", 0) or 0)
+            sizes_f, sizes_i = [], []
             for s in (frbl, frbl + 1, 21, 33, 65, 129, 257, 513):
-                if 1 <= s and s not in sizes:
-                    sizes.append(s)
+                if 1 <= s and s not in sizes_f:
+                    sizes_f.append(s)
+            for s in (irbl, irbl + 1, 33, 65, 129, 257, 513, 1025):
+                if 1 <= s and s not in sizes_i:
+                    sizes_i.append(s)
             seen = set()
+            tried = 0
             for rid in (0x01, 0x00):
-                for size in sizes:
+                for size in sizes_f:
+                    tried += 1
                     raw = _hidd_get_feature(handle, rid, size)
                     if raw and raw not in seen:
                         seen.add(raw)
                         results.append(raw)
                 if seen:
                     break
+            if not results:
+                for rid in (0x00, 0x01):
+                    for size in sizes_i:
+                        tried += 1
+                        raw = _hidd_get_input_report(handle, rid, size)
+                        if raw and raw not in seen:
+                            seen.add(raw)
+                            results.append(raw)
+                    if seen:
+                        break
+            if not results:
+                print("GET_REPORT direct : aucune réponse sur %d essais "
+                      "(handle=%s, FeatureReportByteLength=%d, "
+                      "InputReportByteLength=%d)." %
+                      (tried, "OK" if handle else "ABSENT", frbl, irbl))
         if results:
             print("Feature report(s) lu(s) (%s) — COPIE CES LIGNES :"
                   % stage)

@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.18.4] — 2026-11-13
+
+### Corrigé
+- **`--identify` : `HidD_GetFeature` ne répond pas non plus** (test réel v2.18.3 : aucune ligne « Feature report », aucune erreur — toutes les combinaisons report ID / taille ont échoué). Dernière piste documentée : ajazz-control-center précise que la réponse `VER` se lit via GET_REPORT **`HIDIOCGINPUT`/`HIDIOCGFEATURE`** — soit aussi le report **INPUT**. Le mode tente donc désormais `HidD_GetInputReport` (report IDs `0x00` puis `0x01`, tailles selon `InputReportByteLength` puis 33→1025) après l'échec des feature reports, avec un handle robuste (`hid_handle`/`_hid_handle`/`handle` selon la version de pywinusb). Si tout échoue, une ligne de diagnostic est affichée (« GET_REPORT direct : aucune réponse sur N essais (handle=…, FeatureReportByteLength=…, InputReportByteLength=…) ») pour que le résultat soit définitivement documenté dans un rapport de bug.
+
 ## [2.18.3] — 2026-11-13
 
 ### Corrigé
@@ -605,6 +610,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.18.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

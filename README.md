@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.18.3 --identify : GET_REPORT direct HidD_GetFeature pour la version firmware (matériel + firmware exacts) ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.18.4 --identify : GET_REPORT Feature + Input (HidD_GetFeature / HidD_GetInputReport) avec diagnostic complet ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
