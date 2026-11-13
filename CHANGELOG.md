@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.18.1] — 2026-11-13
+
+### Corrigé
+- **`--identify` : le `VER` seul reste muet** (test réel : aucune réponse, pas même un ACK) — la référence ajazz-control-center parle d'un « CRT VER handshake » ayant répondu `V3.AKP05E.01.007` sur un AKP05E de série. Le mode tente désormais 3 handshakes : `VER` direct au boot, puis `DIS` → `VER` (après initialisation), puis `CONNECT` → `VER` (après keepalive), et s'arrête au premier qui répond. Premier test réel : le deck de David se présente comme « HOTSPOTEKUSB HID DEMO » (fabricant USB HOTSPOTEK — confirmant l'origine Mirabox/HOTSPOTEK), n° de série `C771C778173B`.
+
 ## [2.18.0] — 2026-11-13
 
 ### Ajouté
@@ -590,6 +595,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.18.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

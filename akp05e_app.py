@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.18.0"
+APP_VERSION = "2.18.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3396,31 +3396,53 @@ def run_identify():
         print("Ouverture impossible : %s — ferme le logiciel AJAZZ/Mirabox "
               "officiel (accès HID exclusif) et réessaie." % e)
         return
-    print("Interrogation du firmware (commande VER)…")
+    print("Interrogation du firmware (commande VER, 3 handshakes)…")
     dev = Akp05Device(brightness=DEFAULT_BRIGHTNESS)
     dev.dev = target
+    # v2.18.1 : le VER seul est resté muet chez David — le firmware exige
+    # un contexte (cf. ajazz-control-center : « live CRT VER handshake »
+    # ayant répondu 'V3.AKP05E.01.007' sur un AKP05E de série). On tente :
+    # VER au boot, puis DIS -> VER, puis CONNECT -> VER.
+    attempts = [("VER direct (boot)", None),
+                ("DIS puis VER (apres initialisation)", "DIS"),
+                ("CONNECT puis VER (apres keepalive)", "CONNECT")]
+    answered = False
     try:
-        with dev.lock:
-            dev._send(crt_command("VER"))
-        time.sleep(2.0)
-    except Exception as e:
-        print("Envoi échoué : %s" % e)
+        for label, pre in attempts:
+            reports.clear()
+            try:
+                if pre:
+                    with dev.lock:
+                        dev._send(crt_command(pre))
+                    time.sleep(0.4)
+                with dev.lock:
+                    dev._send(crt_command("VER"))
+                time.sleep(2.0)
+            except Exception as e:
+                print("Envoi échoué : %s" % e)
+                continue
+            if reports:
+                answered = True
+                print("Réponse(s) firmware (essai « %s ») — COPIE CES "
+                      "LIGNES :" % label)
+                for r in reports[:5]:
+                    printable = "".join(chr(b) if 32 <= b < 127 else "."
+                                        for b in r[:48])
+                    print("  " + " ".join("%02X" % (b if isinstance(b, int)
+                                                      else 0)
+                                         for b in r[:48]))
+                    print("  |%s|" % printable)
+                break
+            print("Essai « %s » : aucune réponse." % label)
     finally:
         try:
             target.close()
         except Exception:
             pass
-    if not reports:
-        print("Réponse firmware : AUCUNE (ce firmware n'expose pas VER, ou "
-              "il est muet — copie quand même les lignes ci-dessus).")
-    else:
-        print("Réponse(s) firmware (commande VER) — COPIE CES LIGNES :")
-        for r in reports[:5]:
-            printable = "".join(chr(b) if 32 <= b < 127 else "."
-                                for b in r[:48])
-            print("  " + " ".join("%02X" % (b if isinstance(b, int) else 0)
-                                 for b in r[:48]))
-            print("  |%s|" % printable)
+    if not answered:
+        print("Réponse firmware : AUCUNE sur les 3 essais (ce firmware "
+              "n'expose pas VER, ou il est muet — copie quand même les "
+              "lignes ci-dessus).")
     print("— identification terminée : copie tout ce qui précède dans un "
           "rapport de bug.")
 
