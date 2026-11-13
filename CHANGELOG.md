@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.8] — 2026-11-13
+
+### Corrigé
+
+- **Le morceau radio s'affiche enfin** — le diagnostic v2.19.7 a livré la réponse du serveur : le morceau live est dans `remoteMeta` (`title`/`artist`), mais ce serveur met le **nom de la station** dans `current_title` (« FIP (MP3) »), et le décodage laissait `current_title` écraser le titre de `remoteMeta`. Nouvel ordre de priorité pour un flux : ① `remoteMeta` (présent = source live : titre + artiste), ② `current_title` s'il diffère du titre de piste (avec décodage « Artiste - Titre »), ③ titre de piste. Et dans la branche « lecteur affiché », le titre du `status` est prioritaire sur `current_title`. Le bandeau suit maintenant le morceau réellement diffusé par la webradio, morceau par morceau.
+
 ## [2.19.7] — 2026-11-13
 
 ### Corrigé
@@ -657,6 +663,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.5]: https://github.com/dalbertini/akp05e-interface/commits/main/

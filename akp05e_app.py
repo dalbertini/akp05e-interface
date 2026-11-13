@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.7"
+APP_VERSION = "2.19.8"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1895,17 +1895,28 @@ class LMSClient:
                  and not _url.startswith(("file://", "file:")))
         _flux = (_flux or _to_int(res.get("remote"), 0) == 1)
         if _flux:
-            # v2.19.3 : « remoteMeta » = dict des métadonnées live du flux
-            # (artist/title/track) chez de nombreux serveurs LMS
+            # v2.19.8 : ordre de priorité des sources live — certains
+            # serveurs (dump réel v2.19.7 de David) mettent le NOM DE LA
+            # STATION dans current_title et le morceau live dans
+            # remoteMeta ; current_title ne doit plus écraser remoteMeta.
+            # ① remoteMeta (title/track + artist)
+            # ② current_title s'il diffère du titre de piste
+            # ③ titre de piste
             _rm = res.get("remoteMeta")
+            _rmt = ""
             if isinstance(_rm, dict):
                 artist = (str(_rm.get("artist") or "").strip()
                           or artist)
-                title = (str(_rm.get("title") or _rm.get("track") or "")
-                         .strip() or title)
+                _rmt = str(_rm.get("title") or _rm.get("track")
+                           or "").strip()
             _ct = str(res.get("current_title") or "").strip()
             _pt = str(it.get("title") or "").strip()
-            if _ct and _ct != _pt:
+            # remoteMeta PRÉSENT = source live (le titre de piste peut
+            # aussi porter le morceau live, comme current_title peut
+            # porter le nom de station : seul remoteMeta est fiable ici)
+            if _rmt:
+                title = _rmt
+            elif _ct and _ct != _pt:
                 if " - " in _ct and not artist:
                     _a, _t = _ct.split(" - ", 1)
                     artist, title = _a.strip(), _t.strip()
@@ -5427,8 +5438,12 @@ def main():
                     # lms_refresh_viewed (zéro requête supplémentaire).
                     if (_cand and _viewed and _pl
                             and _cand.get("id") == _viewed.get("id")):
-                        _nt = str(_pl.get("current_title")
-                                  or _pl.get("title") or "").strip() or _nt
+                        # v2.19.8 : titre prioritaire sur current_title —
+                        # chez les serveurs « remoteMeta », current_title
+                        # est le NOM DE LA STATION et title le morceau live
+                        _nt = str(_pl.get("title")
+                                  or _pl.get("current_title")
+                                  or "").strip() or _nt
                     if _cand and not _nt:
                         # toujours rien -> requête « status » dédiée
                         # (une par cycle tant qu'on n'a pas le titre)
