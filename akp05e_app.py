@@ -391,7 +391,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.8"
+APP_VERSION = "2.14.9"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1977,16 +1977,25 @@ def run_action(action, device):
             device._last_bright = device.brightness
             device.set_brightness(0)
     elif t == "sleep":
-        # v2.14.7/2.14.8 : veille complète du deck — luminosité 0 (le
-        # keepalive la maintient), plus AUCUN repeint pendant la veille ;
-        # handle() réveille à la première PRESSION (le relâchement de la
-        # touche Veille reste absorbé) et la consomme
+        # v2.14.7-2.14.9 : veille complète du deck — luminosité 0 (le
+        # keepalive la maintient) + mémoires d'écran vidées (CLE) + AUCUN
+        # repeint pendant la veille ; handle() réveille à la première
+        # PRESSION (le relâchement de la touche Veille reste absorbé),
+        # restaure la luminosité et repeint page + bandeau
         if device.brightness:
             device._last_bright = device.brightness
         device._sleeping = True
         device.set_brightness(0)
-        print("[veille] deck en veille complète — appuie sur une touche "
-              "pour le réveiller")
+        # v2.14.9 : on vide AUSSI les mémoires d'écran (touches + bandeau
+        # tactile) : rétroéclairage éteint ET écrans noirs, rien ne traîne
+        try:
+            with device.lock:
+                device._send(crt_command("CLE", [0, 0, 0, 0xFF]))
+                device._send(crt_command("STP"))
+        except Exception:
+            pass
+        print("[veille] écrans éteints — appuie sur une touche "
+              "pour réveiller le deck")
     elif t == "zoom":
         # zoom Ctrl+molette de la fenêtre active (knob 3 par défaut)
         d = action.get("dir", "in")

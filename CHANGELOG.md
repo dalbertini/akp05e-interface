@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.9] — 2026-11-13
+
+### Modifié
+- **Veille : écrans réellement éteints** — la luminosité 0 coupe le rétroéclairage, mais les images restaient en mémoire d'écran. La mise en veille vide désormais toutes les mémoires d'écran (commande `CLE` : touches, écran, bandeau tactile) : écrans totalement noirs, rien ne traîne. Au réveil, une simple pression restaure la luminosité précédente et repeint la page et le bandeau — l'affichage repart exactement où on en était.
+
 ## [2.14.8] — 2026-11-13
 
 ### Corrigé
@@ -525,6 +530,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
 [2.14.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
