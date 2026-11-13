@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.4] — 2026-11-13
+
+### Corrigé
+
+- **Bandeau : candidat de secours quand « isplaying » ment** — test réel v2.19.3 : FIP jouait sur la Squeezebox Radio Cuisine depuis plus d'une minute, aucune branche du titre n'a tiré. Cause : le poll `players` ne remontait **aucun** lecteur avec `isplaying=1` (flag non fiable chez certains serveurs/modèles — le vieux `playing=None`). Désormais, si aucun lecteur ne se dit « playing », le lecteur **affiché** dont le `status` (déjà interrogé chaque cycle, zéro requête) dit `mode=play` devient le candidat du bandeau, avec un diagnostic *one-shot* qui dump le poll `players` brut pour documenter le bug serveur.
+
 ## [2.19.3] — 2026-11-13
 
 ### Corrigé
@@ -633,6 +639,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

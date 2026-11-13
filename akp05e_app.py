@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.3"
+APP_VERSION = "2.19.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -536,7 +536,7 @@ def draw_vu_zone(img, peak, hold, muted=False):
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
 
 _Z3_DIAG = {"warned": False, "none": False, "err": False,
-              "ntitle": False, "radio": False}
+              "ntitle": False, "radio": False, "nopb": False}
 # v2.19.1 : titre bandeau indisponible ; v2.19.2 : dump webradio
 _Z3_CYCLE = [0]  # v2.19.2 : cycles du poll pour le re-poll radios
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
@@ -5371,6 +5371,27 @@ def main():
                         _prev_na = lms_state.get("now_artist")
                         _viewed = lms_viewed()
                         _pl = lms_state.get("playing")
+                        # v2.19.4 : « isplaying » du poll « players »
+                        # n'est pas fiable chez certains serveurs/modèles
+                        # (Squeezebox Radio : jamais isplaying=1 alors que
+                        # le status dit mode=play) -> le lecteur AFFICHÉ
+                        # dont le status dit « play » devient le candidat
+                        if (not _cand and _viewed and _viewed.get("id")
+                                and _pl
+                                and str(_pl.get("mode") or "") == "play"):
+                            _cand = _viewed
+                            if not _Z3_DIAG["nopb"]:
+                                _Z3_DIAG["nopb"] = True
+                                try:
+                                    _raw = lms.request("", ["players", 0, 50])
+                                except Exception as _e:
+                                    _raw = repr(_e)
+                                print(f"[lms] bandeau : isplaying=0 dans "
+                                      f"le poll players pour "
+                                      f"{_viewed.get('name')!r} alors que "
+                                      f"mode={_pl.get('mode')!r} — "
+                                      f"players -> {str(_raw)[:500]!r} — "
+                                      "copie cette ligne")
                     _nt = str((_cand or {}).get("title") or "").strip()
                     _na = None
                     # v2.19.1 : le champ « title » du poll « players » est
