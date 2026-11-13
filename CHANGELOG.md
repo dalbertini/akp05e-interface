@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.6] — 2026-11-13
+
+### Corrigé
+
+- **Diagnostic du lecteur qui joue : dump one-shot inconditionnel** — les trois hypothèses de détection de flux (`http://`, tout schéma non-fichier, playlist ≤ 1 piste) n'ont jamais déclenché le diagnostic sur le serveur réel. On arrête de deviner : dès qu'un candidat joue avec un titre affiché (changement de titre ou re-poll de ~20 s), le dump part **sans condition** — `status` brut + `playing_track` brut du lecteur, tronqués — une fois par lancement (`[lms] bandeau : lecteur qui joue 'X' — status -> … — playing_track -> …`). Ce diagnostic permettra de localiser définitivement où ce serveur LMS range les métadonnées live des webradios.
+
 ## [2.19.5] — 2026-11-13
 
 ### Corrigé
@@ -645,6 +651,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

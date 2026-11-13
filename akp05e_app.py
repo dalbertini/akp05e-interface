@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.5"
+APP_VERSION = "2.19.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -540,6 +540,27 @@ _Z3_DIAG = {"warned": False, "none": False, "err": False,
 # v2.19.1 : titre bandeau indisponible ; v2.19.2 : dump webradio
 _Z3_CYCLE = [0]  # v2.19.2 : cycles du poll pour le re-poll radios
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
+
+
+def _lms_dump_playing(lms, cand):
+    """v2.19.6 : dump one-shot INCONDITIONNEL du lecteur qui joue —
+    status brut + playing_track brut, tronqués. Renvoie True une fois
+    affiché (pour le drapeau one-shot). Aucune condition de schéma
+    d'URL ou de nombre de pistes : les hypothèses successives
+    (http://, tout schéma, playlist mono-piste) n'ont jamais matché
+    le serveur réel."""
+    try:
+        _raw = lms.request(cand["id"], ["status", "-", "1", "tags:uA"])
+    except Exception as _e:
+        _raw = repr(_e)
+    try:
+        _pt = lms.playing_track(cand["id"])
+    except Exception as _e:
+        _pt = repr(_e)
+    print(f"[lms] bandeau : lecteur qui joue {cand.get('name')!r} — "
+          f"status -> {str(_raw)[:500]!r} — "
+          f"playing_track -> {str(_pt)[:300]!r} — copie ces lignes")
+    return True
 
 
 def _fit_text(d, text, font, max_w):
@@ -5436,31 +5457,16 @@ def main():
                             _t2, _na = None, None
                         if _t2:
                             _nt = str(_t2).strip() or _nt
-                        # v2.19.2 : la piste est-elle un flux radio ? au
-                        # premier flux détecté, dump one-shot du status
-                        # brut pour documenter les champs live du serveur
+                        # v2.19.6 : dump one-shot INCONDITIONNEL (les
+                        # conditions de détection de flux n'ont jamais
+                        # matché le serveur réel de David) — status brut
+                        # + playing_track brut, une fois par lancement
                         if (_cand and not _Z3_DIAG["radio"]):
                             try:
-                                _r = lms.playing_track(_cand["id"]) or {}
+                                _Z3_DIAG["radio"] = _lms_dump_playing(
+                                    lms, _cand)
                             except Exception:
-                                _r = {}
-                            _rurl = str(_r.get("url") or "")
-                            _rtr = _to_int(_r.get("tracks"), 0)
-                            if ((bool(_rurl) and "://" in _rurl
-                                 and not _rurl.startswith(
-                                     ("file://", "file:")))
-                                    or (_rtr <= 1)):
                                 _Z3_DIAG["radio"] = True
-                                try:
-                                    _raw = lms.request(
-                                        _cand["id"],
-                                        ["status", "-", "1", "tags:uA"])
-                                except Exception as _e:
-                                    _raw = repr(_e)
-                                print(f"[lms] bandeau : webradio sur "
-                                      f"{_cand.get('name')!r} — status -> "
-                                      f"{str(_raw)[:400]!r} — "
-                                      "copie cette ligne")
                     elif _nt:
                         _na = _prev_na
                         # v2.19.2 : webradio — le titre du flux ne change
@@ -5481,33 +5487,14 @@ def main():
                                 _nt = str(_t2).strip()
                             if _na2:
                                 _na = _na2
-                            # v2.19.3 : si le dump webradio n'est jamais
-                            # tombé, tente-le aussi depuis le re-poll
+                            # v2.19.6 : dump one-shot INCONDITIONNEL si
+                            # jamais tombé (re-poll ~20 s)
                             if (_cand and not _Z3_DIAG["radio"]):
                                 try:
-                                    _r = lms.playing_track(
-                                        _cand["id"]) or {}
+                                    _Z3_DIAG["radio"] = _lms_dump_playing(
+                                        lms, _cand)
                                 except Exception:
-                                    _r = {}
-                                _rurl = str(_r.get("url") or "")
-                                _rtr = _to_int(_r.get("tracks"), 0)
-                                if ((bool(_rurl) and "://" in _rurl
-                                     and not _rurl.startswith(
-                                         ("file://", "file:")))
-                                        or (_rtr <= 1)):
                                     _Z3_DIAG["radio"] = True
-                                    try:
-                                        _raw = lms.request(
-                                            _cand["id"],
-                                            ["status", "-", "1",
-                                             "tags:uA"])
-                                    except Exception as _e:
-                                        _raw = repr(_e)
-                                    print(f"[lms] bandeau : webradio sur "
-                                          f"{_cand.get('name')!r} — "
-                                          f"status -> "
-                                          f"{str(_raw)[:400]!r} — "
-                                          "copie cette ligne")
                     with lms_lock:
                         lms_state["now_title"] = _nt or None
                         lms_state["now_artist"] = _na
