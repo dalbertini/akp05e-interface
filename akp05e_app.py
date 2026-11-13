@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.17.1"
+APP_VERSION = "2.18.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3330,6 +3330,101 @@ def run_calibrate_strip():
         print("[calibration] terminé — envoie les photos des sondes.")
 
 
+# ---------------------------------------------------------------------------
+# Identification du matériel (--identify) — v2.18.0
+# L'AKP05E est un rebrand AJAZZ du matériel Mirabox/HOTSPOTEK ; AJAZZ ne
+# publie aucune doc. Ce mode affiche VID/PID, chaînes USB et interroge le
+# firmware (commande CRT "VER") — à copier-coller dans tout rapport de bug.
+# ---------------------------------------------------------------------------
+
+def run_identify():
+    """Mode --identify : énumère les appareils AJAZZ/Mirabox branchés (VID
+    0x0300), affiche leurs chaînes USB et interroge le firmware du AKP05E
+    via la commande VER. Aucune écriture sur les écrans."""
+    print("=== Identification du matériel — v%s ===" % APP_VERSION)
+    found = []
+    try:
+        found = hid.HidDeviceFilter(vendor_id=VENDOR_ID).get_devices()
+    except Exception as e:
+        print("Énumération impossible : %s" % e)
+    if not found:
+        print("Aucun appareil détecté avec le VID AJAZZ/Mirabox 0x%04X."
+              % VENDOR_ID)
+        print("Branche le deck (câble USB-C DONNÉES, pas charge seule), puis :")
+        print('  powershell -Command "Get-PnpDevice -PresentOnly | \\')
+        print("    Where-Object InstanceId -match 'VID_0300' | \\")
+        print('    Format-List FriendlyName, InstanceId"')
+        return
+    target = None
+    for i, d in enumerate(found):
+        vid = getattr(d, "vendor_id", 0) or 0
+        pid = getattr(d, "product_id", 0) or 0
+        is_ours = (vid, pid) == (VENDOR_ID, PRODUCT_ID)
+        print("Appareil %d : VID 0x%04X / PID 0x%04X%s"
+              % (i + 1, vid, pid, "  <- AKP05E (cible de l'app)"
+                 if is_ours else ""))
+        for attr, label in (("vendor_name", "  Fabricant USB"),
+                            ("product_name", "  Produit USB"),
+                            ("serial_number", "  N° de série"),
+                            ("version", "  Version USB (bcdDevice)")):
+            try:
+                val = getattr(d, attr, None)
+            except Exception:
+                val = None
+            if val:
+                print("%s : %s" % (label, val))
+        if is_ours and target is None:
+            target = d
+    if target is None:
+        print("AKP05E (PID 0x%04X) absent : impossible d'interroger le "
+              "firmware." % PRODUCT_ID)
+        return
+
+    # interrogation du firmware : commande CRT "VER", réponses brutes
+    reports = []
+
+    def on_raw(data):
+        try:
+            reports.append(list(data))
+        except Exception:
+            pass
+
+    try:
+        target.open()
+        target.set_raw_data_handler(on_raw)
+    except Exception as e:
+        print("Ouverture impossible : %s — ferme le logiciel AJAZZ/Mirabox "
+              "officiel (accès HID exclusif) et réessaie." % e)
+        return
+    print("Interrogation du firmware (commande VER)…")
+    dev = Akp05Device(brightness=DEFAULT_BRIGHTNESS)
+    dev.dev = target
+    try:
+        with dev.lock:
+            dev._send(crt_command("VER"))
+        time.sleep(2.0)
+    except Exception as e:
+        print("Envoi échoué : %s" % e)
+    finally:
+        try:
+            target.close()
+        except Exception:
+            pass
+    if not reports:
+        print("Réponse firmware : AUCUNE (ce firmware n'expose pas VER, ou "
+              "il est muet — copie quand même les lignes ci-dessus).")
+    else:
+        print("Réponse(s) firmware (commande VER) — COPIE CES LIGNES :")
+        for r in reports[:5]:
+            printable = "".join(chr(b) if 32 <= b < 127 else "."
+                                for b in r[:48])
+            print("  " + " ".join("%02X" % (b if isinstance(b, int) else 0)
+                                 for b in r[:48]))
+            print("  |%s|" % printable)
+    print("— identification terminée : copie tout ce qui précède dans un "
+          "rapport de bug.")
+
+
 def main():
     if "--install-autostart" in sys.argv:
         install_autostart()
@@ -3343,6 +3438,10 @@ def main():
     if "--calibrate-strip" in sys.argv:
         # v2.17.0 : calibration du bandeau tactile (grilles graduées)
         run_calibrate_strip()
+        return
+    if "--identify" in sys.argv:
+        # v2.18.0 : matériel + firmware exacts (VID/PID, chaînes USB, VER)
+        run_identify()
         return
     config = load_config()
     if "--startup" in sys.argv:

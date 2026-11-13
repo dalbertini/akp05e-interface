@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.17.1 — calibration du bandeau tactile à grands repères (hauteur native ~128 ?) ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.18.0 — mode --identify (matériel + firmware exacts), section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -143,7 +143,39 @@ Action types: `open`, `url`, `keys`, `text`, `run`, `sysvolume` (real system vol
 ## Protocol
 
 Reverse-engineered, cross-checked with the open source projects [mirajazz](https://github.com/4ndv/mirajazz) (Rust), [opendeck-akp05](https://github.com/ambiso/opendeck-akp05) (plugin OpenDeck) et [zeccola/ajazz-akp05](https://github.com/zeccola/ajazz-akp05) (Python).
+*English note: the AKP05E is rebranded Mirabox/HOTSPOTEK hardware — AJAZZ publishes no protocol documentation. Run `python akp05e_app.py --identify` to print your exact hardware/firmware info; see « Matériel & références » below for the open-source ecosystem.*
+
 HID vendor-defined (VID `0x0300` / PID `0x3004`), 1024-byte packets, framed `CRT` commands (`DIS`/`LIG`/`CLE`/`STP`/`BAT`/`CONNECT`), 112×112 JPEG images (keys) and 800×112 (strip) rotated by 180°.
+
+## Matériel & références
+
+**C'est du matériel Mirabox.** L'AKP05E (VID `0x0300` / PID `0x3004`) est un rebrand AJAZZ du matériel **Mirabox / HOTSPOTEK** — le deck se présente d'ailleurs à l'USB comme « HOTSPOTEK ». Le logiciel officiel « AJAZZ App » est lui-même un rebrand du logiciel Mirabox Stream Dock. AJAZZ ne publie **aucune documentation** du protocole ni des résolutions d'écran : toutes les valeurs de ce projet (touches 112×112 et bandeau 800×112, JPEG rotés 180°, commandes `CRT`) ont été établies par rétro-ingénierie sur matériel réel, croisée avec les projets ci-dessous.
+
+**Connaître exactement son matériel et son firmware :**
+
+```
+python akp05e_app.py --identify
+```
+
+Affiche le VID/PID, les chaînes USB (fabricant, produit, n° de série, version) et interroge le firmware du deck (commande `VER`) — copie-colle ces lignes dans tout rapport de bug. Sous Windows, sans Python :
+
+```
+powershell -Command "Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0300' | Format-List FriendlyName, InstanceId"
+```
+
+**Projets open source de la même famille** (état : novembre 2026) :
+
+| Projet | Quoi | Bandeau | Activité |
+| --- | --- | --- | --- |
+| [MiraboxSpace/StreamDock-Device-SDK](https://github.com/MiraboxSpace/StreamDock-Device-SDK) | **SDK officiel du fabricant** (C++ / Python / WebSocket) | 4 zones 176×112 | 🟢 très actif |
+| [ambiso/opendeck-akp05](https://github.com/ambiso/opendeck-akp05) | Plugin OpenDeck (Mirabox N4 / AKP05) | 4 tuiles 176×112 | 🟢 très actif |
+| [4ndv/mirajazz](https://github.com/4ndv/mirajazz) | Bibliothèque Rust (socle du plugin ci-dessus) | par modèle | 🟢 actif |
+| [lukasMega/DeckBridge](https://github.com/lukasMega/DeckBridge) | Deck réseau ↔ application Elgato (AKP05 supporté) | — | 🟢 très actif |
+| [sejtam-dev/AKP05E-Open-Firmware](https://github.com/sejtam-dev/AKP05E-Open-Firmware) | Firmware open du AKP05E (ArtInChip D13x, reconstruit depuis un dump) | — | 🟢 actif |
+| [zeccola/ajazz-akp05](https://github.com/zeccola/ajazz-akp05) | Scripts Python (même approche que ce projet) | écriture pleine 800×112 | 🟡 peu actif |
+| [Aiacos/ajazz-control-center](https://github.com/Aiacos/ajazz-control-center) | Centre de contrôle Qt6 multi-AJAZZ (doc protocole très détaillée) | 4 zones wire 1-4 | 🟡 peu actif |
+
+À noter : la taille du bandeau **varie selon les révisions matérielles** de la famille — 176×112 par zone (SDK Mirabox), 800×112 en écriture pleine (AKP05E, confirmé sur matériel réel), 800×128 sur le Streonor S10 Pro, images étirées sur certaines révisions N4 ([issue opendeck-akp05 #12](https://github.com/ambiso/opendeck-akp05/issues/12)). C'est exactement pour ça que ce projet documente ses valeurs éprouvées sur le vrai AKP05E.
 
 ## License
 

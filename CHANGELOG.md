@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.18.0] — 2026-11-13
+
+### Ajouté
+- **Mode `--identify` : identification exacte du matériel et du firmware** — l'AKP05E étant un rebrand AJAZZ du matériel Mirabox/HOTSPOTEK (aucune doc officielle), ce mode affiche le VID/PID, les chaînes USB (fabricant, produit, n° de série, version) et interroge le firmware du deck via la commande `VER`, affichée en hexadécimal à copier-coller dans tout rapport de bug. Guidance PowerShell incluse si aucun appareil n'est détecté.
+- **README : nouvelle section « Matériel & références »** — note sur l'origine Mirabox du matériel, tableau des projets open source de la famille (SDK officiel Mirabox, opendeck-akp05, mirajazz, DeckBridge, AKP05E-Open-Firmware, zeccola/ajazz-akp05, ajazz-control-center) avec leur niveau d'activité vérifié, et les tailles de bandeau variables selon les révisions matérielles (176×112, 800×112, 800×128).
+
 ## [2.17.1] — 2026-11-13
 
 ### Amélioré
@@ -583,6 +589,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
