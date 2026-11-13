@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.18.2] — 2026-11-13
+
+### Corrigé
+- **`--identify` : les 3 handshakes `VER` restent muets** (test réel v2.18.1) — et pour cause : sur ce firmware, la réponse `VER` n'arrive **jamais** sur le endpoint IN. Constat croisé de deux projets open source : DeckBridge (*« The CRT VER reply never arrives on V3.AKP05E.02.007, but feature report 0x01 returns the version text »*) et ajazz-control-center (*« the VER response is pulled via GET_REPORT (HIDIOCGINPUT/HIDIOCGFEATURE), not delivered unsolicited on the interrupt-IN endpoint »*). Le mode lit donc désormais les **feature reports HID (GET_REPORT)** — le chemin qui renvoie directement le texte de version (ex. `V3.AKP05E.02.007`) : lecture directe à l'ouverture, puis relecture après chaque handshake `VER` muet ; la chaîne détectée est affichée en clair (« VERSION FIRMWARE (feature report) : … ») et les handshakes sont ignorés si elle est déjà obtenue. Les 3 handshakes `VER` de la v2.18.1 sont conservés en repli diagnostic.
+
 ## [2.18.1] — 2026-11-13
 
 ### Corrigé
@@ -595,6 +600,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.18.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/

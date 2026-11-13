@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.18.1"
+APP_VERSION = "2.18.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3331,16 +3331,20 @@ def run_calibrate_strip():
 
 
 # ---------------------------------------------------------------------------
-# Identification du matériel (--identify) — v2.18.0
+# ---------------------------------------------------------------------------
+# Identification du matériel (--identify) — v2.18.0 / v2.18.2
 # L'AKP05E est un rebrand AJAZZ du matériel Mirabox/HOTSPOTEK ; AJAZZ ne
 # publie aucune doc. Ce mode affiche VID/PID, chaînes USB et interroge le
-# firmware (commande CRT "VER") — à copier-coller dans tout rapport de bug.
+# firmware : feature report HID (GET_REPORT — le seul chemin qui répond sur
+# ce matériel) puis commandes CRT VER en cascade. À copier-coller dans tout
+# rapport de bug.
 # ---------------------------------------------------------------------------
 
 def run_identify():
     """Mode --identify : énumère les appareils AJAZZ/Mirabox branchés (VID
     0x0300), affiche leurs chaînes USB et interroge le firmware du AKP05E
-    via la commande VER. Aucune écriture sur les écrans."""
+    (feature report GET_REPORT, puis CRT VER). Aucune écriture sur les
+    écrans."""
     print("=== Identification du matériel — v%s ===" % APP_VERSION)
     found = []
     try:
@@ -3380,7 +3384,7 @@ def run_identify():
               "firmware." % PRODUCT_ID)
         return
 
-    # interrogation du firmware : commande CRT "VER", réponses brutes
+    # interrogation du firmware : réponses brutes du endpoint IN
     reports = []
 
     def on_raw(data):
@@ -3396,53 +3400,108 @@ def run_identify():
         print("Ouverture impossible : %s — ferme le logiciel AJAZZ/Mirabox "
               "officiel (accès HID exclusif) et réessaie." % e)
         return
-    print("Interrogation du firmware (commande VER, 3 handshakes)…")
-    dev = Akp05Device(brightness=DEFAULT_BRIGHTNESS)
-    dev.dev = target
-    # v2.18.1 : le VER seul est resté muet chez David — le firmware exige
-    # un contexte (cf. ajazz-control-center : « live CRT VER handshake »
-    # ayant répondu 'V3.AKP05E.01.007' sur un AKP05E de série). On tente :
-    # VER au boot, puis DIS -> VER, puis CONNECT -> VER.
-    attempts = [("VER direct (boot)", None),
-                ("DIS puis VER (apres initialisation)", "DIS"),
-                ("CONNECT puis VER (apres keepalive)", "CONNECT")]
-    answered = False
-    try:
-        for label, pre in attempts:
-            reports.clear()
+
+    def probe_feature_reports(stage):
+        """v2.18.2 : lit les feature reports HID (GET_REPORT). Sur ce
+        firmware, la réponse CRT VER n'arrive JAMAIS sur le endpoint IN ;
+        la version se lit ici (DeckBridge : « The CRT VER reply never
+        arrives on V3.AKP05E.02.007, but feature report 0x01 returns the
+        version text »)."""
+        results = []
+        try:
+            reps = list(target.find_feature_reports())
+        except Exception as e:
+            print("Feature reports inaccessibles (%s) : %s" % (stage, e))
+            return results
+        for rep in reps:
             try:
-                if pre:
-                    with dev.lock:
-                        dev._send(crt_command(pre))
-                    time.sleep(0.4)
-                with dev.lock:
-                    dev._send(crt_command("VER"))
-                time.sleep(2.0)
-            except Exception as e:
-                print("Envoi échoué : %s" % e)
+                rep.get()
+                raw = bytes(bytearray(rep.get_raw_data()))
+            except Exception:
                 continue
-            if reports:
-                answered = True
-                print("Réponse(s) firmware (essai « %s ») — COPIE CES "
-                      "LIGNES :" % label)
-                for r in reports[:5]:
-                    printable = "".join(chr(b) if 32 <= b < 127 else "."
-                                        for b in r[:48])
-                    print("  " + " ".join("%02X" % (b if isinstance(b, int)
-                                                      else 0)
-                                         for b in r[:48]))
-                    print("  |%s|" % printable)
-                break
-            print("Essai « %s » : aucune réponse." % label)
+            if raw:
+                results.append(raw)
+        if results:
+            print("Feature report(s) lu(s) (%s) — COPIE CES LIGNES :"
+                  % stage)
+            for raw in results:
+                printable = "".join(chr(b) if 32 <= b < 127 else "."
+                                    for b in raw)
+                print("  hex  : %s"
+                      % " ".join("%02X" % b for b in raw))
+                print("  ascii: |%s|" % printable)
+        return results
+
+    def find_fw_version(raws):
+        """Cherche 'V' + chiffre + [alnum . -] (ex. V3.AKP05E.02.007)."""
+        for raw in raws:
+            text = "".join(chr(b) if 32 <= b < 127 else " " for b in raw)
+            m = re.search(r"V\d[A-Za-z0-9.\-]+", text)
+            if m:
+                return m.group(0)
+        return None
+
+    fw_version = None
+    try:
+        # ① feature reports SANS commande : le chemin DeckBridge/mirajazz.
+        fw_version = find_fw_version(probe_feature_reports("lecture directe"))
+        if fw_version:
+            print("VERSION FIRMWARE (feature report) : %s" % fw_version)
+            print("(Handshakes CRT VER ignorés : version déjà obtenue.)")
+        else:
+            # ② handshakes VER (v2.18.1) ; après chaque essai muet on
+            # relit les feature reports — ajazz-control-center : « the
+            # VER response is pulled via GET_REPORT, not delivered
+            # unsolicited on the interrupt-IN endpoint ».
+            dev = Akp05Device(brightness=DEFAULT_BRIGHTNESS)
+            dev.dev = target
+            attempts = [("VER direct (boot)", None),
+                        ("DIS puis VER (apres initialisation)", "DIS"),
+                        ("CONNECT puis VER (apres keepalive)", "CONNECT")]
+            print("Interrogation du firmware (commande VER, 3 handshakes)…")
+            answered = False
+            for label, pre in attempts:
+                reports.clear()
+                try:
+                    if pre:
+                        with dev.lock:
+                            dev._send(crt_command(pre))
+                        time.sleep(0.4)
+                    with dev.lock:
+                        dev._send(crt_command("VER"))
+                    time.sleep(2.0)
+                except Exception as e:
+                    print("Envoi échoué : %s" % e)
+                    continue
+                if reports:
+                    answered = True
+                    print("Réponse(s) firmware (essai « %s ») — COPIE CES "
+                          "LIGNES :" % label)
+                    for r in reports[:5]:
+                        printable = "".join(chr(b) if 32 <= b < 127 else "."
+                                            for b in r[:48])
+                        print("  " + " ".join("%02X" % (b if isinstance(b, int)
+                                                          else 0)
+                                             for b in r[:48]))
+                        print("  |%s|" % printable)
+                    break
+                fw_version = find_fw_version(
+                    probe_feature_reports("après « %s »" % label))
+                if fw_version:
+                    answered = True
+                    print("VERSION FIRMWARE (feature report) : %s"
+                          % fw_version)
+                    break
+                print("Essai « %s » : aucune réponse." % label)
+            if not answered:
+                print("Réponse firmware : AUCUNE sur les 3 essais (ce "
+                      "firmware n'expose pas VER, ou il est muet — copie "
+                      "quand même les lignes ci-dessus).")
     finally:
         try:
             target.close()
         except Exception:
             pass
-    if not answered:
-        print("Réponse firmware : AUCUNE sur les 3 essais (ce firmware "
-              "n'expose pas VER, ou il est muet — copie quand même les "
-              "lignes ci-dessus).")
     print("— identification terminée : copie tout ce qui précède dans un "
           "rapport de bug.")
 
