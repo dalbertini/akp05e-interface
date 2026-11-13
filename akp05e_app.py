@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.16.0"
+APP_VERSION = "2.16.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3063,6 +3063,7 @@ class SystrayIcon:
 # ---------------------------------------------------------------------------
 
 AUTOSTART_TASK = "AKP05E Interface"
+AUTOSTART_LNK = "AKP05E Interface.lnk"  # repli dossier Démarrage
 
 
 def _autostart_python():
@@ -3072,6 +3073,38 @@ def _autostart_python():
     if exe.lower().endswith("python.exe") and os.path.exists(pyw):
         return pyw
     return exe
+
+
+def _startup_dir():
+    """Dossier Démarrage de l'utilisateur (shell:startup), sans admin."""
+    return os.path.join(os.environ.get("APPDATA", ""),
+                        "Microsoft", "Windows", "Start Menu",
+                        "Programs", "Startup")
+
+
+def _install_autostart_shortcut(delay_s):
+    """v2.16.1 : repli sans droits admin — raccourci .lnk dans le
+    dossier Démarrage, créé via PowerShell + WScript.Shell. Le délai est
+    assuré par l'app elle-même (option --startup, voir main())."""
+    lnk = os.path.join(_startup_dir(), AUTOSTART_LNK)
+    exe = _autostart_python()
+    app = os.path.abspath(__file__)
+    wd = os.path.dirname(app)
+    cmd = ("$s=(New-Object -ComObject WScript.Shell)"
+           ".CreateShortcut('%s');$s.TargetPath='%s';"
+           "$s.Arguments='\"%s\" --startup';$s.WorkingDirectory='%s';"
+           "$s.Description='AKP05E Interface';$s.Save()" % (lnk, exe, app, wd))
+    r = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", cmd],
+        capture_output=True, text=True)
+    if r.returncode == 0 and os.path.exists(lnk):
+        print(f"Autostart installé (raccourci Démarrage, sans admin) : "
+              f"lancement à l'ouverture de session, "
+              f"l'app patiente {delay_s} s avant d'ouvrir le deck.")
+        return True
+    print("Échec du repli raccourci Démarrage : "
+          + (r.stderr or r.stdout or "?").strip())
+    return False
 
 
 def install_autostart(delay_s=30):
@@ -3084,30 +3117,46 @@ def install_autostart(delay_s=30):
         print(f"Autostart installé ({AUTOSTART_TASK}) : lancement à "
               f"l'ouverture de session, après {delay_s} s.")
         print("Commande : " + tr)
-    else:
-        print("Échec de l'installation de l'autostart : "
-              + (r.stderr or r.stdout or "?").strip())
-    return r.returncode == 0
+        return True
+    # v2.16.1 : /SC ONLOGON exige des droits admin (« Accès refusé ») ->
+    # repli automatique : raccourci dans le dossier Démarrage
+    print("Planificateur refusé (admin requis : "
+          + (r.stderr or r.stdout or "?").strip()[:120] + ")")
+    print("Repli : raccourci dans le dossier Démarrage…")
+    return _install_autostart_shortcut(delay_s)
 
 
 def uninstall_autostart():
+    """Retire les deux formes d'autostart (tâche planifiée OU raccourci)."""
+    removed = False
     r = subprocess.run(["schtasks", "/Delete", "/TN", AUTOSTART_TASK, "/F"],
                        capture_output=True, text=True)
     if r.returncode == 0:
         print(f"Autostart retiré ({AUTOSTART_TASK}).")
-    else:
-        print("Aucun autostart à retirer (ou échec) : "
-              + (r.stderr or r.stdout or "?").strip())
-    return r.returncode == 0
+        removed = True
+    lnk = os.path.join(_startup_dir(), AUTOSTART_LNK)
+    if os.path.exists(lnk):
+        try:
+            os.remove(lnk)
+            print(f"Raccourci Démarrage retiré ({AUTOSTART_LNK}).")
+            removed = True
+        except Exception as e:
+            print("Impossible de retirer le raccourci Démarrage : " + str(e))
+    if not removed:
+        print("Aucun autostart à retirer.")
+    return removed
 
 
 def autostart_installed():
+    """True si la tâche planifiée OU le raccourci Démarrage est présent."""
     try:
         r = subprocess.run(["schtasks", "/Query", "/TN", AUTOSTART_TASK],
                            capture_output=True)
-        return r.returncode == 0
+        if r.returncode == 0:
+            return True
     except Exception:
-        return False
+        pass
+    return os.path.exists(os.path.join(_startup_dir(), AUTOSTART_LNK))
 
 
 def main():
@@ -3121,6 +3170,12 @@ def main():
         run_list_sensors()
         return
     config = load_config()
+    if "--startup" in sys.argv:
+        # v2.16.1 : lancé par le raccourci Démarrage — on laisse USB et
+        # réseau arriver avant d'ouvrir le deck (délai de 30 s par défaut)
+        delay = config.get("startup_delay", 30)
+        print(f"[autostart] démarrage différé : {delay} s…")
+        time.sleep(max(0, int(delay)))
     if "--setup-lms" in sys.argv:
         # assistant : détecte le serveur Lyrion, l'enregistre dans la
         # config, puis le démarrage continue normalement avec (v2.12.0)

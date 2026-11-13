@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.16.1] — 2026-11-13
+
+### Corrigé
+- **Autostart sans droits administrateur** — `--install-autostart` échouait avec « Erreur : Accès refusé » : la commande `schtasks /SC ONLOGON` exige une console élevée. L'app tente toujours le Planificateur en premier, puis **retombe automatiquement** sur un raccourci dans le dossier Démarrage (créé via PowerShell + WScript.Shell, aucun droit admin requis). Le délai de 30 s est alors assuré par l'app elle-même (le raccourci ajoute `--startup`, et le démarrage patiente `startup_delay` secondes — 30 par défaut, réglable dans la config). `--uninstall-autostart` retire les deux formes ; « À propos » reflète l'état.
+
 ## [2.16.0] — 2026-11-13
 
 ### Ajouté
@@ -551,6 +556,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.16.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
