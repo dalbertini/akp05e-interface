@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.11] — 2026-11-13
+
+### Corrigé
+
+- **Détection des radios renforcée** — si la v2.19.10 suffisait dans la plupart des cas, une liste mixte (flux + morceaux) ou des URL personnalisées du plugin Radio Paradise (`radioparadise://…`) pouvaient encore être prises pour un album. Nouveau critère (une seule condition suffit) : au moins UNE URL `http(s)://` dans le niveau, OU le niveau appartient à une appli radio (`radioparadise`, `radios`, `tunein` — la commande CLI est propagée à tous les sous-niveaux). Résultat : plus aucune allusion à un album (ni « ▶ Album » en zone 3, ni page « Jouer l'album ») à n'importe quelle profondeur de l'appli Radio Paradise ; les albums Qobuz (`qobuz://…`) gardent leur page album intacte.
+
 ## [2.19.10] — 2026-11-13
 
 ### Corrigé
@@ -677,6 +683,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
