@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.18.2"
+APP_VERSION = "2.18.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3340,6 +3340,37 @@ def run_calibrate_strip():
 # rapport de bug.
 # ---------------------------------------------------------------------------
 
+_HID_DIRECT_DLL = None
+
+
+def _hidd_get_feature(handle, report_id, size):
+    """GET_REPORT direct : HidD_GetFeature (hid.dll), sans passer par
+    pywinusb.find_feature_reports — le descripteur HID de l'AKP05E ne
+    déclare AUCUN item Feature (test réel v2.18.2 : liste vide), mais le
+    firmware répond au GET_REPORT : DeckBridge/mirajazz lisent le feature
+    report id 0x01 (~20 octets) via hid_get_feature_report, qui appelle
+    HidD_GetFeature sous le capot. Renvoie les octets lus ou None."""
+    global _HID_DIRECT_DLL
+    if not handle:
+        return None
+    try:
+        if _HID_DIRECT_DLL is None:
+            _HID_DIRECT_DLL = ctypes.WinDLL("hid.dll")
+        fn = _HID_DIRECT_DLL.HidD_GetFeature
+        fn.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
+        fn.restype = ctypes.c_int
+    except Exception:
+        return None
+    try:
+        buf = ctypes.create_string_buffer(size)
+        buf[0] = bytes([report_id])
+        if fn(handle, buf, size):
+            return bytes(buf.raw)
+    except Exception:
+        pass
+    return None
+
+
 def run_identify():
     """Mode --identify : énumère les appareils AJAZZ/Mirabox branchés (VID
     0x0300), affiche leurs chaînes USB et interroge le firmware du AKP05E
@@ -3421,6 +3452,27 @@ def run_identify():
                 continue
             if raw:
                 results.append(raw)
+        # v2.18.3 : GET_REPORT direct même si le descripteur ne déclare
+        # aucun item Feature (HidD_GetFeature). On essaie le report id
+        # 0x01 (DeckBridge/mirajazz), puis 0x00, avec des tailles
+        # croissantes (la longueur exacte est imposée par HidD_GetFeature).
+        if not results:
+            handle = getattr(target, "hid_handle", None)
+            caps = getattr(target, "capabilities", None)
+            frbl = int(getattr(caps, "FeatureReportByteLength", 0) or 0)
+            sizes = []
+            for s in (frbl, frbl + 1, 21, 33, 65, 129, 257, 513):
+                if 1 <= s and s not in sizes:
+                    sizes.append(s)
+            seen = set()
+            for rid in (0x01, 0x00):
+                for size in sizes:
+                    raw = _hidd_get_feature(handle, rid, size)
+                    if raw and raw not in seen:
+                        seen.add(raw)
+                        results.append(raw)
+                if seen:
+                    break
         if results:
             print("Feature report(s) lu(s) (%s) — COPIE CES LIGNES :"
                   % stage)

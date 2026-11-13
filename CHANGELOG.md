@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.18.3] — 2026-11-13
+
+### Corrigé
+- **`--identify` : `find_feature_reports()` de pywinusb ne retourne rien** (test réel v2.18.2 : aucune ligne « Feature report », aucun message d'erreur) — le descripteur HID de l'AKP05E ne déclare **aucun item Feature**, donc pywinusb n'expose pas le report 0x01. Le mode tente désormais un **GET_REPORT direct** : `HidD_GetFeature` (hid.dll, via ctypes), exactement ce que fait `hid_get_feature_report` (hidapi) chez DeckBridge/mirajazz — sans passer par le descripteur. Essais sur les report IDs `0x01` puis `0x00`, avec les tailles croissantes (`FeatureReportByteLength` des capacités si exposé, puis 21/33/65/…/513 octets — `HidD_GetFeature` est strict sur la longueur) ; chaque réponse non vide est affichée en hex + ASCII et recherchée pour le motif de version (`V` + chiffre + alphanumériques). Tenté à l'ouverture puis après chaque handshake `VER` muet.
+
 ## [2.18.2] — 2026-11-13
 
 ### Corrigé
@@ -600,6 +605,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.18.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
