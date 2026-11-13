@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.12"
+APP_VERSION = "2.19.13"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -4077,7 +4077,7 @@ def main():
         print(f"[tactile] tap zone {zone}")
         if zone == 3 and _Z3_KIND[0] == "title":
             # v2.19.12 : tap sur le titre (zone 3) -> écran d'info du
-            # lecteur qui joue, ~8 s puis retour au bandeau normal ;
+            # lecteur qui joue, ~10 s puis retour au bandeau normal ;
             # les boutons i/N, ▶ Album, ▶ Sélect. ne sont pas touchés
             # (ils ne sont pas des titres).
             with lms_lock:
@@ -4095,11 +4095,11 @@ def main():
                     _pi, (config.get("lms") or {}).get("radios"))
                 _STRIP_INFO["title"] = _nt or ""
                 _STRIP_INFO["artist"] = _na or ""
-                _STRIP_INFO["until"] = time.time() + 8.0
+                _STRIP_INFO["until"] = time.time() + 10.0
                 print(f"[lms] bandeau : info — {_STRIP_INFO['player']} "
                       f"/ {_STRIP_INFO['source'] or '?'}")
                 refresh_strip()
-                _t = threading.Timer(8.5, refresh_strip)
+                _t = threading.Timer(10.5, refresh_strip)
                 _t.daemon = True
                 _t.start()
                 return
