@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.1] — 2026-11-13
+
+### Corrigé
+
+- **Titre du bandeau robuste** : le champ `title` du poll `players` est souvent vide (LMS ne le renvoie pas systématiquement). Le titre affiché en zone 3 privilégie désormais le `status` du lecteur affiché — déjà interrogé chaque cycle, donc **zéro requête supplémentaire** — puis le champ du poll, puis une requête `status` dédiée en repli tant que le titre manque. Si le serveur ne répond toujours pas, un diagnostic brut *one-shot* (`[lms] bandeau : titre indisponible pour 'X' — status -> …`) remplace l'ancien `playing=None`.
+
 ## [2.19.0] — 2026-11-13
 
 ### Ajouté
@@ -615,6 +621,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.3]: https://github.com/dalbertini/akp05e-interface/commits/main/

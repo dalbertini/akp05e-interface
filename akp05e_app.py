@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.0"
+APP_VERSION = "2.19.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -535,7 +535,8 @@ def draw_vu_zone(img, peak, hold, muted=False):
     if muted:
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
 
-_Z3_DIAG = {"warned": False, "none": False, "err": False}
+_Z3_DIAG = {"warned": False, "none": False, "err": False,
+              "ntitle": False}  # v2.19.1 : titre bandeau indisponible
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
 
 
@@ -5341,9 +5342,40 @@ def main():
                                 break
                         _prev = lms_state.get("now_title")
                         _prev_na = lms_state.get("now_artist")
+                        _viewed = lms_viewed()
+                        _pl = lms_state.get("playing")
                     _nt = str((_cand or {}).get("title") or "").strip()
                     _na = None
-                    if _nt and _nt != _prev:
+                    # v2.19.1 : le champ « title » du poll « players » est
+                    # souvent VIDE -> on privilégie le « status » du lecteur
+                    # AFFICHÉ, déjà interrogé chaque cycle par
+                    # lms_refresh_viewed (zéro requête supplémentaire).
+                    if (_cand and _viewed and _pl
+                            and _cand.get("id") == _viewed.get("id")):
+                        _nt = str(_pl.get("current_title")
+                                  or _pl.get("title") or "").strip() or _nt
+                    if _cand and not _nt:
+                        # toujours rien -> requête « status » dédiée
+                        # (une par cycle tant qu'on n'a pas le titre)
+                        try:
+                            _t2, _na = lms.now_info(_cand["id"])
+                        except Exception:
+                            _t2, _na = None, None
+                        if _t2:
+                            _nt = str(_t2).strip()
+                        elif not _Z3_DIAG["ntitle"]:
+                            _Z3_DIAG["ntitle"] = True
+                            try:
+                                _raw = lms.request(
+                                    _cand["id"],
+                                    ["status", "-", "1", "tags:uA"])
+                            except Exception as _e:
+                                _raw = repr(_e)
+                            print(f"[lms] bandeau : titre indisponible "
+                                  f"pour {_cand.get('name')!r} — status -> "
+                                  f"{str(_raw)[:200]!r} — copie cette ligne")
+                    elif _nt and _nt != _prev:
+                        # titre connu mais changé -> artiste une seule fois
                         try:
                             _t2, _na = lms.now_info(_cand["id"])
                         except Exception:
