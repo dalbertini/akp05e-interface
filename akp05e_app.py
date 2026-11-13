@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.11"
+APP_VERSION = "2.19.12"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -539,6 +539,7 @@ _Z3_DIAG = {"warned": False, "none": False, "err": False,
               "ntitle": False, "radio": False, "nopb": False}
 # v2.19.1 : titre bandeau indisponible ; v2.19.2 : dump webradio
 _Z3_CYCLE = [0]  # v2.19.2 : cycles du poll pour le re-poll radios
+_Z3_KIND = [None]  # v2.19.12 : nature du z3 affiché ("title" si le titre est affiché)
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
 
 
@@ -561,6 +562,45 @@ def _lms_dump_playing(lms, cand):
           f"status -> {str(_raw)[:500]!r} — "
           f"playing_track -> {str(_pt)[:300]!r} — copie ces lignes")
     return True
+
+
+_STRIP_INFO = {"until": 0.0, "player": "", "source": "",
+               "title": "", "artist": ""}
+
+
+def _lms_source_name(pl, radios=None):
+    """v2.19.12 : nom de la SOURCE en cours pour l'écran d'info du
+    bandeau : radio configurée (radios de la config passée par l'appelant)
+    dont l'URL correspond au flux joué (RP Main Mix, RP Mellow, FIP,
+    FIP Metal…), sinon current_title (nom de station chez les serveurs
+    « remoteMeta »), sinon le titre de piste. Retourne '' si rien
+    d'exploitable."""
+    pl = pl or {}
+    pu = _url_key(str(pl.get("url") or ""))
+    for r in (radios or []):
+        if not (isinstance(r, dict) and r.get("name") and r.get("url")):
+            continue
+        ru = _url_key(str(r.get("url")))
+        if pu and ru and (pu == ru or ru in pu or pu in ru):
+            return str(r["name"])
+    return str(pl.get("current_title") or pl.get("title") or "").strip()
+
+
+def _draw_strip_info(d, font, font_big, font_mid, font_small):
+    """v2.19.12 : écran d'info du bandeau (tap sur le titre de la zone 3,
+    easter egg comme l'écran d'infos de l'horloge) : lecteur qui joue
+    (SBT Orange, SBR Cuisine…), source/webradio (RP Main Mix, FIP,
+    FIP Metal…), titre — artiste."""
+    nfo = _STRIP_INFO
+    d.text((400, 24), "♪ " + _fit_text(d, nfo["player"], font_mid, 720),
+           font=font_mid, fill=(255, 213, 79), anchor="mm")
+    d.text((400, 56), _fit_text(d, nfo["source"] or "?", font_mid, 760),
+           font=font_mid, fill=(129, 212, 250), anchor="mm")
+    _ta = nfo["title"] or ""
+    if nfo["artist"]:
+        _ta = f"{_ta} — {nfo['artist']}" if _ta else nfo["artist"]
+    d.text((400, 88), _fit_text(d, _ta or "—", font_small, 760),
+           font=font_small, fill=(176, 190, 197), anchor="mm")
 
 
 def _fit_text(d, text, font, max_w):
@@ -626,103 +666,107 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
             d.rounded_rectangle([bar_x0 + 2, bar_y + 2, bar_x0 + 2 + fill_w,
                                  bar_y + 10], radius=4, fill=fill)
 
-    # zone 1 : volume système (ou libellé libre si pycaw absent)
-    if volume is not None:
-        level_zone(100, vol_name, volume, muted, (129, 212, 250))
+    if time.time() < _STRIP_INFO["until"]:
+        # v2.19.12 : écran d'info actif (tap sur le titre)
+        _draw_strip_info(d, font, font_big, font_mid, font_small)
     else:
-        d.text((100, 34), "K1", font=font, fill=(120, 120, 120), anchor="mm")
-    # zone 2 : carrousel de pages (◄ page préc. | PAGE COURANTE | page suiv. ►)
-    x0 = 200
-    if pages:
-        prev_lab, cur_lab, next_lab = pages
-        gray = (112, 117, 126)
-        # rangée du haut : page précédente (grisée) à gauche
-        d.polygon([(x0 + 8, 32), (x0 + 20, 24), (x0 + 20, 40)], fill=gray)
-        d.text((x0 + 26, 32), prev_lab[:8], font=font_small,
-               fill=gray, anchor="lm")
-        # page suivante (grisée) à droite
-        d.text((x0 + 174, 32), next_lab[:8], font=font_small,
-               fill=gray, anchor="rm")
-        d.polygon([(x0 + 192, 32), (x0 + 180, 24), (x0 + 180, 40)], fill=gray)
-        # pilule arrondie : page courante (couleur d'accent + mini-icône)
-        accent = tuple(page_color) if page_color else (129, 212, 250)
-        glyph = None
-        if page_icon:
-            try:
-                ifont = ImageFont.truetype(
-                    os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"), 24)
-                glyph = _icon_char(page_icon)
-            except Exception:
-                glyph = None  # police d'icônes pas encore en cache : sans logo
-        if glyph:
-            d.rounded_rectangle([x0 + 40, 48, x0 + 162, 98], radius=14,
-                                fill=(40, 44, 52), outline=accent, width=2)
-            d.text((x0 + 62, 74), glyph, font=ifont, fill=accent, anchor="mm")
-            d.text((x0 + 116, 73), cur_lab[:7], font=font_mid,
-                   fill=(235, 238, 242), anchor="mm")
+        # zone 1 : volume système (ou libellé libre si pycaw absent)
+        if volume is not None:
+            level_zone(100, vol_name, volume, muted, (129, 212, 250))
         else:
-            d.rounded_rectangle([x0 + 48, 48, x0 + 152, 98], radius=14,
-                                fill=(40, 44, 52), outline=accent, width=2)
-            d.text((x0 + 100, 73), cur_lab[:9], font=font_mid,
-                   fill=(235, 238, 242), anchor="mm")
-    else:
-        d.text((x0 + 100, 34), extras[0], font=font,
-               fill=(120, 120, 120), anchor="mm")
-    # zone 3 : VU-mètre — on recolle les pixels du dernier rendu affiché
-    # (zéro scintillement quand un refresh volume/luminosité intervient,
-    # et le fil VU n'a pas besoin de réenvoyer une frame juste après) —
-    # sinon libellé libre
-    if (isinstance(extras[1], tuple) and len(extras[1]) == 3
-            and extras[1][0] == "TITLE"):
-        # v2.19.0 : titre du morceau LMS (zone 3, à la place du VU-mètre)
-        _t_title = _fit_text(d, extras[1][1], font_mid, 188)
-        d.text((500, 42), _t_title, font=font_mid, fill=(129, 212, 250),
-               anchor="mm")
-        _t_artist = extras[1][2]
-        if _t_artist:
-            d.text((500, 82), _fit_text(d, _t_artist, font_small, 188),
-                   font=font_small, fill=(176, 190, 197), anchor="mm")
-    elif (_vu_active and extras[1] == "VU"
-            and _strip_last is not None):
-        # pages LMS : extras[1]=="K3" -> on NE recolle PAS
-        # le VU en cache, on affiche le libellé libre
-        with _strip_last_lock:
-            img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
-    else:
-        z3 = str(extras[1])
-        # v2.13.8 : pilule avec liseret accent (même style que le
-        # carrousel de la zone 2), centrée VERTICALEMENT dans la zone
-        # (l'ancien libellé gris était perdu en haut) :
-        #  - « i/N » : morceau en cours / total de la liste jouée ;
-        #  - « ▶ … » : bouton actif (le glyphe U+25B6 est absent
-        #    d'Arial/WGL4 -> triangle dessiné en polygone).
-        if z3.startswith("\u25b6") or re.fullmatch(r"\d+/\d+", z3):
-            d.rounded_rectangle([412, 36, 588, 76], radius=13,
-                                fill=(40, 44, 52),
-                                outline=(129, 212, 250), width=2)
-            if z3.startswith("\u25b6"):
-                label = z3[1:].strip()
+            d.text((100, 34), "K1", font=font, fill=(120, 120, 120), anchor="mm")
+        # zone 2 : carrousel de pages (◄ page préc. | PAGE COURANTE | page suiv. ►)
+        x0 = 200
+        if pages:
+            prev_lab, cur_lab, next_lab = pages
+            gray = (112, 117, 126)
+            # rangée du haut : page précédente (grisée) à gauche
+            d.polygon([(x0 + 8, 32), (x0 + 20, 24), (x0 + 20, 40)], fill=gray)
+            d.text((x0 + 26, 32), prev_lab[:8], font=font_small,
+                   fill=gray, anchor="lm")
+            # page suivante (grisée) à droite
+            d.text((x0 + 174, 32), next_lab[:8], font=font_small,
+                   fill=gray, anchor="rm")
+            d.polygon([(x0 + 192, 32), (x0 + 180, 24), (x0 + 180, 40)], fill=gray)
+            # pilule arrondie : page courante (couleur d'accent + mini-icône)
+            accent = tuple(page_color) if page_color else (129, 212, 250)
+            glyph = None
+            if page_icon:
                 try:
-                    tw = d.textlength(label, font=font_mid)
+                    ifont = ImageFont.truetype(
+                        os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"), 24)
+                    glyph = _icon_char(page_icon)
                 except Exception:
-                    tw = 11 * len(label)
-                x0 = 500 - (18 + 8 + tw) / 2
-                d.polygon([(x0, 47), (x0, 65), (x0 + 16, 56)],
-                          fill=(129, 212, 250))
-                d.text((x0 + 24, 57), label, font=font_mid,
-                       fill=(129, 212, 250), anchor="lm")
+                    glyph = None  # police d'icônes pas encore en cache : sans logo
+            if glyph:
+                d.rounded_rectangle([x0 + 40, 48, x0 + 162, 98], radius=14,
+                                    fill=(40, 44, 52), outline=accent, width=2)
+                d.text((x0 + 62, 74), glyph, font=ifont, fill=accent, anchor="mm")
+                d.text((x0 + 116, 73), cur_lab[:7], font=font_mid,
+                       fill=(235, 238, 242), anchor="mm")
             else:
-                d.text((500, 57), z3, font=font_mid,
-                       fill=(129, 212, 250), anchor="mm")
+                d.rounded_rectangle([x0 + 48, 48, x0 + 152, 98], radius=14,
+                                    fill=(40, 44, 52), outline=accent, width=2)
+                d.text((x0 + 100, 73), cur_lab[:9], font=font_mid,
+                       fill=(235, 238, 242), anchor="mm")
         else:
-            d.text((500, 34), z3, font=font,
+            d.text((x0 + 100, 34), extras[0], font=font,
                    fill=(120, 120, 120), anchor="mm")
-    # zone 4 : luminosité
-    level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
-               (240, 220, 130))
-    # séparateurs verticaux entre zones
-    for i in (1, 2, 3):
-        d.line([(i * 200, 10), (i * 200, h - 10)], fill=(45, 45, 45), width=2)
+        # zone 3 : VU-mètre — on recolle les pixels du dernier rendu affiché
+        # (zéro scintillement quand un refresh volume/luminosité intervient,
+        # et le fil VU n'a pas besoin de réenvoyer une frame juste après) —
+        # sinon libellé libre
+        if (isinstance(extras[1], tuple) and len(extras[1]) == 3
+                and extras[1][0] == "TITLE"):
+            # v2.19.0 : titre du morceau LMS (zone 3, à la place du VU-mètre)
+            _t_title = _fit_text(d, extras[1][1], font_mid, 188)
+            d.text((500, 42), _t_title, font=font_mid, fill=(129, 212, 250),
+                   anchor="mm")
+            _t_artist = extras[1][2]
+            if _t_artist:
+                d.text((500, 82), _fit_text(d, _t_artist, font_small, 188),
+                       font=font_small, fill=(176, 190, 197), anchor="mm")
+        elif (_vu_active and extras[1] == "VU"
+                and _strip_last is not None):
+            # pages LMS : extras[1]=="K3" -> on NE recolle PAS
+            # le VU en cache, on affiche le libellé libre
+            with _strip_last_lock:
+                img.paste(_strip_last.crop((400, 0, 600, h)), (400, 0))
+        else:
+            z3 = str(extras[1])
+            # v2.13.8 : pilule avec liseret accent (même style que le
+            # carrousel de la zone 2), centrée VERTICALEMENT dans la zone
+            # (l'ancien libellé gris était perdu en haut) :
+            #  - « i/N » : morceau en cours / total de la liste jouée ;
+            #  - « ▶ … » : bouton actif (le glyphe U+25B6 est absent
+            #    d'Arial/WGL4 -> triangle dessiné en polygone).
+            if z3.startswith("\u25b6") or re.fullmatch(r"\d+/\d+", z3):
+                d.rounded_rectangle([412, 36, 588, 76], radius=13,
+                                    fill=(40, 44, 52),
+                                    outline=(129, 212, 250), width=2)
+                if z3.startswith("\u25b6"):
+                    label = z3[1:].strip()
+                    try:
+                        tw = d.textlength(label, font=font_mid)
+                    except Exception:
+                        tw = 11 * len(label)
+                    x0 = 500 - (18 + 8 + tw) / 2
+                    d.polygon([(x0, 47), (x0, 65), (x0 + 16, 56)],
+                              fill=(129, 212, 250))
+                    d.text((x0 + 24, 57), label, font=font_mid,
+                           fill=(129, 212, 250), anchor="lm")
+                else:
+                    d.text((500, 57), z3, font=font_mid,
+                           fill=(129, 212, 250), anchor="mm")
+            else:
+                d.text((500, 34), z3, font=font,
+                       fill=(120, 120, 120), anchor="mm")
+        # zone 4 : luminosité
+        level_zone(700, "Lum", max(0, min(100, int(brightness))), False,
+                   (240, 220, 130))
+        # séparateurs verticaux entre zones
+        for i in (1, 2, 3):
+            d.line([(i * 200, 10), (i * 200, h - 10)], fill=(45, 45, 45), width=2)
     global _strip_base  # le fil du VU-mètre redessinera la zone 3 par-dessus
     with _strip_base_lock:
         _strip_base = img.copy()
@@ -4031,6 +4075,35 @@ def main():
             return
         zone = int(name.rsplit("_", 1)[1])
         print(f"[tactile] tap zone {zone}")
+        if zone == 3 and _Z3_KIND[0] == "title":
+            # v2.19.12 : tap sur le titre (zone 3) -> écran d'info du
+            # lecteur qui joue, ~8 s puis retour au bandeau normal ;
+            # les boutons i/N, ▶ Album, ▶ Sélect. ne sont pas touchés
+            # (ils ne sont pas des titres).
+            with lms_lock:
+                _np = lms_state.get("now_player")
+                _nt = lms_state.get("now_title")
+                _na = lms_state.get("now_artist")
+            if _np and _np.get("id"):
+                try:
+                    _pi = (lms.playing_track(_np["id"])
+                           if lms.enabled else None) or {}
+                except Exception:
+                    _pi = {}
+                _STRIP_INFO["player"] = player_code(_np)
+                _STRIP_INFO["source"] = _lms_source_name(
+                    _pi, (config.get("lms") or {}).get("radios"))
+                _STRIP_INFO["title"] = _nt or ""
+                _STRIP_INFO["artist"] = _na or ""
+                _STRIP_INFO["until"] = time.time() + 8.0
+                print(f"[lms] bandeau : info — {_STRIP_INFO['player']} "
+                      f"/ {_STRIP_INFO['source'] or '?'}")
+                refresh_strip()
+                _t = threading.Timer(8.5, refresh_strip)
+                _t.daemon = True
+                _t.start()
+                return
+            # rien ne joue : comportement habituel de la zone 3
         enc = f"encoder_{zone}_button"
         action = page_cfg().get("encoders", {}).get(enc, {}).get("action")
         if action:
@@ -4242,6 +4315,7 @@ def main():
                     z3 = "VU" if vu_on else "K3"
             else:
                 z3 = "VU" if vu_on else "K3"
+        _Z3_KIND[0] = ("title" if isinstance(z3, tuple) else str(z3))
         extras = (getattr(device, "_page_label", None) or "K2", z3)
         # carrousel : pages précédente / courante / suivante (zone 2)
         def _plabel(n):
@@ -5571,6 +5645,9 @@ def main():
                     with lms_lock:
                         lms_state["now_title"] = _nt or None
                         lms_state["now_artist"] = _na
+                        # v2.19.12 : lecteur candidat pour l'écran d'info
+                        lms_state["now_player"] = (dict(_cand)
+                                                   if _cand else None)
                         _changed = ((_nt or None) != (_prev or None))
                     if _changed and current["name"] not in LMS_PAGE_NAMES:
                         refresh_strip()

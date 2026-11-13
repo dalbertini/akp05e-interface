@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.12] — 2026-11-13
+
+### Ajouté
+
+- **Écran d'info du lecteur qui joue (easter egg)** — un tap sur le titre affiché en zone 3 du bandeau ouvre un écran d'info d'environ 8 s : lecteur en cours (SBT Orange, SBR Cuisine…), source/webradio (RP Main Mix, RP Mellow, FIP, FIP Metal… — nom de la radio configurée dont l'URL correspond au flux, sinon nom de station), et titre — artiste. Le bandeau revient tout seul ; les boutons « i/N », « ▶ Album », « ▶ Sélect. » ne sont pas affectés (le tap n'ouvre l'info QUE lorsque le titre est affiché).
+
 ## [2.19.11] — 2026-11-13
 
 ### Corrigé
@@ -684,6 +690,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
