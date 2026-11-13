@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.2"
+APP_VERSION = "2.19.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1868,6 +1868,14 @@ class LMSClient:
         # décode pour afficher le morceau réellement diffusé.
         _url = str(it.get("url") or res.get("url") or "")
         if _url.startswith(("http://", "https://")):
+            # v2.19.3 : « remoteMeta » = dict des métadonnées live du flux
+            # (artist/title/track) chez de nombreux serveurs LMS
+            _rm = res.get("remoteMeta")
+            if isinstance(_rm, dict):
+                artist = (str(_rm.get("artist") or "").strip()
+                          or artist)
+                title = (str(_rm.get("title") or _rm.get("track") or "")
+                         .strip() or title)
             _ct = str(res.get("current_title") or "").strip()
             _pt = str(it.get("title") or "").strip()
             if _ct and _ct != _pt:
@@ -1876,6 +1884,9 @@ class LMSClient:
                     artist, title = _a.strip(), _t.strip()
                 else:
                     title = _ct
+            # v2.19.3 : « track » top-level = parfois le morceau live
+            title = (str(res.get("track") or "").strip()
+                     or title)
         return ((title.strip() or None) and title[:80],
                 (artist.strip() or None) and artist[:60])
 
@@ -5401,7 +5412,7 @@ def main():
                         # v2.19.2 : la piste est-elle un flux radio ? au
                         # premier flux détecté, dump one-shot du status
                         # brut pour documenter les champs live du serveur
-                        if (_cand and _t2 and not _Z3_DIAG["radio"]):
+                        if (_cand and not _Z3_DIAG["radio"]):
                             try:
                                 _r = lms.playing_track(_cand["id"]) or {}
                             except Exception:
@@ -5432,10 +5443,36 @@ def main():
                                 _t2, _na2 = lms.now_info(_cand["id"])
                             except Exception:
                                 _t2, _na2 = None, None
+                            # v2.19.3 : titre et artiste mis à jour
+                            # INDEPENDAMMENT — avant, l'artiste restait
+                            # figé tant que le titre n'était pas trouvé
                             if _t2:
                                 _nt = str(_t2).strip()
-                                if _na2:
-                                    _na = _na2
+                            if _na2:
+                                _na = _na2
+                            # v2.19.3 : si le dump webradio n'est jamais
+                            # tombé, tente-le aussi depuis le re-poll
+                            if (_cand and not _Z3_DIAG["radio"]):
+                                try:
+                                    _r = lms.playing_track(
+                                        _cand["id"]) or {}
+                                except Exception:
+                                    _r = {}
+                                if str(_r.get("url") or "").startswith(
+                                        ("http://", "https://")):
+                                    _Z3_DIAG["radio"] = True
+                                    try:
+                                        _raw = lms.request(
+                                            _cand["id"],
+                                            ["status", "-", "1",
+                                             "tags:uA"])
+                                    except Exception as _e:
+                                        _raw = repr(_e)
+                                    print(f"[lms] bandeau : webradio sur "
+                                          f"{_cand.get('name')!r} — "
+                                          f"status -> "
+                                          f"{str(_raw)[:400]!r} — "
+                                          "copie cette ligne")
                     with lms_lock:
                         lms_state["now_title"] = _nt or None
                         lms_state["now_artist"] = _na

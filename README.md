@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.19.2 titre du morceau en cours sur le bandeau (lecture robuste + webradios : métadonnées ICY décodées) ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.19.3 titre du morceau en cours sur le bandeau (lecture robuste + webradios : ICY, remoteMeta, artiste suivi en continu) ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

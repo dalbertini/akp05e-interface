@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.3] — 2026-11-13
+
+### Corrigé
+
+- **Webradios sur le bandeau (round 2)** — après test réel v2.19.2 sur FIP : pas de titre, artiste juste mais figé, et aucun diagnostic. Trois causes : ① le re-poll de 20 s ne mettait à jour l'artiste **que si le titre était trouvé** — désormais titre et artiste sont rafraîchis indépendamment ; ② le diagnostic webradio ne se déclenchait que si `now_info` renvoyait un titre — il tire maintenant même sans titre, y compris depuis le re-poll ; ③ nouvelles sources de métadonnées live : `remoteMeta` (dict des métadonnées ICY du flux : artiste/titre) puis `track` top-level, en complément du décodage de `current_title`.
+
 ## [2.19.2] — 2026-11-13
 
 ### Corrigé
@@ -627,6 +633,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
