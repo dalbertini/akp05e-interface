@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.8] — 2026-11-13
+
+### Corrigé
+- **Mise en veille : le deck se rallumait au relâchement de la touche « Veille »** — la presse passait bien le deck en veille, mais le RELÂCHEMENT de la même touche arrivait juste après et le réveillait aussitôt (effet « baisse puis retour de luminosité »). Les relâchements sont désormais absorbés pendant la veille : seule une nouvelle PRESSION (touche, encodeur, rotation, bandeau tactile) réveille le deck, toujours sans exécuter l'action de l'événement de réveil.
+
+### Modifié
+- **Veille complète** : pendant la veille, plus AUCUN rafraîchissement n'est envoyé au deck (horloge, poll LMS, VU-mètre, bandeau tactile) — le deck reste totalement dormant ; tout est repeint au réveil. Console : `[veille] deck en veille complète — appuie sur une touche pour le réveiller` puis `[veille] deck réveillé`.
+
 ## [2.14.7] — 2026-11-12
 
 ### Ajouté
@@ -516,6 +524,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 ### Ajouté
 - Version initiale : application de contrôle open source pour l'Ajazz AKP05E / AKP05 (Windows) — touches LCD Material Icons, 4 encodeurs, bandeau tactile, luminosité, actions configurables, keepalive, protocole HID rétro-ingénieré, licence MIT.
 
+[2.14.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

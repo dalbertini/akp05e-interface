@@ -391,7 +391,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.7"
+APP_VERSION = "2.14.8"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1977,13 +1977,16 @@ def run_action(action, device):
             device._last_bright = device.brightness
             device.set_brightness(0)
     elif t == "sleep":
-        # v2.14.7 : mise en veille du deck — écrans éteints (le keepalive
-        # maintient la luminosité à 0) ; handle() réveille au premier
-        # événement reçu (touche, encodeur, bandeau) et le CONSOMME
+        # v2.14.7/2.14.8 : veille complète du deck — luminosité 0 (le
+        # keepalive la maintient), plus AUCUN repeint pendant la veille ;
+        # handle() réveille à la première PRESSION (le relâchement de la
+        # touche Veille reste absorbé) et la consomme
         if device.brightness:
             device._last_bright = device.brightness
         device._sleeping = True
         device.set_brightness(0)
+        print("[veille] deck en veille complète — appuie sur une touche "
+              "pour le réveiller")
     elif t == "zoom":
         # zoom Ctrl+molette de la fenêtre active (knob 3 par défaut)
         d = action.get("dir", "in")
@@ -2939,6 +2942,8 @@ def main():
 
     def paint_page():
         """(Re)peint les 10 touches et le bandeau pour la page courante."""
+        if getattr(device, "_sleeping", False):
+            return  # v2.14.8 : veille complète — rien ne se repeint
         buttons = page_cfg().get("buttons") or {}
         gen = page_paint["gen"]
         for n in range(1, 11):
@@ -3037,6 +3042,12 @@ def main():
         # (l'événement est consommé : son action ne s'exécute pas, pour
         # éviter les clics accidentels au réveil)
         if getattr(device, "_sleeping", False):
+            if not ev.state:
+                # v2.14.8 : relâchement de la touche « Veille » (ou de
+                # n'importe quel encodeur) -> on reste endormi, sinon le
+                # deck se rallumait aussitôt à la fin de la pression
+                return
+            # v2.14.8 : seule une nouvelle PRESSION réveille
             device._sleeping = False
             device.set_brightness(getattr(device, "_last_bright",
                                           DEFAULT_BRIGHTNESS))
@@ -3045,6 +3056,7 @@ def main():
                 refresh_strip()
             except Exception:
                 pass
+            print("[veille] deck réveillé")
             return
         # minuteurs : gèrent eux-mêmes l'appui ET le relâchement
         # (clic court = départ/pause/reprise, clic long = réinitialise)
@@ -3131,6 +3143,8 @@ def main():
     def refresh_strip():
         """Redessine le bandeau : volume système + luminosité en direct,
         et nom de la page courante dans la zone 2."""
+        if getattr(device, "_sleeping", False):
+            return  # v2.14.8 : veille complète — le bandeau reste éteint
         gen = page_paint["gen"]
         vol, muted, vol_name = None, None, "Vol"
         # Squeezebox attachée UNIQUEMENT sur les sous-pages LMS (v2.10.2) ;
