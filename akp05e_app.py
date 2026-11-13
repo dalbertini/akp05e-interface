@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.1"
+APP_VERSION = "2.19.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -536,7 +536,9 @@ def draw_vu_zone(img, peak, hold, muted=False):
         d.text((500, 64), "Muet", font=f_t, fill=(239, 154, 154), anchor="mm")
 
 _Z3_DIAG = {"warned": False, "none": False, "err": False,
-              "ntitle": False}  # v2.19.1 : titre bandeau indisponible
+              "ntitle": False, "radio": False}
+# v2.19.1 : titre bandeau indisponible ; v2.19.2 : dump webradio
+_Z3_CYCLE = [0]  # v2.19.2 : cycles du poll pour le re-poll radios
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
 
 
@@ -1860,6 +1862,20 @@ class LMSClient:
         artist = str(it.get("artist")
                      or it.get("track_artist")
                      or res.get("artist") or "")
+        # v2.19.2 : webradio — le « title » de la piste est le NOM DU FLUX
+        # (ex. « FIP (MP3) ») ; les infos live (métadonnées ICY) arrivent
+        # dans « current_title », souvent « Artiste - Titre ». On les
+        # décode pour afficher le morceau réellement diffusé.
+        _url = str(it.get("url") or res.get("url") or "")
+        if _url.startswith(("http://", "https://")):
+            _ct = str(res.get("current_title") or "").strip()
+            _pt = str(it.get("title") or "").strip()
+            if _ct and _ct != _pt:
+                if " - " in _ct and not artist:
+                    _a, _t = _ct.split(" - ", 1)
+                    artist, title = _a.strip(), _t.strip()
+                else:
+                    title = _ct
         return ((title.strip() or None) and title[:80],
                 (artist.strip() or None) and artist[:60])
 
@@ -5382,8 +5398,44 @@ def main():
                             _t2, _na = None, None
                         if _t2:
                             _nt = str(_t2).strip() or _nt
+                        # v2.19.2 : la piste est-elle un flux radio ? au
+                        # premier flux détecté, dump one-shot du status
+                        # brut pour documenter les champs live du serveur
+                        if (_cand and _t2 and not _Z3_DIAG["radio"]):
+                            try:
+                                _r = lms.playing_track(_cand["id"]) or {}
+                            except Exception:
+                                _r = {}
+                            if str(_r.get("url") or "").startswith(
+                                    ("http://", "https://")):
+                                _Z3_DIAG["radio"] = True
+                                try:
+                                    _raw = lms.request(
+                                        _cand["id"],
+                                        ["status", "-", "1", "tags:uA"])
+                                except Exception as _e:
+                                    _raw = repr(_e)
+                                print(f"[lms] bandeau : webradio sur "
+                                      f"{_cand.get('name')!r} — status -> "
+                                      f"{str(_raw)[:400]!r} — "
+                                      "copie cette ligne")
                     elif _nt:
                         _na = _prev_na
+                        # v2.19.2 : webradio — le titre du flux ne change
+                        # jamais (« FIP (MP3) ») mais le morceau diffusé si ;
+                        # re-poll de now_info toutes les ~20 s (10 cycles)
+                        # pour suivre les infos live de la radio
+                        _Z3_CYCLE[0] += 1
+                        if _Z3_CYCLE[0] >= 10:
+                            _Z3_CYCLE[0] = 0
+                            try:
+                                _t2, _na2 = lms.now_info(_cand["id"])
+                            except Exception:
+                                _t2, _na2 = None, None
+                            if _t2:
+                                _nt = str(_t2).strip()
+                                if _na2:
+                                    _na = _na2
                     with lms_lock:
                         lms_state["now_title"] = _nt or None
                         lms_state["now_artist"] = _na

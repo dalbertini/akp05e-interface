@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.2] — 2026-11-13
+
+### Corrigé
+
+- **Webradios (FIP…) sur le bandeau** : le `title` d'une piste radio est le **nom du flux** (« FIP (MP3) »), pas le morceau en cours — et comme ce titre ne change jamais, l'artiste n'était rafraîchi quasiment jamais. Désormais : ① les métadonnées live du flux (métadonnées ICY dans `current_title`, souvent au format « Artiste - Titre ») sont décodées et affichées ; ② tant que le titre affiché est inchangé, un re-poll de `status` toutes les ~20 s suit le morceau réellement diffusé ; ③ au premier flux radio détecté, un diagnostic *one-shot* (`[lms] bandeau : webradio sur 'X' — status -> …`) dump la réponse brute du serveur pour documenter les champs live réels.
+
 ## [2.19.1] — 2026-11-13
 
 ### Corrigé
@@ -621,6 +627,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
