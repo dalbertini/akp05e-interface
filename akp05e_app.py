@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.16.2"
+APP_VERSION = "2.16.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1131,6 +1131,7 @@ from ctypes import wintypes
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 shell32 = ctypes.WinDLL("shell32", use_last_error=True)
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+gdi32 = ctypes.WinDLL("gdi32", use_last_error=True)
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
@@ -2840,6 +2841,39 @@ T_WPARAM, T_LPARAM = ctypes.c_size_t, ctypes.c_ssize_t
 WINFUNCTYPE = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)
 
 
+def _tray_set_prototypes():
+    """v2.16.3 : sans argtypes/restype, ctypes convertit tout en int 32
+    bits — les lParam (pointeurs 64 bits) débordent (« int too long to
+    convert ») et les handles retournés (HWND/HMENU/HICON) sont tronqués.
+    On déclare les signatures réelles des APIs du tray."""
+    try:
+        user32.DefWindowProcW.argtypes = [T_HANDLE, T_UINT, T_WPARAM,
+                                          T_LPARAM]
+        user32.DefWindowProcW.restype = ctypes.c_ssize_t
+        user32.CreateWindowExW.restype = T_HANDLE
+        user32.CreatePopupMenu.restype = T_HANDLE
+        user32.CreateIconIndirect.restype = T_HICON
+        user32.RegisterWindowMessageW.restype = T_UINT
+        user32.GetMessageW.restype = ctypes.c_int
+        user32.TrackPopupMenu.argtypes = [T_HANDLE, T_UINT, ctypes.c_int,
+                                          ctypes.c_int, ctypes.c_int,
+                                          T_HANDLE, T_HANDLE]
+        user32.TrackPopupMenu.restype = ctypes.c_int
+        user32.AppendMenuW.argtypes = [T_HANDLE, T_UINT, T_WPARAM,
+                                       T_LPCWSTR]
+        user32.SetForegroundWindow.argtypes = [T_HANDLE]
+        user32.PostMessageW.argtypes = [T_HANDLE, T_UINT, T_WPARAM,
+                                       T_LPARAM]
+        user32.DestroyMenu.argtypes = [T_HANDLE]
+        kernel32.GetModuleHandleW.restype = T_HANDLE
+        gdi32.CreateBitmap.restype = T_HANDLE
+        shell32.Shell_NotifyIconW.argtypes = [ctypes.c_uint,
+                                             ctypes.c_void_p]
+        shell32.Shell_NotifyIconW.restype = ctypes.c_int
+    except Exception:
+        pass  # signatures déjà posées ou fakes de test : on continue
+
+
 class _WndClassW(ctypes.Structure):
     _fields_ = [("style", T_UINT),
                 ("lpfnWndProc", ctypes.c_void_p),
@@ -2889,6 +2923,9 @@ class _Msg(ctypes.Structure):
 
 class _Point(ctypes.Structure):
     _fields_ = [("x", T_LONG), ("y", T_LONG)]
+
+
+_tray_set_prototypes()
 
 
 def _tray_icon_bits(state):
@@ -3061,8 +3098,8 @@ class SystrayIcon:
     def _icon(self, state):
         if state not in self._icons:
             bits = b"".join(reversed(_tray_icon_bits(state)))  # bottom-up
-            color = user32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 32, bits)
-            mask = user32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 1,
+            color = gdi32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 32, bits)
+            mask = gdi32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 1,
                                        b"\x00" * 128)  # tout opaque
             ii = _IconInfo(1, 0, 0, mask, color)
             self._icons[state] = user32.CreateIconIndirect(ctypes.byref(ii))
