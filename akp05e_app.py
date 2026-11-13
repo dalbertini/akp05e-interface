@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.18.4"
+APP_VERSION = "2.19.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -539,6 +539,27 @@ _Z3_DIAG = {"warned": False, "none": False, "err": False}
 # v2.13.9/2.14.0 : diagnostics one-shot position zone 3
 
 
+def _fit_text(d, text, font, max_w):
+    """v2.19.0 : tronque un texte avec « … » pour tenir dans max_w px
+    (bandeau) — jamais de débordement sur la zone voisine."""
+    text = str(text or "")
+
+    def _w(s):
+        try:
+            v = d.textlength(s, font=font)
+            return v if isinstance(v, (int, float)) else 11 * len(s)
+        except Exception:
+            return 11 * len(s)
+
+    if _w(text) <= max_w:
+        return text
+    while text:
+        text = text[:-1].rstrip()
+        if _w(text) <= max_w - 14:
+            return text + "…"
+    return "…"
+
+
 def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
                pages=None, page_icon=None, page_color=None,
                vol_name="Vol"):
@@ -627,7 +648,17 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     # (zéro scintillement quand un refresh volume/luminosité intervient,
     # et le fil VU n'a pas besoin de réenvoyer une frame juste après) —
     # sinon libellé libre
-    if (_vu_active and extras[1] == "VU"
+    if (isinstance(extras[1], tuple) and len(extras[1]) == 3
+            and extras[1][0] == "TITLE"):
+        # v2.19.0 : titre du morceau LMS (zone 3, à la place du VU-mètre)
+        _t_title = _fit_text(d, extras[1][1], font_mid, 188)
+        d.text((500, 42), _t_title, font=font_mid, fill=(129, 212, 250),
+               anchor="mm")
+        _t_artist = extras[1][2]
+        if _t_artist:
+            d.text((500, 82), _fit_text(d, _t_artist, font_small, 188),
+                   font=font_small, fill=(176, 190, 197), anchor="mm")
+    elif (_vu_active and extras[1] == "VU"
             and _strip_last is not None):
         # pages LMS : extras[1]=="K3" -> on NE recolle PAS
         # le VU en cache, on affiche le libellé libre
@@ -1812,6 +1843,24 @@ class LMSClient:
                 "cur": cur + 1,
                 "tracks": _to_int(res.get("playlist_tracks"), 0),
                 "mode": str(res.get("mode") or "")}
+
+    def now_info(self, player):
+        """v2.19.0 : titre + artiste de la piste en cours, pour le bandeau.
+        Une seule requête « status - 1 » avec le tag artiste ; appelée
+        UNIQUEMENT quand le titre change (une fois par morceau) pour ne
+        pas alourdir le poll de 2 s."""
+        res = self.request(player, ["status", "-", "1", "tags:uA"])
+        if not isinstance(res, dict):
+            return (None, None)
+        loop = res.get("playlist_loop") or []
+        it = loop[0] if loop else {}
+        title = str(res.get("current_title")
+                    or it.get("title") or res.get("title") or "")
+        artist = str(it.get("artist")
+                     or it.get("track_artist")
+                     or res.get("artist") or "")
+        return ((title.strip() or None) and title[:80],
+                (artist.strip() or None) and artist[:60])
 
     def play_url(self, player, url):
         """Joue une URL (webradio) sur le lecteur (l'allume au passage)."""
@@ -3791,6 +3840,11 @@ def main():
     vu_on = _HAS_PYCAW and bool(vu_cfg.get("enabled", True))
     global _vu_active
     _vu_active = vu_on
+    # v2.19.0 : titre du morceau LMS sur la zone 3 du bandeau (remplace
+    # le VU-mètre quand un lecteur LMS joue) ; "strip_title":
+    # {"enabled": false} pour garder le VU-mètre en permanence.
+    strip_title_cfg = config.get("strip_title") or {}
+    strip_title_on = bool(strip_title_cfg.get("enabled", True))
 
     def page_cfg():
         if current["name"] == "accueil" or current["name"] not in pages:
@@ -4070,7 +4124,16 @@ def main():
             elif current["name"] == "lms_album":
                 z3 = "▶ Sélect."
         else:
-            z3 = "VU" if vu_on else "K3"
+            if strip_title_on and lms.enabled:
+                with lms_lock:
+                    _nt = lms_state.get("now_title")
+                    _na = lms_state.get("now_artist")
+                if _nt:
+                    z3 = ("TITLE", _nt, _na)
+                else:
+                    z3 = "VU" if vu_on else "K3"
+            else:
+                z3 = "VU" if vu_on else "K3"
         extras = (getattr(device, "_page_label", None) or "K2", z3)
         # carrousel : pages précédente / courante / suivante (zone 2)
         def _plabel(n):
@@ -4151,9 +4214,12 @@ def main():
                 if not err_shown:
                     err_shown = True
                     print(f"[vu] niveau audio indisponible : {e}")
-            if current["name"] in LMS_PAGE_NAMES:
-                # pages LMS : pas de VU (v2.10.0) ; drawn=None force le
-                # repaint complet dès qu'on quitte une page LMS
+            if (current["name"] in LMS_PAGE_NAMES
+                    or (strip_title_on and lms.enabled
+                        and lms_state.get("now_title"))):
+                # pages LMS : pas de VU (v2.10.0) ; v2.19.0 : titre du
+                # morceau sur la zone 3 -> pas de VU non plus ;
+                # drawn=None force le repaint complet au retour
                 drawn = None
                 time.sleep(period)
                 continue
@@ -4616,7 +4682,9 @@ def main():
                  "apps_tries": 0,      # tentatives de découverte des applis
                  "browse": [],         # pile de navigation appli courante
                  "browse_offset": 0,   # décalage de la page navigation
-                 "album": None}        # album affiché (page lms_album)
+                 "album": None,        # album affiché (page lms_album)
+                 "now_title": None,   # v2.19.0 : titre affiché sur le bandeau
+                 "now_artist": None}  # v2.19.0 : artiste affiché
     lms_lock = threading.RLock()
 
     def lms_selected():
@@ -5259,6 +5327,37 @@ def main():
                                       "lecteurs — "
                                       + ", ".join(q["name"] for q in players))
                     lms_refresh_viewed()
+                    # v2.19.0 : titre du morceau pour le bandeau (zone 3)
+                    # — lecteur affiché s'il joue, sinon 1er lecteur actif ;
+                    # l'artiste n'est demandé qu'AU CHANGEMENT de titre
+                    # (une requête par morceau, pas par cycle de 2 s).
+                    with lms_lock:
+                        _cand = None
+                        for _p in ((lms_viewed(),)
+                                   + tuple(lms_state["players"])):
+                            if (_p and _p.get("playing")
+                                    and _p.get("id")):
+                                _cand = _p
+                                break
+                        _prev = lms_state.get("now_title")
+                        _prev_na = lms_state.get("now_artist")
+                    _nt = str((_cand or {}).get("title") or "").strip()
+                    _na = None
+                    if _nt and _nt != _prev:
+                        try:
+                            _t2, _na = lms.now_info(_cand["id"])
+                        except Exception:
+                            _t2, _na = None, None
+                        if _t2:
+                            _nt = str(_t2).strip() or _nt
+                    elif _nt:
+                        _na = _prev_na
+                    with lms_lock:
+                        lms_state["now_title"] = _nt or None
+                        lms_state["now_artist"] = _na
+                        _changed = ((_nt or None) != (_prev or None))
+                    if _changed and current["name"] not in LMS_PAGE_NAMES:
+                        refresh_strip()
                     if current["name"] in LMS_PAGE_NAMES:
                         paint_lms_page()
                         refresh_strip()

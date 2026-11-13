@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.18.4 --identify : GET_REPORT Feature + Input (HidD_GetFeature / HidD_GetInputReport) avec diagnostic complet ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.19.0 titre du morceau en cours sur le bandeau (LMS, zone 3 à la place du VU-mètre) ; section références open source + note Mirabox ; icône systray fonctionnelle, autostart sans admin ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -17,7 +17,8 @@
 - **Bandeau tactile** : une zone de 200 px par encodeur, avec carrousel de pages (pilule + icône + couleur d'accent)
 - **Gestes tactiles** *(nouveau, v1.5)* : **swipe gauche/droite** sur le bandeau = page précédente/suivante ; **tap** sur une zone = action du knob correspondant (par défaut, tap sur le carrousel = page suivante). Mappage établi par calibration sur le matériel réel
 - **Page « Hardware » (HWiNFO64)** *(nouveau, v1.6)* : températures et capteurs du PC en temps réel sur les touches via HWiNFO64 (licence Pro, option « Shared Memory Support ») — code couleur par seuils, `python akp05e_app.py --list-sensors` pour choisir les capteurs
-- **VU-mètre** *(nouveau, v1.8)* : niveau audio du système en temps réel sur la zone 3 du bandeau tactile (peak meter WASAPI via pycaw), segments vert/ambre/rouge et marqueur de crête — `"vu_meter": {"enabled": false}` pour couper
+- **VU-mètre** *(nouveau, v1.8)* : niveau audio du système en temps réel sur la zone 3 du bandeau tactile (peak meter WASAPI via pycaw), segments vert/ambre/rouge et marqueur de crête — `"vu_meter": {"enabled": false}` pour couper *(v2.19 : laisse la place au titre du morceau quand un lecteur LMS joue)*
+- **Titre du morceau sur le bandeau** *(nouveau, v2.19)* : quand un lecteur Lyrion/Squeezebox joue, la zone 3 affiche le titre et l'artiste en cours (à la place du VU-mètre, qui revient dès que la lecture s'arrête) — troncature propre des titres longs, repeint uniquement au changement de morceau ; `"strip_title": {"enabled": false}` pour désactiver
 - **Zoom universel sur le knob 3** *(nouveau, v1.9)* : Ctrl+molette dans la fenêtre active (CW = grossir, CCW = réduire, appui = Ctrl+0) — surclassable par page via `"encoders"`
 - **Page « minuteurs »** *(nouveau, v2.0)* : préréglages 1/2/5/10/20/30 min — clic = départ/pause/reprise, clic long = réinitialise, alarme sonore et clignotement à la fin (action `{"type": "timer", "minutes": N}`) — **durée réglable** : la touche « Régl. » affiche la durée du knob 3 (1 à 99 min), appui sur le knob 3 = départ immédiat
 - **Chronomètre intégré à la page « minuteurs »** *(nouveau, v2.1)* : touche « Chrono » (libellé violet) — clic = départ/pause/reprise, clic long = remise à zéro, temps mm:ss en temps réel (action `{"type": "stopwatch"}`)

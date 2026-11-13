@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.0] — 2026-11-13
+
+### Ajouté
+- **Titre du morceau en cours sur le bandeau tactile (zone 3)** — quand un lecteur Lyrion/Squeezebox joue, la zone 3 affiche le **titre** (grand) et l'**artiste** (petit, dessous) à la place du VU-mètre ; dès que la lecture s'arrête, le VU-mètre reprend sa place. Le lecteur affiché est prioritaire (s'il joue), sinon le premier lecteur actif. Les titres trop longs sont tronqués proprement avec « … » (jamais de débordement sur la zone voisine). Coût réseau quasi nul : le titre vient du poll `players` (2 s) déjà en place, et l'artiste n'est demandé au serveur **qu'au changement de morceau** (une requête `status` par titre). Le bandeau n'est repeint que lorsque le titre change (une fois par morceau), pas en continu. `"strip_title": {"enabled": false}` dans la config pour garder le VU-mètre en permanence. Sur les pages LMS, la zone 3 garde ses sémantiques existantes (position « i/N », boutons ▶ Album / ▶ Sélect.).
+
 ## [2.18.4] — 2026-11-13
 
 ### Corrigé
@@ -610,6 +615,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
