@@ -121,6 +121,7 @@ désactivable via {"vu_meter": {"enabled": false}} dans la config."""
 
 import json
 import os
+import queue
 import re
 import socket
 import subprocess
@@ -391,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.15.1"
+APP_VERSION = "2.16.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1128,6 +1129,8 @@ import ctypes
 from ctypes import wintypes
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
+shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
@@ -2812,7 +2815,308 @@ def run_setup_lms(config, _input=input):
 # ---------------------------------------------------------------------------
 # Point d'entrée
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Icône systray (v2.16.0) — ctypes pur, zéro dépendance
+# ---------------------------------------------------------------------------
+
+_TRAY_MSG = 0x8000 + 1                      # message de rappel de l'icône
+_NIM_ADD, _NIM_MODIFY, _NIM_DELETE = 0, 1, 2
+_NIF_MESSAGE, _NIF_ICON, _NIF_TIP = 0x01, 0x02, 0x04
+_TPM_RETURNCMD, _TPM_NONOTIFY, _TPM_RIGHTBUTTON = 0x0100, 0x0080, 0x0002
+_WM_RBUTTONUP, _WM_LBUTTONDBLCLK = 0x0205, 0x0203
+_WM_QUIT = 0x0012
+_MENU_ID_BASE = 7000
+_TRAY_SIZE = 32                             # icône 32x32 (32bpp BGRA)
+
+# types Win32 locaux : certains wintypes ne définissent pas HCURSOR /
+# HINSTANCE selon la plateforme ; on n'en dépend pas (app = Windows,
+# tests = partout).
+T_DWORD, T_UINT, T_LONG = ctypes.c_ulong, ctypes.c_uint, ctypes.c_long
+T_HANDLE, T_HICON = ctypes.c_void_p, ctypes.c_void_p
+T_LPCWSTR, T_BOOL = ctypes.c_wchar_p, ctypes.c_int
+T_WPARAM, T_LPARAM = ctypes.c_size_t, ctypes.c_ssize_t
+# WINFUNCTYPE n'existe que sur Windows : les tests hors Windows
+# retombennent sur CFUNCTYPE (le callback n'y est jamais appelé)
+WINFUNCTYPE = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)
+
+
+class _WndClassW(ctypes.Structure):
+    _fields_ = [("style", T_UINT),
+                ("lpfnWndProc", ctypes.c_void_p),
+                ("cbClsExtra", ctypes.c_int),
+                ("cbWndExtra", ctypes.c_int),
+                ("hInstance", T_HANDLE),
+                ("hIcon", T_HICON),
+                ("hCursor", T_HANDLE),
+                ("hbrBackground", T_HANDLE),
+                ("lpszMenuName", T_LPCWSTR),
+                ("lpszClassName", T_LPCWSTR)]
+
+
+class _NotifyIconDataW(ctypes.Structure):
+    """NOTIFYICONDATAW (champ union réduit à un UINT : pas de bulles)."""
+    _fields_ = [("cbSize", T_DWORD),
+                ("hWnd", T_HANDLE),
+                ("uID", T_UINT),
+                ("uFlags", T_UINT),
+                ("uCallbackMessage", T_UINT),
+                ("hIcon", T_HICON),
+                ("szTip", ctypes.c_wchar * 128),
+                ("dwState", T_DWORD),
+                ("dwStateMask", T_DWORD),
+                ("szInfo", ctypes.c_wchar * 256),
+                ("uVersion", T_UINT),
+                ("szInfoTitle", ctypes.c_wchar * 64),
+                ("dwInfoFlags", T_DWORD),
+                ("guidItem", ctypes.c_ubyte * 16),
+                ("hBalloonIcon", T_HICON)]
+
+
+class _IconInfo(ctypes.Structure):
+    _fields_ = [("fIcon", T_BOOL),
+                ("xHotspot", T_DWORD),
+                ("yHotspot", T_DWORD),
+                ("hbmMask", T_HANDLE),
+                ("hbmColor", T_HANDLE)]
+
+
+class _Msg(ctypes.Structure):
+    _fields_ = [("hwnd", T_HANDLE), ("message", T_UINT),
+                ("wParam", T_WPARAM), ("lParam", T_LPARAM),
+                ("time", T_DWORD), ("ptx", T_LONG),
+                ("pty", T_LONG)]
+
+
+class _Point(ctypes.Structure):
+    _fields_ = [("x", T_LONG), ("y", T_LONG)]
+
+
+def _tray_icon_bits(state):
+    """Génère les 32 lignes BGRA (haut->bas) de l'icône d'état.
+    Plein carré (pas de coins transparents : l'AND-mask reste tout à
+    zéro, aucun rendu noir résiduel selon les versions de Windows)."""
+    fill, border = {
+        "on":    ((67, 160, 71), (27, 94, 32)),
+        "sleep": ((117, 117, 117), (33, 33, 33)),
+        "off":   ((229, 57, 53), (136, 14, 79)),
+    }.get(state, ((67, 160, 71), (27, 94, 32)))
+    rows = []
+    for y in range(_TRAY_SIZE):
+        row = bytearray(_TRAY_SIZE * 4)
+        for x in range(_TRAY_SIZE):
+            edge = x < 2 or y < 2 or x >= _TRAY_SIZE - 2 or y >= _TRAY_SIZE - 2
+            c = border if edge else fill
+            # glyphe blanc au centre
+            cx, cy = x - 16, y - 16
+            if state == "on":
+                # anneau (haut-parleur stylisé)
+                if 9 * 9 <= cx * cx + cy * cy <= 36 or (-3 <= cx <= 6 and -3 <= cy <= 3 and cx <= 0):
+                    c = (255, 255, 255)
+            elif state == "sleep":
+                # croissant de lune : cercle blanc moins cercle décalé
+                if cx * cx + cy * cy <= 49 and (cx - 6) ** 2 + (cy + 6) ** 2 > 36:
+                    c = (255, 255, 255)
+            else:  # off : croix
+                if (-9 <= cx <= 9) and (abs(cx - cy) <= 2 or abs(cx + cy) <= 2):
+                    c = (255, 255, 255)
+            o = x * 4
+            row[o], row[o + 1], row[o + 2] = c[2], c[1], c[0]  # BGRA
+            row[o + 3] = 255
+        rows.append(bytes(row))
+    return rows
+
+
+class SystrayIcon:
+    """Icône systray en ctypes pur (v2.16.0) : fenêtre cachée + menu.
+
+    get_items() -> liste de (label, callable) ou None (séparateur) ;
+    appelée à CHAQUE clic droit pour refléter l'état courant. Les
+    callables s'exécutent dans le thread du menu : les actions qui
+    touchent au deck doivent être marshalées vers la boucle principale
+    par l'appelant. on_double (double-clic gauche) est optionnel."""
+
+    def __init__(self, tooltip, get_items, on_double=None):
+        self._tip = tooltip[:127]
+        self._get_items = get_items
+        self._on_double = on_double
+        self._hwnd = None
+        self._nid = None
+        self._proc = None
+        self._taskbar_msg = 0
+        self._icons = {}
+        self._state = "on"
+        self._thread = None
+
+    # -- cycle de vie ------------------------------------------------------
+    def start(self):
+        hinst = kernel32.GetModuleHandleW(None)
+        self._taskbar_msg = user32.RegisterWindowMessageW("TaskbarCreated")
+        self._proc = WINFUNCTYPE(
+            ctypes.c_ssize_t, T_HANDLE, T_UINT, T_WPARAM,
+            T_LPARAM)(self._wnd_proc)
+        wc = _WndClassW()
+        wc.style = 0
+        wc.lpfnWndProc = ctypes.cast(self._proc, ctypes.c_void_p)
+        wc.hInstance = hinst
+        wc.lpszClassName = "AKP05ETrayWnd"
+        user32.RegisterClassW(ctypes.byref(wc))
+        self._hwnd = user32.CreateWindowExW(
+            0, "AKP05ETrayWnd", "", 0, 0, 0, 0, 0, None, None, hinst, None)
+        self._nid = _NotifyIconDataW()
+        self._nid.cbSize = ctypes.sizeof(_NotifyIconDataW)
+        self._nid.hWnd = self._hwnd
+        self._nid.uID = 1
+        self._nid.uFlags = _NIF_MESSAGE | _NIF_ICON | _NIF_TIP
+        self._nid.uCallbackMessage = _TRAY_MSG
+        self._nid.szTip = self._tip
+        self._nid.hIcon = self._icon(self._state)
+        shell32.Shell_NotifyIconW(_NIM_ADD, ctypes.byref(self._nid))
+        self._thread = threading.Thread(target=self._pump, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        try:
+            if self._nid is not None:
+                shell32.Shell_NotifyIconW(_NIM_DELETE, ctypes.byref(self._nid))
+            if self._hwnd:
+                user32.PostMessageW(self._hwnd, _WM_QUIT, 0, 0)
+        except Exception:
+            pass
+
+    def _pump(self):
+        """Boucle de messages (thread démon) : reste vivante jusqu'à
+        WM_QUIT ; les autres threads n'ont pas besoin d'elle."""
+        msg = _Msg()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+
+    # -- fenêtre / icône ---------------------------------------------------
+    def _wnd_proc(self, hwnd, uMsg, wParam, lParam):
+        if uMsg == self._taskbar_msg and self._nid is not None:
+            # explorer.exe a redémarré : l'icône doit être remise
+            shell32.Shell_NotifyIconW(_NIM_ADD, ctypes.byref(self._nid))
+            return 0
+        if uMsg == _TRAY_MSG:
+            mouse = lParam & 0xFFFF
+            if mouse == _WM_RBUTTONUP:
+                self._popup_menu()
+            elif mouse == _WM_LBUTTONDBLCLK and self._on_double:
+                try:
+                    self._on_double()
+                except Exception:
+                    pass
+            return 0
+        return user32.DefWindowProcW(hwnd, uMsg, wParam, lParam)
+
+    def _popup_menu(self):
+        items = self._get_items() or []
+        hmenu = user32.CreatePopupMenu()
+        for i, it in enumerate(items):
+            if it is None:
+                user32.AppendMenuW(hmenu, 0x800, 0, None)   # séparateur
+            else:
+                user32.AppendMenuW(hmenu, 0, _MENU_ID_BASE + i, it[0])
+        pt = _Point()
+        user32.GetCursorPos(ctypes.byref(pt))
+        user32.SetForegroundWindow(self._hwnd)
+        cmd = user32.TrackPopupMenu(
+            hmenu, _TPM_RETURNCMD | _TPM_NONOTIFY | _TPM_RIGHTBUTTON,
+            pt.x, pt.y, 0, self._hwnd, None)
+        user32.PostMessageW(self._hwnd, 0, 0, 0)  # WM_NULL : rend le focus
+        user32.DestroyMenu(hmenu)
+        idx = cmd - _MENU_ID_BASE
+        if 0 <= idx < len(items) and items[idx]:
+            try:
+                items[idx][1]()
+            except Exception as e:
+                print(f"[systray] action du menu impossible : {e}")
+
+    def set_state(self, state, tooltip=None):
+        """state : 'on' (vert), 'sleep' (gris lune) ou 'off' (rouge)."""
+        self._state = state
+        if self._nid is None:
+            return
+        if tooltip:
+            self._tip = tooltip[:127]
+            self._nid.szTip = self._tip
+        self._nid.hIcon = self._icon(state)
+        try:
+            shell32.Shell_NotifyIconW(_NIM_MODIFY, ctypes.byref(self._nid))
+        except Exception:
+            pass
+
+    def _icon(self, state):
+        if state not in self._icons:
+            bits = b"".join(reversed(_tray_icon_bits(state)))  # bottom-up
+            color = user32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 32, bits)
+            mask = user32.CreateBitmap(_TRAY_SIZE, _TRAY_SIZE, 1, 1,
+                                       b"\x00" * 128)  # tout opaque
+            ii = _IconInfo(1, 0, 0, mask, color)
+            self._icons[state] = user32.CreateIconIndirect(ctypes.byref(ii))
+        return self._icons[state]
+
+
+# ---------------------------------------------------------------------------
+# Autostart (v2.16.0) — Planificateur de tâches : à l'ouverture de
+# session, avec un délai (l'USB et le réseau ont le temps d'arriver).
+# ---------------------------------------------------------------------------
+
+AUTOSTART_TASK = "AKP05E Interface"
+
+
+def _autostart_python():
+    """pythonw.exe si disponible (pas de fenêtre console), sinon python."""
+    exe = sys.executable
+    pyw = os.path.join(os.path.dirname(exe), "pythonw.exe")
+    if exe.lower().endswith("python.exe") and os.path.exists(pyw):
+        return pyw
+    return exe
+
+
+def install_autostart(delay_s=30):
+    tr = '"%s" "%s"' % (_autostart_python(), os.path.abspath(__file__))
+    r = subprocess.run(
+        ["schtasks", "/Create", "/TN", AUTOSTART_TASK, "/SC", "ONLOGON",
+         "/DELAY", "0000:%02d" % max(0, int(delay_s)), "/TR", tr, "/F"],
+        capture_output=True, text=True)
+    if r.returncode == 0:
+        print(f"Autostart installé ({AUTOSTART_TASK}) : lancement à "
+              f"l'ouverture de session, après {delay_s} s.")
+        print("Commande : " + tr)
+    else:
+        print("Échec de l'installation de l'autostart : "
+              + (r.stderr or r.stdout or "?").strip())
+    return r.returncode == 0
+
+
+def uninstall_autostart():
+    r = subprocess.run(["schtasks", "/Delete", "/TN", AUTOSTART_TASK, "/F"],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        print(f"Autostart retiré ({AUTOSTART_TASK}).")
+    else:
+        print("Aucun autostart à retirer (ou échec) : "
+              + (r.stderr or r.stdout or "?").strip())
+    return r.returncode == 0
+
+
+def autostart_installed():
+    try:
+        r = subprocess.run(["schtasks", "/Query", "/TN", AUTOSTART_TASK],
+                           capture_output=True)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 def main():
+    if "--install-autostart" in sys.argv:
+        install_autostart()
+        return
+    if "--uninstall-autostart" in sys.argv:
+        uninstall_autostart()
+        return
     if "--list-sensors" in sys.argv:
         run_list_sensors()
         return
@@ -4577,12 +4881,90 @@ def main():
     # peint les icônes de la page courante
     paint_page()
 
+    # v2.16.0 : le menu systray envoie ses actions dans une file ; la
+    # boucle principale les exécute (rien ne touche le deck depuis le
+    # thread du menu) et s'arrête proprement sur Quitter ou Ctrl+C.
+    _ui_queue = queue.Queue()
+    _quit = threading.Event()
+
+    def _ui(fn):
+        _ui_queue.put(fn)
+
+    def _about():
+        label = page_cfg().get("label") or current["name"]
+        ok = "installé" if autostart_installed() else "non installé"
+        user32.MessageBoxW(
+            None, f"AKP05E Interface v{APP_VERSION}\n\n"
+                  f"Page : {label}\nLuminosité : {device.brightness}%\n"
+                  f"Autostart : {ok}\n\n"
+                  f"Menu systray ou Ctrl+C pour quitter.",
+            "AKP05E Interface", 0)
+
+    def toggle_sleep():
+        if getattr(device, "_sleeping", False):
+            device._sleeping = False
+            device.set_brightness(getattr(device, "_last_bright",
+                                          DEFAULT_BRIGHTNESS))
+            try:
+                paint_page()
+                refresh_strip()
+            except Exception:
+                pass
+            print("[veille] deck réveillé")
+        else:
+            run_action({"type": "sleep"}, device)
+
+    def _tray_state():
+        if getattr(device, "_sleeping", False):
+            st = "sleep"
+        elif getattr(device, "dev", None) is None:
+            st = "off"
+        else:
+            st = "on"
+        label = page_cfg().get("label") or current["name"]
+        tray.set_state(st, f"AKP05E v{APP_VERSION} — {label}")
+
+    def _tray_items():
+        asleep = getattr(device, "_sleeping", False)
+        return [
+            ("Réveiller le deck" if asleep else "Veille du deck",
+             lambda: _ui(lambda: (toggle_sleep(), _tray_state()))),
+            None,
+            ("Luminosité +10",
+             lambda: _ui(lambda: device.set_brightness(device.brightness + 10))),
+            ("Luminosité -10",
+             lambda: _ui(lambda: device.set_brightness(device.brightness - 10))),
+            ("Luminosité par défaut (%d%%)" % DEFAULT_BRIGHTNESS,
+             lambda: _ui(lambda: device.set_brightness(DEFAULT_BRIGHTNESS))),
+            None,
+            ("Page suivante", lambda: _ui(lambda: switch_page("next"))),
+            ("Page précédente", lambda: _ui(lambda: switch_page("prev"))),
+            None,
+            ("À propos", lambda: _ui(_about)),
+            ("Quitter", lambda: _quit.set()),
+        ]
+
+    tray = SystrayIcon(f"AKP05E v{APP_VERSION}", _tray_items,
+                       on_double=lambda: _ui(_about))
+    tray.start()
+
+    # déconnexion/reconnexion : l'icône reflète l'état
+    device.on_disconnect = lambda: (print("Deck débranché — relance "
+                                          "l'application."), _tray_state())
+    device.on_reconnect = lambda: (_repaint_all(), _tray_state())
+
     try:
-        while True:
-            time.sleep(1)
+        while not _quit.is_set():
+            try:
+                while True:
+                    _ui_queue.get_nowait()()
+            except queue.Empty:
+                pass
+            _quit.wait(0.25)
     except KeyboardInterrupt:
         pass
     finally:
+        tray.stop()
         device.close()
         print("Au revoir.")
         # Anti-crash au shutdown : les threads démons (poll_lms, poll_volume…)

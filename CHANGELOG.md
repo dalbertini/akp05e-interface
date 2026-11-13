@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.16.0] — 2026-11-13
+
+### Ajouté
+- **Icône systray** (ctypes pur, zéro dépendance) : icône près de l'horloge Windows, générée par l'app et reflétant l'état du deck — **vert** = connecté, **gris avec lune** = veille, **rouge avec croix** = déconnecté ; tooltip « AKP05E vX.Y.Z — page courante ». Clic droit : *Veille / Réveiller le deck*, *Luminosité +10 / -10 / par défaut*, *Page suivante / précédente*, *À propos*, *Quitter* (sortie propre identique à Ctrl+C). Double-clic : *À propos*. Les actions transitent par une file exécutée par la boucle principale — le menu ne touche jamais le deck directement.
+- **Autostart** : `python akp05e_app.py --install-autostart` programme le lancement automatique via le **Planificateur de tâches** (à l'ouverture de session, après **30 s** pour laisser l'USB et le réseau arriver ; utilise `pythonw.exe` si disponible, donc sans fenêtre console). `--uninstall-autostart` le retire. L'état est affiché dans « À propos ».
+
 ## [2.15.1] — 2026-11-13
 
 ### Corrigé
@@ -544,6 +550,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
