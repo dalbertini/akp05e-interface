@@ -391,7 +391,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.9"
+APP_VERSION = "2.15.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -402,6 +402,7 @@ _strip_last_lock = threading.Lock()
 _vu_active = False        # levé par main() quand le fil VU tourne
 _strip_size_logged = False  # v2.14.3 : log one-shot taille JPEG bandeau
 _strip_last_quality = 80    # v2.14.4 : qualité JPEG bandeau mémorisée
+PC_RESUME_GAP_S = 30        # v2.15.0 : écart horloge => le PC a dormi
 
 # Événements du bandeau tactile — mappage établi par calibration sur le
 # matériel réel (v1.5.1) : 0x40..0x43 = tap zone 1..4 ; 0x39 = swipe gauche
@@ -781,6 +782,7 @@ class Akp05Device:
         self._unknown_seen = set()  # codes d'entrée inconnus déjà signalés
         self.on_event = None          # callback(Event)
         self.on_disconnect = None
+        self.on_reconnect = None   # v2.15.0 : callback après reconnexion
         self.on_brightness = None     # callback(pct) — rafraîchit le bandeau
 
     # -- connexion ---------------------------------------------------------
@@ -812,6 +814,22 @@ class Akp05Device:
             except Exception:
                 pass
             self.dev = None
+
+    def reconnect(self):
+        """v2.15.0 : ferme et rouvre la connexion HID (PC sorti de veille,
+        câble rebranché...). Renvoie True si le deck est de nouveau
+        opérationnel (handshake complet + keepalive relancé)."""
+        try:
+            self.close()
+        except Exception:
+            pass
+        self._keepalive_stop.clear()
+        try:
+            self.open()
+            return True
+        except Exception as e:
+            print(f"[reconnexion] échec : {e}")
+            return False
 
     def _send(self, data):
         if getattr(self, "dev", None) is None:
@@ -874,6 +892,19 @@ class Akp05Device:
                     self._send(crt_command("LIG", [0, 0, self.brightness]))
                     self._send(crt_command("CONNECT"))
             except Exception:
+                # v2.15.0 : deck injoignable (PC réveillé, USB
+                # réénuméré...) — on tente de rouvrir la connexion
+                if self.reconnect():
+                    print("[reconnexion] deck reconnecté")
+                    if self.on_reconnect:
+                        try:
+                            self.on_reconnect()
+                        except Exception:
+                            pass
+                    # reconnect() -> open() a déjà relancé un keepalive
+                    # tout neuf : cette boucle s'arrête pour ne pas doubler
+                    # le trafic HID toutes les 10 s
+                    return
                 if self.on_disconnect:
                     self.on_disconnect()
                 return
@@ -3149,6 +3180,18 @@ def main():
     device.on_event = handle
     device.on_disconnect = lambda: print("Deck débranché — relance l'application.")
 
+    def _repaint_all():
+        try:
+            paint_page()
+            refresh_strip()
+            return True
+        except Exception as e:
+            print(f"[reconnexion] repeint impossible : {e}")
+            return False
+
+    # v2.15.0 : après une reconnexion automatique, on repeint tout
+    device.on_reconnect = lambda: _repaint_all()
+
     def refresh_strip():
         """Redessine le bandeau : volume système + luminosité en direct,
         et nom de la page courante dans la zone 2."""
@@ -3647,6 +3690,51 @@ def main():
             paint_clock_info(int(n_str))
         except Exception as e:
             print(f"[erreur infos horloge] {e}")
+
+    def poll_pc_resume():
+        """v2.15.0 : détecte la sortie de veille du PC. Pendant la veille
+        l'USB se suspend et le firmware du deck redémarre : il affiche son
+        logo de démarrage. Cette boucle (1 s) mesure l'écart d'horloge
+        murale : > PC_RESUME_GAP_S = le PC vient de se réveiller. On
+        attend resume_repaint_delay s (défaut 3) que l'USB se stabilise,
+        puis re-handshake + repaint complet (l'affichage repart où il
+        en était)."""
+        delay = config.get("resume_repaint_delay", 3)
+        last = time.time()
+        while True:
+            time.sleep(1.0)
+            now = time.time()
+            gap = now - last
+            last = now
+            if gap < PC_RESUME_GAP_S:
+                continue  # simple battement de 1 s : le PC n'a pas dormi
+            print(f"[resume] sortie de veille du PC détectée "
+                  f"(pause de {int(gap)} s)")
+
+            def repaint_after_resume():
+                time.sleep(delay)
+                try:
+                    with device.lock:
+                        device._send(crt_command("DIS"))
+                        device._send(crt_command("LIG", [0, 0,
+                                                         device.brightness]))
+                        device._send(crt_command("CLE", [0, 0, 0, 0xFF]))
+                        device._send(crt_command("STP"))
+                    if _repaint_all():
+                        print("[resume] deck repeint après le réveil du PC")
+                    return
+                except Exception:
+                    pass
+                # liaison HID morte : reconnexion complète puis repaint
+                if not device.reconnect():
+                    print("[resume] deck injoignable — relance "
+                          "l'application si besoin")
+                    return
+                if _repaint_all():
+                    print("[resume] deck reconnecté et repeint")
+
+            threading.Thread(target=repaint_after_resume,
+                             daemon=True).start()
 
     def poll_clock():
         """Rafraîchit la touche horloge de la page courante quand le
@@ -4455,6 +4543,7 @@ def main():
                 print(f"[erreur hardware] {e}")
                 time.sleep(3)
 
+    threading.Thread(target=poll_pc_resume, daemon=True).start()
     threading.Thread(target=poll_hardware, daemon=True).start()
     threading.Thread(target=poll_timers, daemon=True).start()
     threading.Thread(target=poll_clock, daemon=True).start()

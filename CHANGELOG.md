@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.15.0] — 2026-11-13
+
+### Ajouté
+- **Reprise automatique après la veille du PC** — pendant la veille du PC, l'USB se suspend et le firmware du deck redémarre : il affichait son logo de démarrage (touches + bandeau tactile) et l'affichage de l'app n'était pas restauré. Un watchdog détecte la sortie de veille (saut d'horloge murale > 30 s), attend 3 s (paramétrable via la clé de config `resume_repaint_delay`, en secondes) puis renvoie le handshake d'ouverture et repeint la page et le bandeau : **l'affichage repart exactement où il en était**, sans relancer l'app. Console : `[resume] sortie de veille du PC détectée…` puis `[resume] deck repeint après le réveil du PC`.
+- **Auto-reconnexion du deck** — si la liaison HID échoue (PC réveillé, câble rebranché…), l'app tente maintenant de fermer et rouvrir la connexion puis de tout repeinter, au lieu d'afficher « Deck débranché — relance l'application ». Ce message n'apparaît plus que si la reconnexion échoue.
+
 ## [2.14.9] — 2026-11-13
 
 ### Modifié
@@ -531,6 +537,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 
 [2.14.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
