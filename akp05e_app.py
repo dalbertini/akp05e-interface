@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.17.0"
+APP_VERSION = "2.17.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3224,12 +3224,11 @@ def autostart_installed():
 # ---------------------------------------------------------------------------
 
 CALIB_STRIP_PROBES = [
-    # (titre console, largeur, hauteur)
-    ("grille de reference 800x112 (taille actuelle de l'app)", 800, 112),
+    # (titre console, largeur, hauteur) — v2.17.1 : gros chiffres lisibles
+    ("grille 800x112 (taille actuelle de l'app)", 800, 112),
+    ("sonde HAUTEUR 800x128 (candidat natif, limite 112 en jaune)", 800, 128),
+    ("sonde LARGEUR 1024x128 (repères de colonnes jusqu'à 1000)", 1024, 128),
     ("sonde LARGEUR 1024x112 (repères de colonnes jusqu'à 1000)", 1024, 112),
-    ("sonde HAUTEUR 800x140 (repères de lignes jusqu'à 140)", 800, 140),
-    ("sonde 1024x140 (largeur ET hauteur)", 1024, 140),
-    ("sonde panneau entier 800x480 (repères de lignes jusqu'à 480)", 800, 480),
 ]
 
 
@@ -3245,8 +3244,9 @@ def _calib_strip_image(w, h):
     for x in range(0, w, 10):
         col = (70, 74, 82) if x % 100 == 0 else (46, 50, 56)
         d.line([(x, 0), (x, h)], fill=col)
-    for y in range(0, h, 14):
-        col = (255, 213, 79) if y % 56 == 0 else (60, 64, 70)
+    step = 14 if h <= 112 else 16
+    for y in range(0, h, step):
+        col = (255, 213, 79) if y % (step * 4) == 0 else (60, 64, 70)
         d.line([(0, y), (w, y)], fill=col)
     # limites des 4 zones tactiles (x = 200/400/600), bleu pointillé
     for zx in (200, 400, 600):
@@ -3257,21 +3257,28 @@ def _calib_strip_image(w, h):
                        fill=(129, 212, 250))
                 y += 8
     try:
-        font = ImageFont.truetype("arial.ttf", 11)
+        font = ImageFont.truetype("arial.ttf", 24)
     except OSError:
         font = ImageFont.load_default()
-    # repère "0" dessiné UNE fois à l'origine (sinon les deux labels se
-    # superposent exactement) ; colonnes à partir de 100, lignes à partir
-    # de 14 — sur la photo, le bord haut-gauche est donc le point (0, 0)
-    d.text((4, 4), "0,0", font=font, fill=(255, 255, 255), anchor="la")
+    # repère "0" dessiné UNE fois à l'origine ; colonnes à partir de 100,
+    # lignes numérotées selon le pas (14 px pour 112 de haut, 16 pour 128)
+    step = 14 if h <= 112 else 16
+    d.text((6, 6), "0,0", font=font, fill=(255, 255, 255), anchor="la")
     for x in range(100, w, 100):
-        d.text((min(x + 3, w - 2), 2), str(x), font=font,
+        d.text((min(x + 5, w - 4), 2), str(x), font=font,
                fill=(255, 255, 255), anchor="la")
-    for y in range(14, h, 14):
-        d.text((3, min(y + 2, h - 2)), str(y), font=font,
+    for y in range(step, h, step):
+        d.text((4, min(y + 3, h - 6)), str(y), font=font,
                fill=(255, 255, 255), anchor="la")
+    # v2.17.1 : sur les sondes plus hautes que 112, marque la limite
+    # actuelle de l'app en JAUNE VIF — si tu vois du contenu SOUS la
+    # ligne 112, le panneau est plus haut que ce que l'app utilise
+    if h > 112:
+        d.line([(0, 112), (w, 112)], fill=(255, 213, 79))
+        d.text((w - 8, 116), "112", font=font, fill=(255, 213, 79),
+               anchor="ra")
     # cadre rouge au bord EXACT de l'image
-    d.rectangle([0, 0, w - 1, h - 1], outline=(255, 64, 64), width=2)
+    d.rectangle([0, 0, w - 1, h - 1], outline=(255, 64, 64), width=3)
     return img
 
 

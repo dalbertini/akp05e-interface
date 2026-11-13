@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.17.1] — 2026-11-13
+
+### Amélioré
+- **`--calibrate-strip` : sondes à gros chiffres lisibles** (police 24 px au lieu de 11 — les repères étaient illisibles sur les photos du premier test réel). Résultats du premier passage : le firmware **redimensionne** l'image au panneau (grille 800x112 affichée plein cadre), la hauteur native est **supérieure à 112** (estimation ~128), et une sonde 800x480 fait **déborder le buffer du firmware** (corruption attendue, sonde retirée). Nouvelles sondes : 800x128 (candidat natif, limite actuelle 112 marquée en jaune vif), 1024x128 et 1024x112 pour trancher la largeur.
+
 ## [2.17.0] — 2026-11-13
 
 ### Ajouté
@@ -577,6 +582,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
