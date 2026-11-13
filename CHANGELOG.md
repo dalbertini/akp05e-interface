@@ -3,10 +3,15 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.16.4] — 2026-11-13
+
+### Corrigé
+- **Icône systray : dernier débordement corrigé** (test réel) — « argument 11: int too long to convert » : `CreateWindowExW` avait son type de retour (handle 64 bits) mais pas ses types d'arguments ; le `hInstance` renvoyé par `GetModuleHandleW` débordait en conversion 32 bits. La signature complète des 12 arguments est désormais déclarée.
+
 ## [2.16.3] — 2026-11-13
 
 ### Corrigé
-- **Icône systray : crash de création corrigé** (remonté par un test réel sous Windows 10) — deux erreurs : `CreateBitmap` est une fonction de **gdi32**, pas de user32 (« function 'CreateBitmap' not found ») ; et sans signatures ctypes déclarées, les `lParam` (pointeurs 64 bits) débordaient dans `DefWindowProcW` (« int too long to convert ») tandis que les handles retournés (HWND/HMENU/HICON) risquaient d'être tronqués. Toutes les APIs du tray ont maintenant leurs prototypes (`argtypes`/`restype`) déclarés, et les bitmaps de l'icône passent par gdi32. L'icône apparaît désormais réellement dans la zone de notification.
+- **Icône systray : `CreateBitmap` introuvable** (test réel) — cette API n'existe pas dans `user32.dll` ; elle est désormais chargée depuis `gdi32.dll`, comme le reste des APIs de dessin. Tous les prototypes ctypes du tray sont déclarés en un seul endroit (`_tray_set_prototypes()`), avec types d'arguments et de retour explicites.
 
 ## [2.16.2] — 2026-11-13
 
@@ -566,10 +571,11 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
-[2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

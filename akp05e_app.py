@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.16.3"
+APP_VERSION = "2.16.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2850,6 +2850,11 @@ def _tray_set_prototypes():
         user32.DefWindowProcW.argtypes = [T_HANDLE, T_UINT, T_WPARAM,
                                           T_LPARAM]
         user32.DefWindowProcW.restype = ctypes.c_ssize_t
+        user32.CreateWindowExW.argtypes = [
+            T_UINT, T_LPCWSTR, T_LPCWSTR, T_UINT,          # exStyle, class,
+            ctypes.c_int, ctypes.c_int,                   # titre, style,
+            ctypes.c_int, ctypes.c_int,                   # x, y, L, H,
+            T_HANDLE, T_HANDLE, T_HANDLE, T_HANDLE]       # parent, menu,
         user32.CreateWindowExW.restype = T_HANDLE
         user32.CreatePopupMenu.restype = T_HANDLE
         user32.CreateIconIndirect.restype = T_HICON
