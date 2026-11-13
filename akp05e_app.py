@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.16.4"
+APP_VERSION = "2.17.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3213,6 +3213,116 @@ def autostart_installed():
     return os.path.exists(os.path.join(_startup_dir(), AUTOSTART_LNK))
 
 
+# ---------------------------------------------------------------------------
+# Calibration du bandeau tactile (--calibrate-strip) — v2.17.0
+# David a constaté que le logo de boot AJAZZ occupe plus de pixels que nos
+# images 800x112 : la résolution native du bandeau est probablement
+# supérieure. Ce mode envoie successivement des motifs gradués à
+# différentes résolutions candidates ; une PHOTO du bandeau suffit ensuite
+# à déduire la vraie résolution (le cadre rouge au bord EXACT de l'image
+# est-il entier ? jusqu'à quel repère chiffré voit-on les colonnes ?).
+# ---------------------------------------------------------------------------
+
+CALIB_STRIP_PROBES = [
+    # (titre console, largeur, hauteur)
+    ("grille de reference 800x112 (taille actuelle de l'app)", 800, 112),
+    ("sonde LARGEUR 1024x112 (repères de colonnes jusqu'à 1000)", 1024, 112),
+    ("sonde HAUTEUR 800x140 (repères de lignes jusqu'à 140)", 800, 140),
+    ("sonde 1024x140 (largeur ET hauteur)", 1024, 140),
+    ("sonde panneau entier 800x480 (repères de lignes jusqu'à 480)", 800, 480),
+]
+
+
+def _calib_strip_image(w, h):
+    """Grille graduée de calibration : repères de colonnes tous les 100 px
+    (chiffres blancs), lignes tous les 14 px (chiffres jaunes), limites des
+    4 zones tactiles en bleu pointillé, cadre rouge au bord EXACT de
+    l'image — sur la photo : cadre entier = l'image occupe toute la zone
+    affichée ; repère chiffré le plus haut visible = largeur/hauteur
+    réellement affichée (si < w ou h, le firmware recadre)."""
+    img = Image.new("RGB", (w, h), (16, 18, 22))
+    d = ImageDraw.Draw(img)
+    for x in range(0, w, 10):
+        col = (70, 74, 82) if x % 100 == 0 else (46, 50, 56)
+        d.line([(x, 0), (x, h)], fill=col)
+    for y in range(0, h, 14):
+        col = (255, 213, 79) if y % 56 == 0 else (60, 64, 70)
+        d.line([(0, y), (w, y)], fill=col)
+    # limites des 4 zones tactiles (x = 200/400/600), bleu pointillé
+    for zx in (200, 400, 600):
+        if zx < w:
+            y = 0
+            while y < h:
+                d.line([(zx, y), (zx, min(y + 4, h - 1))],
+                       fill=(129, 212, 250))
+                y += 8
+    try:
+        font = ImageFont.truetype("arial.ttf", 11)
+    except OSError:
+        font = ImageFont.load_default()
+    # repère "0" dessiné UNE fois à l'origine (sinon les deux labels se
+    # superposent exactement) ; colonnes à partir de 100, lignes à partir
+    # de 14 — sur la photo, le bord haut-gauche est donc le point (0, 0)
+    d.text((4, 4), "0,0", font=font, fill=(255, 255, 255), anchor="la")
+    for x in range(100, w, 100):
+        d.text((min(x + 3, w - 2), 2), str(x), font=font,
+               fill=(255, 255, 255), anchor="la")
+    for y in range(14, h, 14):
+        d.text((3, min(y + 2, h - 2)), str(y), font=font,
+               fill=(255, 255, 255), anchor="la")
+    # cadre rouge au bord EXACT de l'image
+    d.rectangle([0, 0, w - 1, h - 1], outline=(255, 64, 64), width=2)
+    return img
+
+
+def run_calibrate_strip():
+    """Mode --calibrate-strip : affiche les sondes graduées sur le bandeau.
+    Knob 1 : sonde suivante / précédente ; appui knob 1 ou n'importe
+    quelle touche : quitte. Photographie chaque sonde puis envoie les
+    photos : on en déduira la résolution native du bandeau."""
+    print("=== Calibration du bandeau tactile — v%s ===" % APP_VERSION)
+    print("Knob 1 (gauche) : sonde suivante/précédente ; appui knob 1")
+    print("ou n'importe quelle touche : quitter. Photographie chaque sonde")
+    print("et note : cadre ROUGE entier ? dernier repère de colonne ?")
+    print("dernier repère de ligne ?")
+    device = Akp05Device(brightness=DEFAULT_BRIGHTNESS)
+    device.open()
+    n = len(CALIB_STRIP_PROBES)
+    idx = [0]
+    quit_ev = threading.Event()
+
+    def show():
+        title, w, h = CALIB_STRIP_PROBES[idx[0]]
+        img = _calib_strip_image(w, h)
+        # même chemin d'envoi que set_strip : rotation 180° + JPEG plafonné
+        jpeg = device._pil_to_jpeg_capped(img.rotate(180))
+        device._upload_jpeg(STRIP_WIRE_KEY, jpeg)
+        print("[calibration] sonde %d/%d : %s (%dx%d) — JPEG %d octets"
+              % (idx[0] + 1, n, title, w, h, len(jpeg)))
+
+    def on_ev(ev):
+        if ev.name == "encoder_1_cw":
+            idx[0] = (idx[0] + 1) % n
+            show()
+        elif ev.name == "encoder_1_ccw":
+            idx[0] = (idx[0] - 1) % n
+            show()
+        elif ev.state and (ev.name == "encoder_1_button"
+                           or ev.name.startswith("button_")):
+            quit_ev.set()
+
+    device.on_event = on_ev
+    show()
+    try:
+        while not quit_ev.wait(0.25):
+            pass
+    except KeyboardInterrupt:
+        pass
+    finally:
+        device.close()
+        print("[calibration] terminé — envoie les photos des sondes.")
+
+
 def main():
     if "--install-autostart" in sys.argv:
         install_autostart()
@@ -3222,6 +3332,10 @@ def main():
         return
     if "--list-sensors" in sys.argv:
         run_list_sensors()
+        return
+    if "--calibrate-strip" in sys.argv:
+        # v2.17.0 : calibration du bandeau tactile (grilles graduées)
+        run_calibrate_strip()
         return
     config = load_config()
     if "--startup" in sys.argv:

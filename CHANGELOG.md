@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.17.0] — 2026-11-13
+
+### Ajouté
+- **Mode `--calibrate-strip` : calibration du bandeau tactile** — le logo de démarrage AJAZZ occupe plus de pixels que les images 800x112 envoyées par l'app, signe que la résolution native du bandeau est probablement supérieure. `python akp05e_app.py --calibrate-strip` affiche successivement 5 sondes graduées (grille 800x112 de référence, puis 1024x112, 800x140, 1024x140 et 800x480) : repères de colonnes tous les 100 px, lignes tous les 14 px, limites des 4 zones tactiles en bleu et cadre rouge au bord exact de l'image. Une photo de chaque sonde suffit à déduire la résolution réelle et si le firmware recadre ou redimensionne. Knob 1 : sonde suivante/précédente ; appui knob 1 ou n'importe quelle touche : quitter.
+
 ## [2.16.4] — 2026-11-13
 
 ### Corrigé
@@ -571,6 +576,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
