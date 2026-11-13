@@ -391,7 +391,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.15.0"
+APP_VERSION = "2.15.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -978,9 +978,16 @@ class Akp05Device:
         if button not in BUTTON_TO_WIRE_KEY:
             raise ValueError("button doit être entre 1 et 10")
         img = img.convert("RGB").resize(BUTTON_IMAGE_SIZE).rotate(180)
+        # v2.15.1 : veille étanche — l'horloge, les minuteurs, le VU...
+        # repeignaient leurs touches par-dessus la veille ; les DEUX seuls
+        # entonnoirs vers l'écran deviennent muets tant que le deck dort
+        if getattr(self, "_sleeping", False):
+            return
         self._upload_jpeg(BUTTON_TO_WIRE_KEY[button], self._pil_to_jpeg(img))
 
     def set_strip(self, img: Image.Image):
+        if getattr(self, "_sleeping", False):
+            return  # v2.15.1 : veille étanche, bandeau compris
         """Upload une image PIL sur le bandeau tactile (800x112, wire-key 1).
         JPEG compressé adaptativement pour rester sous la limite firmware.
         Mémorise le dernier rendu affiché : les refresh (volume, luminosité)

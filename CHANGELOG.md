@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.15.1] — 2026-11-13
+
+### Corrigé
+- **Veille étanche** — pendant la veille du deck, la touche horloge se rallumait seule à chaque changement de minute (et les minuteurs/chronos actifs ou le VU-mètre auraient fait de même) : ces repeints directs contournaient les gardes de veille. Les deux seuls points de sortie des images vers le deck (`set_image` et `set_strip`) ignorent désormais tout envoi tant que le deck dort — plus rien ne peut s'afficher, quelle que soit la source. La restauration au réveil est inchangée.
+
 ## [2.15.0] — 2026-11-13
 
 ### Ajouté
@@ -538,6 +543,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.14.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.15.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
