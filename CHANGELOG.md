@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.10] — 2026-11-13
+
+### Corrigé
+
+- **Les listes de radios ne sont plus traitées comme des albums** — dans l'appli Radio Paradise, la page de choix des mixes (Main Mix, Mellow Mix, Rockit…) affichait « ▶ Album » en zone 3, et ouvrir un mix montrait une page album (« Jouer l'album » + boutons morceaux avec surlignage bleu « sélection ») alors que ce sont des flux webradio : lancer « l'album » aurait mis tous les flux en file. Nouveau critère : une liste dont toutes les URL sont `http(s)://` (flux) n'est ni un album, ni « ▶ Album » — navigation normale où chaque bouton lance sa radio, et le titre du morceau (v2.19.9) occupe la zone 3. Les albums Qobuz (`qobuz://…`) et le bouton « Jouer l'album » sont inchangés ; la zone 3 garde la pause/reprise quand une radio de la page joue.
+
 ## [2.19.9] — 2026-11-13
 
 ### Ajouté
@@ -670,6 +676,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

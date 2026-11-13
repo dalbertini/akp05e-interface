@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.9"
+APP_VERSION = "2.19.10"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1501,6 +1501,18 @@ def lms_level_urls(items):
     return urls
 
 
+def lms_is_streams(items):
+    """v2.19.10 : une liste d'items est une liste de FLUX (webradios,
+    p.ex. les mixes Radio Paradise ou leurs variantes flac/aac) si TOUS
+    les items jouables du niveau ont une URL http(s):// — les morceaux
+    d'album Qobuz sont en qobuz://… Une telle liste ne doit NI devenir
+    une page « album » (« Jouer l'album » = tous les flux en file n'a
+    pas de sens), NI afficher « ▶ Album » en zone 3."""
+    urls = lms_level_urls(items)
+    return bool(urls) and all(
+        u.lower().startswith(("http://", "https://")) for u in urls)
+
+
 def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
                    switch_page):
     """Ouvre le sous-niveau d'un élément de navigation LMS (v2.13.2) :
@@ -1515,6 +1527,12 @@ def lms_open_level(vp, it, cmd, params, url, lms, lms_state, lms_lock,
     title = str(it.get("name") or it.get("title") or "?")
     diag = {}
     av = lms_album_view(items, diag)
+    if av and lms_is_streams(items) and len(av["tracks"]) >= 2:
+        # v2.19.10 : liste de FLUX (webradios) -> PAS de page album :
+        # navigation normale, chaque bouton lance son flux.
+        print(f"[lms] liste de flux « {title} » : {len(av['tracks'])} "
+              "flux, navigation (pas de page album)")
+        av = None
     if av:
         if len(av["tracks"]) == 1:
             # v2.13.4 : un « album » d'UN morceau = en fait un morceau
@@ -4185,7 +4203,10 @@ def main():
                     lvl = (lms_state["browse"][-1]
                            if lms_state["browse"] else None)
                     items = lvl["items"] if lvl else []
-                if len(lms_level_urls(items)) >= 2:
+                if (len(lms_level_urls(items)) >= 2
+                        and not lms_is_streams(items)):
+                    # v2.19.10 : une liste de flux n'est pas un album
+                    # -> z3 reste "K3" (titre 2.19.9 à la place)
                     z3 = "▶ Album"
             elif current["name"] == "lms_album":
                 z3 = "▶ Sélect."
@@ -5251,6 +5272,12 @@ def main():
             if _in and m == "pause":
                 lms.playpause(vp["id"], False)
                 print(f"[lms] reprise ({vp['name']})")
+                return
+            if lms_is_streams(items):
+                # v2.19.10 : liste de flux — la zone 3 ne met PAS toutes
+                # les radios en file ; chaque bouton lance sa radio.
+                print("[lms] liste de flux : chaque bouton lance sa "
+                      "radio (zone 3 : pause/reprise uniquement)")
                 return
             if len(urls) >= 2:
                 lms.play_url(vp["id"], urls[0])
