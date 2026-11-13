@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.5] — 2026-11-13
+
+### Corrigé
+
+- **Détection de flux élargie (le diagnostic webradio ne tirait jamais)** — test réel v2.19.4 : zone 3 = « FIP (MP3) » + artiste, mais **aucun** diagnostic en console. Cause : le dump et le décodage des métadonnées live exigeaient une URL `http(s)://` — or un favori radio joué via un plugin renvoie une URL d'un autre schéma (tunein, favoris…), vide, ou une playlist mono-piste. Est désormais considéré « flux » : une URL `://` non-fichier, ou le champ `remote` du `status` = 1, ou une playlist de ≤ 1 piste. Le diagnostic brut *one-shot* finira donc par tomber pour toute webradio, quel que soit le chemin serveur.
+
 ## [2.19.4] — 2026-11-13
 
 ### Corrigé
@@ -639,6 +645,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

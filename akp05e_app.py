@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.4"
+APP_VERSION = "2.19.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1867,7 +1867,13 @@ class LMSClient:
         # dans « current_title », souvent « Artiste - Titre ». On les
         # décode pour afficher le morceau réellement diffusé.
         _url = str(it.get("url") or res.get("url") or "")
-        if _url.startswith(("http://", "https://")):
+        # v2.19.5 : un favori radio joué via un plugin n'a PAS une URL
+        # http simple (schéma tunein/favoris, ou vide) — on élargit :
+        # URL « :// » non-fichier, ou champ « remote » du status = 1
+        _flux = (bool(_url) and "://" in _url
+                 and not _url.startswith(("file://", "file:")))
+        _flux = (_flux or _to_int(res.get("remote"), 0) == 1)
+        if _flux:
             # v2.19.3 : « remoteMeta » = dict des métadonnées live du flux
             # (artist/title/track) chez de nombreux serveurs LMS
             _rm = res.get("remoteMeta")
@@ -5438,8 +5444,12 @@ def main():
                                 _r = lms.playing_track(_cand["id"]) or {}
                             except Exception:
                                 _r = {}
-                            if str(_r.get("url") or "").startswith(
-                                    ("http://", "https://")):
+                            _rurl = str(_r.get("url") or "")
+                            _rtr = _to_int(_r.get("tracks"), 0)
+                            if ((bool(_rurl) and "://" in _rurl
+                                 and not _rurl.startswith(
+                                     ("file://", "file:")))
+                                    or (_rtr <= 1)):
                                 _Z3_DIAG["radio"] = True
                                 try:
                                     _raw = lms.request(
@@ -5479,8 +5489,12 @@ def main():
                                         _cand["id"]) or {}
                                 except Exception:
                                     _r = {}
-                                if str(_r.get("url") or "").startswith(
-                                        ("http://", "https://")):
+                                _rurl = str(_r.get("url") or "")
+                                _rtr = _to_int(_r.get("tracks"), 0)
+                                if ((bool(_rurl) and "://" in _rurl
+                                     and not _rurl.startswith(
+                                         ("file://", "file:")))
+                                        or (_rtr <= 1)):
                                     _Z3_DIAG["radio"] = True
                                     try:
                                         _raw = lms.request(
