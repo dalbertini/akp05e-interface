@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.16.2] — 2026-11-13
+
+### Corrigé
+- **Icône systray absente après démarrage automatique** — la fenêtre du tray était créée sur le thread principal alors que sa boucle de messages tournait dans un autre thread : Windows exige que les messages d'une fenêtre soient traités par le thread qui l'a créée. Toute la création (fenêtre + icône) et le pompage des messages s'exécutent désormais dans le thread dédié du systray. De plus, `start()` ne lève plus jamais d'exception : en cas de panne, un message clair s'affiche et **l'application continue de fonctionner sans icône** (un échec pouvait tuer l'app en silence, invisible sous `pythonw`).
+- Note : sous Windows 11, les nouvelles icônes peuvent être masquées dans le chevron « ^ » de la zone de notification — glisser l'icône AKP05E sur la barre des tâches pour l'épingler.
+
 ## [2.16.1] — 2026-11-13
 
 ### Corrigé
@@ -557,6 +563,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.15.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.16.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.16.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/

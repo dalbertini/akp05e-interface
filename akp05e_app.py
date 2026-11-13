@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.16.1"
+APP_VERSION = "2.16.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2949,30 +2949,50 @@ class SystrayIcon:
 
     # -- cycle de vie ------------------------------------------------------
     def start(self):
-        hinst = kernel32.GetModuleHandleW(None)
-        self._taskbar_msg = user32.RegisterWindowMessageW("TaskbarCreated")
-        self._proc = WINFUNCTYPE(
-            ctypes.c_ssize_t, T_HANDLE, T_UINT, T_WPARAM,
-            T_LPARAM)(self._wnd_proc)
-        wc = _WndClassW()
-        wc.style = 0
-        wc.lpfnWndProc = ctypes.cast(self._proc, ctypes.c_void_p)
-        wc.hInstance = hinst
-        wc.lpszClassName = "AKP05ETrayWnd"
-        user32.RegisterClassW(ctypes.byref(wc))
-        self._hwnd = user32.CreateWindowExW(
-            0, "AKP05ETrayWnd", "", 0, 0, 0, 0, 0, None, None, hinst, None)
-        self._nid = _NotifyIconDataW()
-        self._nid.cbSize = ctypes.sizeof(_NotifyIconDataW)
-        self._nid.hWnd = self._hwnd
-        self._nid.uID = 1
-        self._nid.uFlags = _NIF_MESSAGE | _NIF_ICON | _NIF_TIP
-        self._nid.uCallbackMessage = _TRAY_MSG
-        self._nid.szTip = self._tip
-        self._nid.hIcon = self._icon(self._state)
-        shell32.Shell_NotifyIconW(_NIM_ADD, ctypes.byref(self._nid))
-        self._thread = threading.Thread(target=self._pump, daemon=True)
-        self._thread.start()
+        """Lance le thread du systray. Ne lève JAMAIS : en cas de panne
+        l'app continue sans icône (v2.16.2 — un échec ici tuait l'app en
+        silence sous pythonw, sans console pour le dire)."""
+        try:
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+        except Exception as e:
+            print(f"[systray] icône impossible : {e} — l'app continue.")
+
+    def _run(self):
+        """Crée la fenêtre, ajoute l'icône, POMPE les messages : tout
+        dans CE thread (Windows exige que les messages d'une fenêtre
+        soient traités par le thread qui l'a créée — v2.16.2)."""
+        try:
+            hinst = kernel32.GetModuleHandleW(None)
+            self._taskbar_msg = user32.RegisterWindowMessageW("TaskbarCreated")
+            self._proc = WINFUNCTYPE(
+                ctypes.c_ssize_t, T_HANDLE, T_UINT, T_WPARAM,
+                T_LPARAM)(self._wnd_proc)
+            wc = _WndClassW()
+            wc.style = 0
+            wc.lpfnWndProc = ctypes.cast(self._proc, ctypes.c_void_p)
+            wc.hInstance = hinst
+            wc.lpszClassName = "AKP05ETrayWnd"
+            user32.RegisterClassW(ctypes.byref(wc))
+            self._hwnd = user32.CreateWindowExW(
+                0, "AKP05ETrayWnd", "", 0, 0, 0, 0, 0,
+                None, None, hinst, None)
+            self._nid = _NotifyIconDataW()
+            self._nid.cbSize = ctypes.sizeof(_NotifyIconDataW)
+            self._nid.hWnd = self._hwnd
+            self._nid.uID = 1
+            self._nid.uFlags = _NIF_MESSAGE | _NIF_ICON | _NIF_TIP
+            self._nid.uCallbackMessage = _TRAY_MSG
+            self._nid.szTip = self._tip
+            self._nid.hIcon = self._icon(self._state)
+            shell32.Shell_NotifyIconW(_NIM_ADD, ctypes.byref(self._nid))
+        except Exception as e:
+            print(f"[systray] icône impossible : {e} — l'app continue.")
+            return
+        msg = _Msg()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
 
     def stop(self):
         try:
@@ -2982,14 +3002,6 @@ class SystrayIcon:
                 user32.PostMessageW(self._hwnd, _WM_QUIT, 0, 0)
         except Exception:
             pass
-
-    def _pump(self):
-        """Boucle de messages (thread démon) : reste vivante jusqu'à
-        WM_QUIT ; les autres threads n'ont pas besoin d'elle."""
-        msg = _Msg()
-        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
-            user32.TranslateMessage(ctypes.byref(msg))
-            user32.DispatchMessageW(ctypes.byref(msg))
 
     # -- fenêtre / icône ---------------------------------------------------
     def _wnd_proc(self, hwnd, uMsg, wParam, lParam):
@@ -3035,7 +3047,7 @@ class SystrayIcon:
     def set_state(self, state, tooltip=None):
         """state : 'on' (vert), 'sleep' (gris lune) ou 'off' (rouge)."""
         self._state = state
-        if self._nid is None:
+        if self._nid is None or not self._hwnd:
             return
         if tooltip:
             self._tip = tooltip[:127]
