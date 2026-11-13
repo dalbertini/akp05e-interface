@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.9] — 2026-11-13
+
+### Ajouté
+
+- **Morceau en cours aussi sur les pages LMS** — la zone 3 du bandeau affichait « K3 » (rien) sur les pages LMS quand elle n'avait ni position « i/N » ni bouton : elle montre maintenant le morceau en cours + l'artiste, comme sur l'accueil. Les boutons existants (« i/N », « ▶ Album », « ▶ Sélect. ») gardent la priorité — ce sont des zones tactiles. `poll_vu` sautant déjà les pages LMS, aucun conflit.
+
 ## [2.19.8] — 2026-11-13
 
 ### Corrigé
@@ -663,6 +669,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

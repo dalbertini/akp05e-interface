@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.8"
+APP_VERSION = "2.19.9"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -4189,6 +4189,15 @@ def main():
                     z3 = "▶ Album"
             elif current["name"] == "lms_album":
                 z3 = "▶ Sélect."
+            # v2.19.9 : rien d'utile en zone 3 ("K3") -> le morceau en
+            # cours, comme sur l'accueil ; les boutons i/N / ▶ Album /
+            # ▶ Sélect. (zones tactiles) gardent la priorité
+            if (z3 == "K3" and strip_title_on and lms.enabled):
+                with lms_lock:
+                    _nt3 = lms_state.get("now_title")
+                    _na3 = lms_state.get("now_artist")
+                if _nt3:
+                    z3 = ("TITLE", _nt3, _na3)
         else:
             if strip_title_on and lms.enabled:
                 with lms_lock:
