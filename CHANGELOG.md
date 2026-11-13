@@ -3,6 +3,11 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.14.7] — 2026-11-12
+
+### Ajouté
+- **Mise en veille du deck** — nouvelle action `{"type": "sleep"}` : éteint les écrans (luminosité 0, maintenue par le keepalive) et **n'importe quel événement** (touche, encodeur, rotation, bandeau tactile) réveille le deck au niveau de luminosité précédent. L'événement de réveil est consommé : son action ne s'exécute pas, pour éviter les clics accidentels. Une touche « Veille » (icône lune, violet) est ajoutée automatiquement sur la page d'accueil au premier emplacement libre ; accueil complet -> remplacer une touche par `{"type": "sleep"}`.
+
 ## [2.14.6] — 2026-11-12
 
 ### Revenu en arrière
@@ -524,6 +529,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.9.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.9.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.14.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.14.4]: https://github.com/dalbertini/akp05e-interface/commits/main/

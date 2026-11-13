@@ -43,6 +43,8 @@ Types d'actions configurables dans akp05e_config.json :
   {"type": "mediaplay"} {"type": "medianext"} {"type": "mediaprev"} {"type": "mediastop"}
   {"type": "brightness", "dir": "up"}                     # luminosité du deck
   {"type": "brightness_toggle"}                            # knob 4 : on/off
+  {"type": "sleep"}                                        # mise en veille : écrans éteints,
+                                                           # n'importe quel événement réveille
   {"type": "zoom", "dir": "in"}                            # Ctrl+molette ("out"/"reset"=Ctrl+0)
   {"type": "timer", "minutes": 5}                          # minuteur : clic = départ/pause/reprise,
                                                            # clic long = réinitialise, alarme à la fin
@@ -389,7 +391,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.14.6"
+APP_VERSION = "2.14.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1304,6 +1306,31 @@ def inject_home_lms_button(config):
     return None
 
 
+def inject_home_sleep_button(config):
+    """v2.14.7 : ajoute une touche « Veille » sur la page d'accueil
+    (premier emplacement libre de 1 à 10) — mise en veille du deck,
+    réveil par n'importe quel événement. Accueil complet -> message
+    explicatif (remplacer une touche par {"type": "sleep"})."""
+    acc = config.get("buttons")
+    # une touche « sleep » existe déjà -> ne pas en rajouter
+    if isinstance(acc, dict) and any(
+            ((e or {}).get("action") or {}).get("type") == "sleep"
+            for e in acc.values()):
+        return None
+    if not isinstance(acc, dict):
+        return None
+    for i in range(1, 11):
+        if not acc.get(str(i)):
+            acc[str(i)] = {"icon": "bedtime", "color": "#B39DDB",
+                           "label": "Veille",
+                           "action": {"type": "sleep"}}
+            print(f"[veille] touche Veille ajoutée sur l'accueil (touche {i})")
+            return i
+    print("[veille] aucune touche libre sur l'accueil : remplace une touche "
+          'par {"type": "sleep"} pour la mise en veille')
+    return None
+
+
 def lms_item_go(it):
     """(url, cmd[], params[], jouable) d'un élément de menu d'appli LMS.
     Gère le format PLAT (url / cmd / params) et le format « actions » du
@@ -1949,6 +1976,14 @@ def run_action(action, device):
         else:
             device._last_bright = device.brightness
             device.set_brightness(0)
+    elif t == "sleep":
+        # v2.14.7 : mise en veille du deck — écrans éteints (le keepalive
+        # maintient la luminosité à 0) ; handle() réveille au premier
+        # événement reçu (touche, encodeur, bandeau) et le CONSOMME
+        if device.brightness:
+            device._last_bright = device.brightness
+        device._sleeping = True
+        device.set_brightness(0)
     elif t == "zoom":
         # zoom Ctrl+molette de la fenêtre active (knob 3 par défaut)
         d = action.get("dir", "in")
@@ -2758,6 +2793,7 @@ def main():
 
     _lms_cfg = config.get("lms") or {}
     inject_home_lms_button(config)
+    inject_home_sleep_button(config)
     pages["lms"] = {
         "label": "LMS", "icon": "speaker", "color": "#A5D6A7",
         "buttons": {str(i + 1): {"action": {"type": "lms_open_player",
@@ -2997,6 +3033,19 @@ def main():
             switch_page("next")  # zone du carrousel sans action dédiée
 
     def handle(ev):
+        # v2.14.7 : deck en veille -> n'importe quel événement le réveille
+        # (l'événement est consommé : son action ne s'exécute pas, pour
+        # éviter les clics accidentels au réveil)
+        if getattr(device, "_sleeping", False):
+            device._sleeping = False
+            device.set_brightness(getattr(device, "_last_bright",
+                                          DEFAULT_BRIGHTNESS))
+            try:
+                paint_page()
+                refresh_strip()
+            except Exception:
+                pass
+            return
         # minuteurs : gèrent eux-mêmes l'appui ET le relâchement
         # (clic court = départ/pause/reprise, clic long = réinitialise)
         if ev.name.startswith("button_"):

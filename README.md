@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.14.6 — page Hardware affichée comme en 2.14.4 (retour de la décimale testée et écartée) ; volume LMS instantané sur le bandeau, artefacts « carrés de pixels » corrigés, carrousel corrigé sur les sous-pages LMS, pause/reprise de l'album affiché, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.14.7 — mise en veille du deck (bouton « Veille » sur l'accueil, réveil par n'importe quel événement) ; volume LMS instantané, artefacts corrigés, carrousel corrigé, pause/reprise de l'album, pilule « 3/12 » ; configuration LMS assistée (`--setup-lms`), EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
