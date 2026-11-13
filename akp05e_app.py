@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.6"
+APP_VERSION = "2.19.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5449,6 +5449,16 @@ def main():
                             print(f"[lms] bandeau : titre indisponible "
                                   f"pour {_cand.get('name')!r} — status -> "
                                   f"{str(_raw)[:200]!r} — copie cette ligne")
+                        # v2.19.7 : cette branche (titre absent du poll
+                        # players ET lecteur affiché != candidat) tourne à
+                        # CHAQUE cycle — le dump one-shot y manquait, il ne
+                        # pouvait jamais tirer depuis les autres branches
+                        if (_cand and not _Z3_DIAG["radio"]):
+                            try:
+                                _Z3_DIAG["radio"] = _lms_dump_playing(
+                                    lms, _cand)
+                            except Exception:
+                                _Z3_DIAG["radio"] = True
                     elif _nt and _nt != _prev:
                         # titre connu mais changé -> artiste une seule fois
                         try:

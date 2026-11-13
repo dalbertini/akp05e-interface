@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.19.7] — 2026-11-13
+
+### Corrigé
+
+- **Le diagnostic ne pouvait structurellement jamais tirer** — le titre du bandeau de David venait de la branche « titre absent du poll `players` ET lecteur affiché ≠ candidat », qui interroge `now_info` à **chaque** cycle (d'où l'artiste toujours à jour) ; or le dump *one-shot* n'était câblé que dans les branches « titre déjà connu », jamais atteintes dans ce cas. Le dump est maintenant appelé dans les **trois** branches — il partira forcément dès qu'un lecteur joue avec un titre affiché.
+
 ## [2.19.6] — 2026-11-13
 
 ### Corrigé
@@ -651,6 +657,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.17.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.17.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.18.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
