@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.1] — 2026-11-14
+
+### Corrigé
+
+- **Synchro knob 3 : le son repart** — après la commande `sync`, Lyrion met souvent le groupe en pause au moment où les lecteurs le rejoignent (le « pas de son » constaté sur le matériel) : si le lecteur sélectionné **jouyait** avant la synchro, l'application relance maintenant la lecture du groupe (commande `play` au master, reçue par tous les membres synchronisés) après un court délai de formation du groupe. S'il était en pause, il reste en pause. L'écran d'info l'indique (« Synchronisés : N lecteurs — en lecture ») et la console consigne le mode final du master.
+
 ## [2.20.0] — 2026-11-14
 
 ### Ajouté
@@ -705,6 +711,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

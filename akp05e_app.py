@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.0"
+APP_VERSION = "2.20.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5290,15 +5290,41 @@ def main():
             master = vp.get("id")
             if master not in {p["id"] for p in ps}:
                 master = ps[0]["id"]
+            # v2.20.1 : l'état AVANT la synchro décide de la reprise —
+            # Lyrion met souvent le groupe en pause quand les lecteurs
+            # rejoignent le groupe de sync (le « pas de son » v2.20.0)
+            try:
+                _mode_avant = lms.mode(master)
+            except Exception:
+                _mode_avant = None
             for p in ps:
                 if p["id"] != master:
                     try:
                         lms.request(p["id"], ["sync", master])
                     except Exception as e:
                         print(f"[lms] sync {p.get('name')!r} : {e!r}")
+            # v2.20.1 : le master JOUAIT -> relancer la lecture du
+            # groupe (une commande « play » au master réveille tous les
+            # membres synchronisés) ; il était en pause -> on le laisse
+            if _mode_avant == "play":
+                time.sleep(0.5)   # laisser le serveur former le groupe
+                try:
+                    lms.request(master, ["play"])
+                except Exception as e:
+                    print(f"[lms] reprise après sync : {e!r}")
+                time.sleep(0.3)
+                try:
+                    _m2 = lms.mode(master)
+                except Exception:
+                    _m2 = "?"
+                if _m2 != "play":
+                    print(f"[lms] après reprise : mode du master = "
+                          f"{_m2!r} — copie cette ligne")
             _mn = next((p["name"] for p in ps if p["id"] == master), "?")
             _STRIP_INFO["player"] = player_code({"name": _mn})
-            _STRIP_INFO["source"] = f"Synchronisés : {len(ps)} lecteurs"
+            _STRIP_INFO["source"] = (f"Synchronisés : {len(ps)} lecteurs"
+                                      + (" — en lecture"
+                                         if _mode_avant == "play" else ""))
             _STRIP_INFO["title"] = ""
             _STRIP_INFO["artist"] = ""
             _STRIP_INFO["until"] = time.time() + 4.0
