@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.4] — 2026-11-15
+
+### Corrigé
+
+- **Synchro knob 3 : console silencieuse et son surveillé** — deux corrections : la requête serveur « syncgroups » (détection des groupes existants), que certains serveurs coupent systématiquement (« Remote end closed connection without response »), n'est plus répétée après 2 échecs consécutifs — plus de ligne « requête échouée » à chaque clic ; elle revient si elle réussit, et une réponse vide (aucun groupe) n'est PAS comptée comme un échec. Et la reprise de lecture après synchro est maintenant **surveillée ~4 s** : Lyrion peut mettre le groupe en pause PLUS TARD que la 1re reprise (le mode répond « play », puis le groupe se forme et se met en pause) — dès que le master n'est plus en lecture, l'application renvoie « play » (3 envois max) et consigne un diagnostic en console si le silence persiste.
+
 ## [2.20.3] — 2026-11-14
 
 ### Corrigé
@@ -726,6 +732,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

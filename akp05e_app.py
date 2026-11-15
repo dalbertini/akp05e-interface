@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.3"
+APP_VERSION = "2.20.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5299,21 +5299,39 @@ def main():
             #    ne tirait jamais) ;
             # ③ issyncmaster du poll en dernier recours.
             _ids = {p["id"] for p in ps}
+            # v2.20.4 : certains serveurs coupent la connexion sur la
+            # requête « syncgroups » (« Remote end closed ») à CHAQUE
+            # clic -> après 2 échecs consécutifs on ne la refait plus
+            # (lms_state["sg_fail"], remis à zéro si elle réussit) ;
+            # le dump one-shot ne part que la 1re fois. Le toggle
+            # repose alors sur les couches ① (mémoire) et ③ (poll).
             _sg = {}
-            try:
-                _sg = lms.request("", ["syncgroups"]) or {}
-            except Exception:
-                _sg = {}
+            with lms_lock:
+                _sg_fail = int(lms_state.get("sg_fail", 0) or 0)
+                _dump_it = not lms_state.get("sg_dumped")
+            if _dump_it or _sg_fail < 2:
+                # « None »/exception = échec ; un dict (même VIDE :
+                # aucun groupe) est une réponse VALIDE -> pas un échec
+                try:
+                    _res = lms.request("", ["syncgroups"])
+                except Exception:
+                    _res = None
+                _sg = _res if isinstance(_res, dict) else {}
+                with lms_lock:
+                    lms_state["sg_fail"] = (_sg_fail + 1
+                                            if _res is None else 0)
             _grp = []
             for _k, _v in (_sg or {}).items():
                 if str(_k).startswith("sync_group_"):
                     _grp += [m for m in re.split(r"[ ,]+", str(_v)) if m]
-            if not lms_state.get("sg_dumped"):
+            if _dump_it:
                 # one-shot : la vraie réponse du serveur, à copier si
                 # la désync ne marche toujours pas
-                lms_state["sg_dumped"] = True
+                with lms_lock:
+                    lms_state["sg_dumped"] = True
                 print(f"[lms] knob 3 : syncgroups -> "
-                      f"{str(_sg)[:400]!r} — copie cette ligne")
+                      f"{str(_sg)[:400]!r}"
+                      + (" — copie cette ligne" if not _sg else ""))
             with lms_lock:
                 _notre_sync = bool(lms_state.get("knob_sync"))
             _deja = (_notre_sync
@@ -5356,20 +5374,38 @@ def main():
             # v2.20.1 : le master JOUAIT -> relancer la lecture du
             # groupe (une commande « play » au master réveille tous les
             # membres synchronisés) ; il était en pause -> on le laisse
+
             if _mode_avant == "play":
+                # v2.20.4 : une 1re reprise comme v2.20.1, PUIS une
+                # surveillance ~4 s : Lyrion peut mettre le groupe en
+                # pause PLUS TARD que cette reprise (le mode répond
+                # « play » juste après notre commande, puis le groupe
+                # se forme et se met en pause) -> dès que le master
+                # n'est plus en lecture, on relance « play »
+                # (2 relances max en plus de la 1re).
                 time.sleep(0.5)   # laisser le serveur former le groupe
                 try:
                     lms.request(master, ["play"])
                 except Exception as e:
                     print(f"[lms] reprise après sync : {e!r}")
-                time.sleep(0.3)
-                try:
-                    _m2 = lms.mode(master)
-                except Exception:
-                    _m2 = "?"
-                if _m2 != "play":
-                    print(f"[lms] après reprise : mode du master = "
-                          f"{_m2!r} — copie cette ligne")
+                _sends = 1
+                for _chk in range(6):
+                    time.sleep(0.7)
+                    try:
+                        _m2 = lms.mode(master)
+                    except Exception:
+                        _m2 = ""
+                    if _m2 == "play":
+                        continue
+                    if _sends >= 3:
+                        print(f"[lms] après reprise : mode du master = "
+                              f"{_m2!r} — copie cette ligne")
+                        break
+                    try:
+                        lms.request(master, ["play"])
+                        _sends += 1
+                    except Exception as e:
+                        print(f"[lms] reprise après sync : {e!r}")
             _mn = next((p["name"] for p in ps if p["id"] == master), "?")
             _STRIP_INFO["player"] = player_code({"name": _mn})
             with lms_lock:
