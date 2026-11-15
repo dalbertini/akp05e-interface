@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.4"
+APP_VERSION = "2.20.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5406,6 +5406,22 @@ def main():
                         _sends += 1
                     except Exception as e:
                         print(f"[lms] reprise après sync : {e!r}")
+                # v2.20.5 : état du groupe ~5 s après la reprise — le
+                # mode de CHAQUE lecteur allumé vu par le serveur
+                # (sur le matériel réel, le master est resté muet
+                # pendant que le membre repartait : cette ligne dit
+                # si le serveur croit le master en lecture ou non).
+                time.sleep(5.0)
+                _st = []
+                for p in ps:
+                    try:
+                        _mm = lms.mode(p["id"])
+                    except Exception:
+                        _mm = "?"
+                    _st.append(f"{player_code(p)}={_mm}")
+                print("[lms] état du groupe après synchro : "
+                      + ", ".join(_st)
+                      + " — copie cette ligne si un lecteur est muet")
             _mn = next((p["name"] for p in ps if p["id"] == master), "?")
             _STRIP_INFO["player"] = player_code({"name": _mn})
             with lms_lock:

@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.5] — 2026-11-15
+
+### Ajouté
+
+- **Synchro knob 3 : état du groupe consigné après la reprise** — ~5 s après la reprise de lecture d'une synchro, la console affiche le mode de CHAQUE lecteur allumé vu par le serveur (« [lms] état du groupe après synchro : Cuisine=play, Vanille=play — copie cette ligne si un lecteur est muet »). Sur le terrain, un master muet pendant que les autres lecteurs repartent (flux live direct — radios FIP et assimilés — que Lyrion met 30-60 s à réaligner) est invisible côté serveur : cette ligne départage « le serveur croit le lecteur en lecture » (flux mal resynchronisé, côté Lyrion) et « le serveur l'a mis en pause » (l'application peut relancer).
+
 ## [2.20.4] — 2026-11-15
 
 ### Corrigé
@@ -733,6 +739,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
