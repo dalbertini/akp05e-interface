@@ -7,7 +7,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 
 ### Corrigé
 
-- **Synchro knob 3 : le son repart** — après la commande `sync`, Lyrion met souvent le groupe en pause au moment où les lecteurs le rejoignent (le « pas de son » constaté sur le matériel) : si le lecteur sélectionné **jouyait** avant la synchro, l'application relance maintenant la lecture du groupe (commande `play` au master, reçue par tous les membres synchronisés) après un court délai de formation du groupe. S'il était en pause, il reste en pause. L'écran d'info l'indique (« Synchronisés : N lecteurs — en lecture ») et la console consigne le mode final du master.
+- **Synchro knob 3 : le son repart** — après la commande `sync`, Lyrion met souvent le groupe en pause au moment où les lecteurs le rejoignent (le « pas de son » constaté sur le matériel) : si le lecteur sélectionné **jouait** avant la synchro, l'application relance maintenant la lecture du groupe (commande `play` au master, reçue par tous les membres synchronisés) après un court délai de formation du groupe. S'il était en pause, il reste en pause. L'écran d'info l'indique (« Synchronisés : N lecteurs — en lecture ») et la console consigne le mode final du master.
 
 ## [2.20.0] — 2026-11-14
 
