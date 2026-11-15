@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.2] — 2026-11-14
+
+### Modifié
+
+- **Synchro knob 3 : le clic devient un VA-ET-VIENT** — 1er clic : synchroniser tous les lecteurs allumés sur le lecteur affiché (avec reprise de lecture) ; si un groupe de synchronisation existe déjà, le clic **désynchronise** tous les lecteurs allumés (chacun redevient indépendant et continue sa lecture). L'écran d'info affiche « Synchronisés : N lecteurs » ou « Désynchronisés » selon l'action.
+
 ## [2.20.1] — 2026-11-14
 
 ### Corrigé
@@ -712,6 +718,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

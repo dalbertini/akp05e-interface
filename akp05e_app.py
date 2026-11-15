@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.1"
+APP_VERSION = "2.20.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5276,15 +5276,33 @@ def main():
         elif t == "lms_sync_all":
             # v2.20.0 : appui du knob 3 / tap zone 3 — synchronise TOUS
             # les lecteurs ALLUMÉS sur le lecteur AFFICHÉ (ou le 1er
-            # allumé). Reclic = resynchronise (jamais de désync ici ;
-            # la désync reste possible via le bouton dédié de la page
-            # LMS). Feedback : écran d'info ~4 s.
+            # allumé). v2.20.2 : TOGGLE — si un groupe de synchro
+            # existe déjà, le clic DÉSYNCHRONISE (chaque lecteur
+            # redevient indépendant). Feedback : écran d'info ~4 s.
             with lms_lock:
                 ps = [dict(p) for p in lms_state["players"]
                       if p.get("power")]
             if len(ps) < 2:
                 print("[lms] knob 3 : moins de 2 lecteurs allumés — "
                       "rien à synchroniser")
+                return
+            # v2.20.2 : TOGGLE — un groupe de synchro existe déjà
+            # (issyncmaster dans le poll players) -> le clic
+            # DÉSYNCHRONISE tous les lecteurs allumés
+            if any(p.get("sync_master") for p in ps):
+                for p in ps:
+                    try:
+                        lms.request(p["id"], ["sync", "-"])
+                    except Exception as e:
+                        print(f"[lms] désync {p.get('name')!r} : {e!r}")
+                _STRIP_INFO["player"] = player_code(lms_viewed() or {})
+                _STRIP_INFO["source"] = "Désynchronisés"
+                _STRIP_INFO["title"] = ""
+                _STRIP_INFO["artist"] = ""
+                _STRIP_INFO["until"] = time.time() + 4.0
+                print(f"[lms] knob 3 : {len(ps)} lecteurs "
+                      "désynchronisés")
+                refresh_strip()
                 return
             vp = lms_viewed() or {}
             master = vp.get("id")
