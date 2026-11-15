@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.7] — 2026-11-15
+
+### Amélioré
+
+- **Knob 3 : l'écran d'info de la rotation affiche l'artiste ET le titre** — la rotation cycler les lecteurs affichait le nom du lecteur, le nombre de lecteurs allumés puis le seul titre de la piste. Il affiche maintenant « Titre — Artiste » comme le bandeau, avec les mêmes métadonnées (y compris les infos live des webradios, remoteMeta prioritaire — FIP et compagnie montrent le morceau réellement diffusé).
+
 ## [2.20.6] — 2026-11-15
 
 ### Corrigé
@@ -751,6 +757,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

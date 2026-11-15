@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.6"
+APP_VERSION = "2.20.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5263,15 +5263,16 @@ def main():
                 pass
             _STRIP_INFO["player"] = player_code(vp)
             _STRIP_INFO["source"] = f"{len(ids)} lecteur(s) allumé(s)"
+            # v2.20.7 : titre ET artiste (demande de David) —
+            # now_info = la même source que le bandeau : métadonnées
+            # live des webradios incluses (remoteMeta prioritaire)
             try:
-                _pt = (lms.playing_track(vp["id"]) if vp.get("id")
-                       else None) or {}
+                _nt2, _na2 = (lms.now_info(vp["id"]) if vp.get("id")
+                               else (None, None))
             except Exception:
-                _pt = {}
-            _STRIP_INFO["title"] = (str(_pt.get("title")
-                                       or _pt.get("current_title")
-                                       or "")).strip()
-            _STRIP_INFO["artist"] = ""
+                _nt2, _na2 = None, None
+            _STRIP_INFO["title"] = str(_nt2 or "").strip()
+            _STRIP_INFO["artist"] = str(_na2 or "").strip()
             _STRIP_INFO["until"] = time.time() + 3.0
             print(f"[lms] knob 3 : lecteur {player_code(vp)} "
                   f"({len(ids)} allumé(s))")
