@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.5"
+APP_VERSION = "2.20.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5278,6 +5278,12 @@ def main():
             if current["name"] in LMS_PAGE_NAMES:
                 paint_lms_page()
             refresh_strip()
+            # v2.20.6 : retour au bandeau normal quand l'info expire
+            # (sans ça, l'écran d'info restait FIGÉ jusqu'au prochain
+            # événement — le bandeau montrait alors un lecteur périmé)
+            _t = threading.Timer(3.5, refresh_strip)
+            _t.daemon = True
+            _t.start()
         elif t == "lms_sync_all":
             # v2.20.0 : appui du knob 3 / tap zone 3 — synchronise TOUS
             # les lecteurs ALLUMÉS sur le lecteur AFFICHÉ (ou le 1er
@@ -5353,6 +5359,10 @@ def main():
                 print(f"[lms] knob 3 : {len(ps)} lecteurs "
                       "désynchronisés")
                 refresh_strip()
+                # v2.20.6 : retour au bandeau normal (info sinon figée)
+                _t = threading.Timer(4.5, refresh_strip)
+                _t.daemon = True
+                _t.start()
                 return
             vp = lms_viewed() or {}
             master = vp.get("id")
@@ -5433,9 +5443,23 @@ def main():
             _STRIP_INFO["title"] = ""
             _STRIP_INFO["artist"] = ""
             _STRIP_INFO["until"] = time.time() + 4.0
+            # v2.20.6 : CE QUI JOUE sur le master au moment de la
+            # synchro — si le groupe joue le flux d'un AUTRE lecteur,
+            # cette ligne le montrera
+            try:
+                _ptm = lms.playing_track(master) or {}
+            except Exception:
+                _ptm = {}
+            _titm = (str(_ptm.get("title") or _ptm.get("current_title")
+                         or "")).strip()
             print(f"[lms] knob 3 : {len(ps)} lecteurs synchronisés "
-                  f"sur {_mn}")
+                  f"sur {_mn}"
+                  + (f" — en cours sur le master : {_titm!r}" if _titm else ""))
             refresh_strip()
+            # v2.20.6 : retour au bandeau normal (info sinon figée)
+            _t = threading.Timer(4.5, refresh_strip)
+            _t.daemon = True
+            _t.start()
         elif t == "lms_favorite" and sel:
             with lms_lock:
                 favs = list(lms_state["favorites"])

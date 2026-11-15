@@ -3,6 +3,16 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.6] — 2026-11-15
+
+### Corrigé
+
+- **Knob 3 : l'écran d'info ne reste plus figé après une synchro/désynchronisation** — les feedbacks du knob 3 (cycle, sync, désync) affichaient l'écran d'info plein bandeau mais ne programmaient pas le retour au bandeau normal à l'expiration : il restait figé jusqu'au prochain événement (et montrait alors un lecteur périmé, trompeur). Chaque feedback lance maintenant le repeint du bandeau normal à l'expiration (comme l'écran d'info du tap sur le titre) : 3,5 s après un cycle, 4,5 s après une sync/désync.
+
+### Ajouté
+
+- **Synchro knob 3 : le message console dit ce qui JOUE sur le master** — « [lms] knob 3 : 2 lecteurs synchronisés sur SBR Cuisine — en cours sur le master : 'FIP' » : si le groupe joue le flux d'un autre lecteur que le master, cette ligne le montrera immédiatement (contenu de playlist côté Lyrion vs mauvais lecteur choisi).
+
 ## [2.20.5] — 2026-11-15
 
 ### Ajouté
@@ -740,6 +750,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
