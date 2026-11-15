@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.0] — 2026-11-14
+
+### Ajouté
+
+- **Knob 3 : pilotage des lecteurs LMS** — rotation : cycler entre les lecteurs **allumés** (le lecteur affiché change ; volume/muet du knob 1, bandeau et écran d'info le suivent, feedback ~3 s sur le bandeau). Appui (ou tap sur la zone 3) : **synchroniser** tous les lecteurs allumés sur le lecteur affiché — la fonction « Sync » de Lyrion, tous les lecteurs jouent la même chose au même endroit ; un nouveau clic resynchronise. Le zoom par défaut du knob 3 disparaît ; les pages qui l'utilisent déjà (défilement favoris/applis/navigation/album, minuteurs, boutons des pages LMS) et la touche dédiée synchro/désynchronisation de la page LMS restent intacts.
+
 ## [2.19.13] — 2026-11-13
 
 ### Modifié
@@ -698,6 +704,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.19.13"
+APP_VERSION = "2.20.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -4104,6 +4104,17 @@ def main():
                 _t.start()
                 return
             # rien ne joue : comportement habituel de la zone 3
+        if zone == 3 and lms.enabled:
+            # v2.20.0 : tap zone 3 sans bouton dédié -> sync, comme
+            # l'appui physique du knob 3
+            try:
+                _a3 = ((page_cfg().get("encoders") or {})
+                       .get("encoder_3_button") or {}).get("action")
+            except Exception:
+                _a3 = None
+            if str((_a3 or {}).get("type") or "") in ("", "zoom", "None"):
+                lms_action({"type": "lms_sync_all"})
+                return
         enc = f"encoder_{zone}_button"
         action = page_cfg().get("encoders", {}).get(enc, {}).get("action")
         if action:
@@ -4179,6 +4190,28 @@ def main():
                   "encoder_1_button": {"type": "lms_mute"}}.get(ev.name)
             if a1:
                 threading.Thread(target=lms_action, args=(a1,),
+                                 daemon=True).start()
+                return
+        # v2.20.0 : knob 3 (rotation ET appui) = lecteurs LMS quand la
+        # page ne lui confie rien d'autre — l'action par défaut « zoom »
+        # est remplacée partout ; les pages qui utilisent déjà le knob 3
+        # (défilement favoris/applis/navigation/album, minuteurs) et les
+        # boutons des pages LMS (retour, pause, sélection) sont intacts.
+        if (lms.enabled and ev.name in ("encoder_3_cw", "encoder_3_ccw",
+                                        "encoder_3_button")):
+            try:
+                _a3 = ((page_cfg().get("encoders") or {})
+                       .get(ev.name) or {}).get("action")
+            except Exception:
+                _a3 = None
+            if str((_a3 or {}).get("type") or "") in ("", "zoom", "None"):
+                if ev.name == "encoder_3_cw":
+                    _k3 = {"type": "lms_cycle_player"}
+                elif ev.name == "encoder_3_ccw":
+                    _k3 = {"type": "lms_cycle_player", "dir": "prev"}
+                else:
+                    _k3 = {"type": "lms_sync_all"}
+                threading.Thread(target=lms_action, args=(_k3,),
                                  daemon=True).start()
                 return
         if ev.name.startswith("strip_"):
@@ -5198,6 +5231,80 @@ def main():
                 lms.desync_all()
             else:
                 lms.sync_all(sel["id"])
+        elif t == "lms_cycle_player":
+            # v2.20.0 : rotation du knob 3 — cycle des lecteurs ALLUMÉS
+            # (le lecteur affiché change : volume/muet knob 1, bandeau,
+            # écran d'info le suivent). Feedback : écran d'info ~3 s.
+            with lms_lock:
+                ps = [dict(p) for p in lms_state["players"]
+                      if p.get("power")]
+                vid = lms_state["viewed"]
+            if not ps:
+                print("[lms] knob 3 : aucun lecteur allumé")
+                return
+            ids = [p["id"] for p in ps]
+            if len(ids) > 1:
+                i = ids.index(vid) if vid in ids else -1
+                step = -1 if action.get("dir") == "prev" else 1
+                new_id = ids[(i + step) % len(ids)]
+            else:
+                new_id = ids[0]
+            with lms_lock:
+                lms_state["viewed"] = new_id
+            vp = lms_viewed() or {}
+            try:
+                lms_refresh_viewed()
+            except Exception:
+                pass
+            _STRIP_INFO["player"] = player_code(vp)
+            _STRIP_INFO["source"] = f"{len(ids)} lecteur(s) allumé(s)"
+            try:
+                _pt = (lms.playing_track(vp["id"]) if vp.get("id")
+                       else None) or {}
+            except Exception:
+                _pt = {}
+            _STRIP_INFO["title"] = (str(_pt.get("title")
+                                       or _pt.get("current_title")
+                                       or "")).strip()
+            _STRIP_INFO["artist"] = ""
+            _STRIP_INFO["until"] = time.time() + 3.0
+            print(f"[lms] knob 3 : lecteur {player_code(vp)} "
+                  f"({len(ids)} allumé(s))")
+            if current["name"] in LMS_PAGE_NAMES:
+                paint_lms_page()
+            refresh_strip()
+        elif t == "lms_sync_all":
+            # v2.20.0 : appui du knob 3 / tap zone 3 — synchronise TOUS
+            # les lecteurs ALLUMÉS sur le lecteur AFFICHÉ (ou le 1er
+            # allumé). Reclic = resynchronise (jamais de désync ici ;
+            # la désync reste possible via le bouton dédié de la page
+            # LMS). Feedback : écran d'info ~4 s.
+            with lms_lock:
+                ps = [dict(p) for p in lms_state["players"]
+                      if p.get("power")]
+            if len(ps) < 2:
+                print("[lms] knob 3 : moins de 2 lecteurs allumés — "
+                      "rien à synchroniser")
+                return
+            vp = lms_viewed() or {}
+            master = vp.get("id")
+            if master not in {p["id"] for p in ps}:
+                master = ps[0]["id"]
+            for p in ps:
+                if p["id"] != master:
+                    try:
+                        lms.request(p["id"], ["sync", master])
+                    except Exception as e:
+                        print(f"[lms] sync {p.get('name')!r} : {e!r}")
+            _mn = next((p["name"] for p in ps if p["id"] == master), "?")
+            _STRIP_INFO["player"] = player_code({"name": _mn})
+            _STRIP_INFO["source"] = f"Synchronisés : {len(ps)} lecteurs"
+            _STRIP_INFO["title"] = ""
+            _STRIP_INFO["artist"] = ""
+            _STRIP_INFO["until"] = time.time() + 4.0
+            print(f"[lms] knob 3 : {len(ps)} lecteurs synchronisés "
+                  f"sur {_mn}")
+            refresh_strip()
         elif t == "lms_favorite" and sel:
             with lms_lock:
                 favs = list(lms_state["favorites"])
