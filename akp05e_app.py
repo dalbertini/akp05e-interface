@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.2"
+APP_VERSION = "2.20.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -5231,6 +5231,11 @@ def main():
                 lms.desync_all()
             else:
                 lms.sync_all(sel["id"])
+            # v2.20.3 : garder la mémoire du toggle knob 3 cohérente
+            # avec le bouton dédié de la page LMS
+            with lms_lock:
+                lms_state["knob_sync"] = (not any(q["sync_master"]
+                                                  for q in players))
         elif t == "lms_cycle_player":
             # v2.20.0 : rotation du knob 3 — cycle des lecteurs ALLUMÉS
             # (le lecteur affiché change : volume/muet knob 1, bandeau,
@@ -5286,10 +5291,37 @@ def main():
                 print("[lms] knob 3 : moins de 2 lecteurs allumés — "
                       "rien à synchroniser")
                 return
-            # v2.20.2 : TOGGLE — un groupe de synchro existe déjà
-            # (issyncmaster dans le poll players) -> le clic
-            # DÉSYNCHRONISE tous les lecteurs allumés
-            if any(p.get("sync_master") for p in ps):
+            # v2.20.3 : détection d'un groupe EXISTANT en 3 couches —
+            # ① mémoire locale : c'est NOUS qui avons synchronisé au
+            #    clic précédent (fiable dans tous les cas) ;
+            # ② requête serveur « syncgroups » (le poll « players » ne
+            #    renvoie pas toujours « issyncmaster », le toggle v2.20.2
+            #    ne tirait jamais) ;
+            # ③ issyncmaster du poll en dernier recours.
+            _ids = {p["id"] for p in ps}
+            _sg = {}
+            try:
+                _sg = lms.request("", ["syncgroups"]) or {}
+            except Exception:
+                _sg = {}
+            _grp = []
+            for _k, _v in (_sg or {}).items():
+                if str(_k).startswith("sync_group_"):
+                    _grp += [m for m in re.split(r"[ ,]+", str(_v)) if m]
+            if not lms_state.get("sg_dumped"):
+                # one-shot : la vraie réponse du serveur, à copier si
+                # la désync ne marche toujours pas
+                lms_state["sg_dumped"] = True
+                print(f"[lms] knob 3 : syncgroups -> "
+                      f"{str(_sg)[:400]!r} — copie cette ligne")
+            with lms_lock:
+                _notre_sync = bool(lms_state.get("knob_sync"))
+            _deja = (_notre_sync
+                     or any(m in _ids for m in _grp)
+                     or any(p.get("sync_master") for p in ps))
+            if _deja:
+                with lms_lock:
+                    lms_state["knob_sync"] = False
                 for p in ps:
                     try:
                         lms.request(p["id"], ["sync", "-"])
@@ -5340,6 +5372,9 @@ def main():
                           f"{_m2!r} — copie cette ligne")
             _mn = next((p["name"] for p in ps if p["id"] == master), "?")
             _STRIP_INFO["player"] = player_code({"name": _mn})
+            with lms_lock:
+                # v2.20.3 : le PROCHAIN clic désynchronisera
+                lms_state["knob_sync"] = True
             _STRIP_INFO["source"] = (f"Synchronisés : {len(ps)} lecteurs"
                                       + (" — en lecture"
                                          if _mode_avant == "play" else ""))

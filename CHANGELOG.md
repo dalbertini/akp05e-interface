@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.3] — 2026-11-14
+
+### Corrigé
+
+- **Désynchronisation knob 3 : elle se déclenche enfin** — le toggle détectait un groupe existant via « issyncmaster » du poll lecteurs, champ que ce serveur ne renvoie pas (d'où 2 clics = 2 synchros). Triple détection : mémoire locale de la synchro faite au clic précédent, requête serveur « syncgroups », et issyncmaster en dernier recours. Le bouton dédié de la page LMS met aussi la mémoire à jour, et un dump unique de la réponse « syncgroups » est consigné en console.
+
 ## [2.20.2] — 2026-11-14
 
 ### Modifié
@@ -719,6 +725,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
