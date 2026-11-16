@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.7"
+APP_VERSION = "2.20.8"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -563,6 +563,10 @@ def _lms_dump_playing(lms, cand):
           f"playing_track -> {str(_pt)[:300]!r} — copie ces lignes")
     return True
 
+
+# v2.20.8 : instant d'appui du knob 3 (module : handle() mesure la
+# durée entre down et up — appui long = synchro LMS)
+_K3_PRESS = [None]
 
 _STRIP_INFO = {"until": 0.0, "player": "", "source": "",
                "title": "", "artist": ""}
@@ -4104,17 +4108,11 @@ def main():
                 _t.start()
                 return
             # rien ne joue : comportement habituel de la zone 3
-        if zone == 3 and lms.enabled:
-            # v2.20.0 : tap zone 3 sans bouton dédié -> sync, comme
-            # l'appui physique du knob 3
-            try:
-                _a3 = ((page_cfg().get("encoders") or {})
-                       .get("encoder_3_button") or {}).get("action")
-            except Exception:
-                _a3 = None
-            if str((_a3 or {}).get("type") or "") in ("", "zoom", "None"):
-                lms_action({"type": "lms_sync_all"})
-                return
+        # v2.20.8 : tap zone 3 = synchro DÉSACTIVÉ — la synchro
+        # n'existe plus QUE sur l'appui long (>= 2 s) du knob 3 ;
+        # un tap sur la zone 3 sans bouton dédié ne fait plus rien
+        # (les pages qui configurent encoder_3_button gardent leur
+        # action, ex. retour favoris/applis, lecture du niveau album)
         enc = f"encoder_{zone}_button"
         action = page_cfg().get("encoders", {}).get(enc, {}).get("action")
         if action:
@@ -4172,6 +4170,30 @@ def main():
                 if ev.state:
                     clock_show_info(ev.name.split("_")[1])
                 return
+        # v2.20.8 : synchro LMS du knob 3 = APPUI LONG (>= 2 s, clé
+        # config "k3_long_press"). Un appui court ne fait RIEN : les
+        # faux clics (rotation manquée) ne synchronisent plus jamais.
+        # Le relâchement décide selon la durée réelle d'appui.
+        if (lms.enabled and ev.name == "encoder_3_button"):
+            try:
+                _a3b = ((page_cfg().get("encoders") or {})
+                        .get("encoder_3_button") or {}).get("action")
+            except Exception:
+                _a3b = None
+            if str((_a3b or {}).get("type") or "") in ("", "zoom", "None"):
+                if ev.state:
+                    _K3_PRESS[0] = time.monotonic()
+                else:
+                    _p0 = _K3_PRESS[0]
+                    _K3_PRESS[0] = None
+                    if (_p0 is not None
+                            and time.monotonic() - _p0
+                            >= float(config.get("k3_long_press", 2.0))):
+                        threading.Thread(
+                            target=lms_action,
+                            args=({"type": "lms_sync_all"},),
+                            daemon=True).start()
+                return  # consommé : court = silence, long = synchro
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)
         # appui sur le knob 2 : RETOUR ACCUEIL, partout (v2.10.0)
@@ -4197,20 +4219,18 @@ def main():
         # est remplacée partout ; les pages qui utilisent déjà le knob 3
         # (défilement favoris/applis/navigation/album, minuteurs) et les
         # boutons des pages LMS (retour, pause, sélection) sont intacts.
-        if (lms.enabled and ev.name in ("encoder_3_cw", "encoder_3_ccw",
-                                        "encoder_3_button")):
+        # v2.20.8 : la rotation du knob 3 = cycle des lecteurs ; le
+        # BOUTON est géré plus haut (appui long = synchro, court = rien)
+        if (lms.enabled and ev.name in ("encoder_3_cw", "encoder_3_ccw")):
             try:
                 _a3 = ((page_cfg().get("encoders") or {})
                        .get(ev.name) or {}).get("action")
             except Exception:
                 _a3 = None
             if str((_a3 or {}).get("type") or "") in ("", "zoom", "None"):
-                if ev.name == "encoder_3_cw":
-                    _k3 = {"type": "lms_cycle_player"}
-                elif ev.name == "encoder_3_ccw":
-                    _k3 = {"type": "lms_cycle_player", "dir": "prev"}
-                else:
-                    _k3 = {"type": "lms_sync_all"}
+                _k3 = {"type": "lms_cycle_player",
+                       **({"dir": "prev"} if ev.name == "encoder_3_ccw"
+                          else {})}
                 threading.Thread(target=lms_action, args=(_k3,),
                                  daemon=True).start()
                 return

@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.8] — 2026-11-16
+
+### Amélioré
+
+- **Knob 3 : la synchronisation LMS passe sur l'appui LONG (≥ 2 s)** — les clics accidentels (confondus avec la rotation) synchronisaient ou désynchronisaient les lecteurs malgré vous. Maintenant, un **appui court ne fait plus rien** : il faut maintenir le knob 3 enfoncé **2 secondes** pour synchroniser tous les lecteurs allumés sur l'affiché, et le maintenir à nouveau 2 s pour les désynchroniser (le toggle et la reprise de lecture surveillée de la v2.20.7 sont inchangés). Le seuil est réglable via la clé `"k3_long_press"` (secondes, 2.0 par défaut) dans `akp05e_config.json`. La **rotation** (cycler les lecteurs allumés) et les **pages qui confient déjà une action au knob 3** (défilement des favoris/applis/navigation, bouton « retour », lecture du niveau album) sont intactes. Le **tap sur la zone 3 du bandeau** ne synchronise plus (la synchro n'existe que sur l'appui long du knob physique).
+
 ## [2.20.7] — 2026-11-15
 
 ### Amélioré
@@ -757,6 +763,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
