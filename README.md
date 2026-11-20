@@ -130,7 +130,8 @@ python -m PyInstaller --onefile --noconsole --name akp05e_interface ^
   (`.icons_cache/`) se créent automatiquement **à côté de l'EXE** (v2.12.3).
 - Les options (`--setup-lms`, `--identify`, `--install-autostart`…) se
   passent depuis un terminal sur l'EXE : `akp05e_interface.exe --setup-lms`.
-- Compter ~40–60 Mo — Windows SmartScreen peut signaler l'EXE non signé
+- Compter ~10–20 Mo en pratique (testé sous Windows 10 : ~15 Mo —
+  monofichier compressé) — Windows SmartScreen peut signaler l'EXE non signé
   (« Informations complémentaires → Exécuter quand même »).
 
 ## Screenshots
