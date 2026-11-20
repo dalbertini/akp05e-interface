@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.20.9 synchro LMS du knob 3 sur appui long ≥ 2 s, déclenchée PENDANT l'appui : maintiens le knob 3 deux secondes pour synchroniser tous les lecteurs allumés sur l'affiché (la synchro part dès que le seuil est atteint, même si le deck n'émet pas de relâchement), re-maintiens 2 s pour désynchroniser — un clic court ne fait plus rien ; seuil réglable via « k3_long_press » ; rotation : cycler les lecteurs allumés avec titre ET artiste ; écran d'info du lecteur au tap sur le titre (10 s) ; morceau en cours sur le bandeau accueil ET pages LMS ; détection radios infaillible ; configuration LMS assistée (--setup-lms), icône systray, autostart, EXE Windows.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.21.0 EXE Windows « zéro console » : build par double-clic de `build_exe.bat` (PyInstaller --noconsole), lancement de l'app sans terminal ni console — les logs et diagnostics « copie cette ligne » sont écrits dans `akp05e_log.txt` à côté de l'EXE ; synchro LMS du knob 3 sur appui long ≥ 2 s déclenchée pendant l'appui, clic court silencieux, seuil réglable « k3_long_press » ; rotation : cycler les lecteurs allumés avec titre ET artiste ; écran d'info du lecteur au tap sur le titre (10 s) ; morceau en cours sur le bandeau ; configuration LMS assistée (--setup-lms), icône systray, autostart.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
@@ -108,21 +108,30 @@ Chaque page a ses touches et ses encodeurs ; la zone 2 du bandeau affiche le nom
 - **Automatic keepalive** (the deck otherwise disconnects after ~15 s)
 - Hot-unplug handling
 
-## EXE compilé (optionnel)
+## EXE compilé « zéro console » (recommandé pour l'usage quotidien)
 
-Pour utiliser l'application sans installer Python (Windows) :
+Double-clique **`build_exe.bat`** (à côté d'`akp05e_app.py`) — il installe
+PyInstaller si besoin puis compile et copie `akp05e_interface.exe` ici.
+Équivalent en ligne de commande :
 
 ```bash
 python -m pip install pyinstaller
-python -m PyInstaller --onefile --name akp05e_interface ^
+python -m PyInstaller --onefile --noconsole --name akp05e_interface ^
   --collect-all pywinusb --collect-all comtypes --collect-all pycaw akp05e_app.py
 ```
 
-L'EXE est produit dans `dist/akp05e_interface.exe`. La configuration
-(`akp05e_config.json`) et le cache d'icônes (`.icons_cache/`) se créent
-automatiquement **à côté de l'EXE** (v2.12.3). Compter ~40–60 Mo — Windows
-SmartScreen peut signaler l'EXE non signé (« Informations complémentaires →
-Exécuter quand même »).
+- **Double-clic sur l'EXE = lancement sans console** (v2.21.0) ; on quitte
+  par l'icône systray → « Quitter ».
+- **Logs & diagnostics** : sans console, tout est écrit dans
+  **`akp05e_log.txt` à côté de l'EXE** (réécrit à chaque session, repli
+  `%TEMP%` si le dossier est protégé) — les messages « copie cette ligne »
+  restent donc disponibles.
+- La configuration (`akp05e_config.json`) et le cache d'icônes
+  (`.icons_cache/`) se créent automatiquement **à côté de l'EXE** (v2.12.3).
+- Les options (`--setup-lms`, `--identify`, `--install-autostart`…) se
+  passent depuis un terminal sur l'EXE : `akp05e_interface.exe --setup-lms`.
+- Compter ~40–60 Mo — Windows SmartScreen peut signaler l'EXE non signé
+  (« Informations complémentaires → Exécuter quand même »).
 
 ## Screenshots
 

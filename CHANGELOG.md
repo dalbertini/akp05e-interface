@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.21.0] — 2026-11-20
+
+### Ajouté
+
+- **EXE Windows « zéro console » officiel + script de build `build_exe.bat`** — l'application se lance désormais par **double-clic, sans terminal ni Python visible**. Double-clique `build_exe.bat` (à côté d'`akp05e_app.py`) : il installe PyInstaller si besoin puis compile `akp05e_interface.exe` (mode `--noconsole`, monofichier) et le copie à côté. Point technique : en mode sans console, PyInstaller laisse `sys.stdout`/`sys.stderr` à `None` — chacun des `print()` de l'application aurait fait planter le processus **de façon invisible**. La v2.21.0 branche donc ces flux sur un fichier de log **`akp05e_log.txt` à côté de l'EXE** (réécrit à chaque session, repli vers `%TEMP%` si le dossier est protégé) : tous les diagnostics « copie cette ligne » restent disponibles. Le mode console (EXE `--console` ou `python akp05e_app.py`) est inchangé, l'icône systray et son menu « Quitter » ferment proprement l'application sans console, et le raccourci d'auto-démarrage reste fonctionnel.
+
 ## [2.20.9] — 2026-11-20
 
 ### Corrigé
@@ -769,6 +775,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.21.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.7]: https://github.com/dalbertini/akp05e-interface/commits/main/

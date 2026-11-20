@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.9"
+APP_VERSION = "2.21.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -3818,7 +3818,48 @@ def run_identify():
           "rapport de bug.")
 
 
+def _setup_frozen_console():
+    """v2.21.0 : EXE PyInstaller « zéro console » (built --noconsole) :
+    le bootloader ne crée PAS de sortie standard (sys.stdout/stderr =
+    None) — chaque print() de l'application lèverait alors une
+    exception invisible. On branche tout sur un fichier de log
+    akp05e_log.txt À CÔTÉ DE L'EXE (les diagnostics « copie cette
+    ligne » restent disponibles : ouvre le fichier après une session) ;
+    si le dossier de l'EXE n'est pas inscriptible (Program Files...),
+    repli vers %TEMP%. En console réelle (python akp05e_app.py ou EXE
+    --console) : ne fait rien, la console affiche comme toujours."""
+    if not getattr(sys, "frozen", False):
+        return False              # python normal : console attachée
+    if sys.stdout is not None or sys.stderr is not None:
+        return False              # EXE construit AVEC console : rien à faire
+    import tempfile as _tf
+    for _dir in (_APP_BASE,
+                 os.environ.get("TEMP"),
+                 os.environ.get("TMP"),
+                 _tf.gettempdir()):
+        try:
+            _p = os.path.join(_dir, "akp05e_log.txt")
+            _f = open(_p, "w", encoding="utf-8", errors="replace",
+                      buffering=1)
+            _f.write(f"[akp05e] v{APP_VERSION} — session du "
+                     f"{time.strftime('%Y-%m-%d %H:%M:%S')}\r\n")
+            sys.stdout = sys.stderr = _f   # vide-flux de fin : no-op
+            print("[akp05e] mode sans console : logs dans "
+                  f"{_p} (les diagnostics s'y copient)")
+            return True
+        except Exception:
+            continue               # dossier suivant (TEMP, puis rien)
+    return False                   # aucune sortie : l'app vit muette
+    # (n'arrive pour ainsi dire jamais : TEMP est toujours inscriptible)
+
+
 def main():
+    # v2.21.0 : EXE « zéro console » -> console de fichier d'abord
+    # (même avant --install-autostart etc., qui écrivent aussi)
+    try:
+        _setup_frozen_console()
+    except Exception:
+        pass
     if "--install-autostart" in sys.argv:
         install_autostart()
         return
