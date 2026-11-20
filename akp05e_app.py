@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.20.8"
+APP_VERSION = "2.20.9"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -564,9 +564,32 @@ def _lms_dump_playing(lms, cand):
     return True
 
 
-# v2.20.8 : instant d'appui du knob 3 (module : handle() mesure la
-# durée entre down et up — appui long = synchro LMS)
-_K3_PRESS = [None]
+# v2.20.9 : appui du knob 3 en cours. [0] = horodatage de l'appui
+# courant, [1] = événement d'annulation (levé au relâchement). Le seuil
+# est compté PENDANT l'appui par _k3_watch, pas au relâchement : le
+# deck n'émet pas de rapport de relâchement exploitable pour les
+# encodeurs, la mesure down->up de la v2.20.8 ne tirait donc jamais.
+_K3_PRESS = [None, None]
+
+
+def _k3_watch(stamp, cancel_evt, config, fire):
+    """v2.20.9 : attend le seuil ("k3_long_press" s, 2.0 par défaut)
+    pendant l'appui du knob 3. Si le knob est encore tenu à l'échéance
+    (aucun relâchement reçu), déclenche la synchro LMS via fire().
+    L'attente Event.wait est en temps RÉEL : ni le patch des tests ni
+    le poll 2 s ne la faussent. Un relâchement avant le seuil annule
+    silencieusement (clic court = rien)."""
+    try:
+        _thr = float((config or {}).get("k3_long_press", 2.0) or 2.0)
+    except Exception:
+        _thr = 2.0
+    if cancel_evt.wait(max(0.0, _thr)):
+        return  # relâché (ou dépassé) avant le seuil : clic court = rien
+    if _K3_PRESS[0] != stamp or _K3_PRESS[1] is not cancel_evt:
+        return  # un autre appui a repris la main entre-temps
+    _K3_PRESS[0] = None  # consommé : un éventuel up tardif reste muet
+    _K3_PRESS[1] = None
+    fire({"type": "lms_sync_all"})
 
 _STRIP_INFO = {"until": 0.0, "player": "", "source": "",
                "title": "", "artist": ""}
@@ -4170,10 +4193,12 @@ def main():
                 if ev.state:
                     clock_show_info(ev.name.split("_")[1])
                 return
-        # v2.20.8 : synchro LMS du knob 3 = APPUI LONG (>= 2 s, clé
-        # config "k3_long_press"). Un appui court ne fait RIEN : les
-        # faux clics (rotation manquée) ne synchronisent plus jamais.
-        # Le relâchement décide selon la durée réelle d'appui.
+        # v2.20.8/2.20.9 : synchro LMS du knob 3 = APPUI LONG
+        # (>= 2 s, clé config "k3_long_press"). Un appui court ne fait
+        # RIEN : les faux clics (rotation manquée) ne synchronisent
+        # plus jamais. v2.20.9 : le seuil est compté PENDANT l'appui
+        # (thread _k3_watch) et non plus au relâchement — le deck réel
+        # n'émet pas d'événement up exploitable pour les encodeurs.
         if (lms.enabled and ev.name == "encoder_3_button"):
             try:
                 _a3b = ((page_cfg().get("encoders") or {})
@@ -4182,17 +4207,26 @@ def main():
                 _a3b = None
             if str((_a3b or {}).get("type") or "") in ("", "zoom", "None"):
                 if ev.state:
-                    _K3_PRESS[0] = time.monotonic()
+                    _K3_STAMP = time.monotonic()
+                    _K3_EVT = threading.Event()
+                    _K3_PRESS[0] = _K3_STAMP
+                    _K3_PRESS[1] = _K3_EVT
+
+                    def _k3_fire(a):
+                        threading.Thread(target=lms_action, args=(a,),
+                                         daemon=True).start()
+                    threading.Thread(
+                        target=_k3_watch,
+                        args=(_K3_STAMP, _K3_EVT, config, _k3_fire),
+                        daemon=True).start()
                 else:
-                    _p0 = _K3_PRESS[0]
+                    # relâchement (si le deck l'émet) : annule le
+                    # compte en cours — clic court/long déjà consommé
                     _K3_PRESS[0] = None
-                    if (_p0 is not None
-                            and time.monotonic() - _p0
-                            >= float(config.get("k3_long_press", 2.0))):
-                        threading.Thread(
-                            target=lms_action,
-                            args=({"type": "lms_sync_all"},),
-                            daemon=True).start()
+                    _K3_EVT = _K3_PRESS[1]
+                    _K3_PRESS[1] = None
+                    if _K3_EVT is not None:
+                        _K3_EVT.set()
                 return  # consommé : court = silence, long = synchro
         if not ev.state:
             return  # ignore les relâchements (sauf besoin spécifique)

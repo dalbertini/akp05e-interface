@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.20.9] — 2026-11-20
+
+### Corrigé
+
+- **Knob 3 : la synchro sur appui long ne se déclenchant jamais sur le matériel réel** — la v2.20.8 mesurait la durée de l'appui au moment du **relâchement**, or le deck n'émet pas de rapport de relâchement exploitable pour les encodeurs : maintien du knob 2 s, rien ne se passait (l'écran de silence des clics courts, lui, fonctionnait). Le seuil est maintenant compté **pendant** l'appui (attente réelle du seuil en tâche de fond, annulée si un relâchement arrive tôt) : la synchronisation part dès que les 2 secondes sont atteintes, que le deck émette le relâchement ou non. Un relâchement avant le seuil reste silencieux (clic court = rien), un relâchement tardif après déclenchement est ignoré. Le seuil `"k3_long_press"` (2.0 s par défaut) est toujours réglable.
+
 ## [2.20.8] — 2026-11-16
 
 ### Amélioré
@@ -763,6 +769,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.20.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.20.9]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.8]: https://github.com/dalbertini/akp05e-interface/commits/main/
