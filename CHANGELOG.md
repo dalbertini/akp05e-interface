@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.1] — 2026-11-21
+
+### Corrigé
+
+- **Latence des écrans en rotation de knobs (1 à 5 s)** — chaque cran d'encodeur déclenchait un rendu complet (page ou bandeau : JPEG 800×112 + upload HID par paquets de 1024 octets) dans son propre thread : une rafale de crans mettait les rendus en file d'attente sur le verrou du deck et l'écran affichait les images avec 1 à 5 s de retard (alors que l'action elle-même, comme la luminosité, était instantanée). Les peintures sont désormais **coalescées** : `paint_page()`/`refresh_strip()` ne font plus que signaler « sale », et un **worker unique par type** (page / bandeau) absorbe les rafales dans une **fenêtre de 60 ms** puis peint **une seule image avec l'état le plus récent** (avec rattrapage si un cran arrive pendant le rendu). Une rotation rapide produit 1 à 2 images au lieu de N, et la ligne `[perf] rendu X : N ms` est journalisée au-delà de 300 ms.
+
 ## [3.0.0] — 2026-11-21
 
 Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web + hot-reload change la manière d'utiliser l'application — plus besoin d'éditer le JSON à la main pour personnaliser pages et touches.
@@ -775,6 +781,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

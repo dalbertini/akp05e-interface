@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.0.1"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -4856,8 +4856,9 @@ def main():
             return config
         return pages.get(current["name"], {})
 
-    def paint_page():
-        """(Re)peint les 10 touches et le bandeau pour la page courante."""
+    def _paint_page_now():
+        """(Re)peint les 10 touches pour la page courante — rendu réel ;
+        v3.0.1 : appeler via paint_page() (demande coalescée)."""
         if getattr(device, "_sleeping", False):
             return  # v2.14.8 : veille complète — rien ne se repeint
         buttons = page_cfg().get("buttons") or {}
@@ -5161,8 +5162,9 @@ def main():
     # accessible depuis le systray ; hot-reload sur les touches/pages
     _editor_start(config, pages, _repaint_all)
 
-    def refresh_strip():
+    def _render_strip_now():
         """Redessine le bandeau : volume système + luminosité en direct,
+        (v3.0.1 : rendu réel — appeler via refresh_strip(), demandé)
         et nom de la page courante dans la zone 2."""
         if getattr(device, "_sleeping", False):
             return  # v2.14.8 : veille complète — le bandeau reste éteint
@@ -5281,6 +5283,48 @@ def main():
                        vol_name=vol_name)
         except Exception as e:
             print(f"Bandeau non redessiné : {e}")
+
+    # v3.0.1 : COALESCENCE des peintures (pages + bandeau). Avant, un
+    # cran de knob déclenchait une peinture COMPLÈTE par événement, dans
+    # son propre thread : en rotation rapide, les rendus sérialisés sur
+    # le câble HID (~100-150 ms chacun : JPEG 800x112 + upload par
+    # paquets de 1 Ko) s'accumulaient en file d'attente -> jusqu'à 5 s
+    # de retard VISIBLE sur les écrans, alors que l'action elle-même
+    # (commande LIG instantanée) marchait. Maintenant, un appel à
+    # paint_page()/refresh_strip() marque simplement « sale » ; un
+    # worker unique repeint l'état LE PLUS RÉCENT en absorbant les
+    # rafales dans une fenêtre de 60 ms (et rattrape un événement arrivé
+    # PENDANT un rendu). Les rendus lents (> 300 ms) affichent une ligne
+    # [perf] pour mesurer le gain.
+    _PAINT_COALESCE = 0.06
+    _paint_dirty = {"page": threading.Event(), "strip": threading.Event()}
+
+    def paint_page():
+        _paint_dirty["page"].set()
+
+    def refresh_strip():
+        _paint_dirty["strip"].set()
+
+    def _paint_worker(which, render):
+        while True:
+            _paint_dirty[which].wait()
+            _paint_dirty[which].clear()
+            time.sleep(_PAINT_COALESCE)   # fenêtre d'absorption
+            _paint_dirty[which].clear()   # rafale absorbée : 1 image
+            _t0 = time.time()
+            try:
+                render()
+            except Exception as e:
+                print(f"[peinture] rendu {which} a échoué : {e}")
+            _dt = time.time() - _t0
+            if _dt > 0.30:
+                print(f"[perf] rendu {which} : {int(_dt * 1000)} ms — "
+                      "copie cette ligne si ça se répète")
+
+    threading.Thread(target=_paint_worker, args=("page", _paint_page_now),
+                     daemon=True, name="paint-page").start()
+    threading.Thread(target=_paint_worker, args=("strip", _render_strip_now),
+                     daemon=True, name="paint-strip").start()
 
     def poll_volume():
         """Met à jour le bandeau dès que le volume change (deck, clavier,
