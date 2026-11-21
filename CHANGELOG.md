@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.4] — 2026-11-21
+
+### Corrigé
+
+- **Pages LMS : plus de repaints inutiles toutes les 2 s** — sur une page LMS, le rafraîchissement périodique repeignait **toute la page complète** (jusqu'à 9-10 touches + bandeau = ~70-110 rapports HID ≈ 0,5-1,6 s de bus) même quand **rien n'avait changé**. L'app mémorise désormais ce que le firmware affiche réellement (par touche et bandeau) : un rendu IDENTIQUE n'est **jamais renvoyé**. La mémoire est vidée à chaque effacement réel de l'écran (CLE : veille, réveil, reconnexion) et mise à jour à chaque envoi différent — revenir sur une page repeinte plus tôt ne saute jamais l'envoi car le slot contient alors autre chose.
+- **Diagnostic `[perf]` enrichi** — les rendus lents affichent désormais la répartition du temps : `[perf] rendu page : 939 ms (dessin 120 ms + 11 envoi(s) HID 819 ms) — copie cette ligne…` : on voit immédiatement si le temps part dans le dessin ou dans le bus HID du deck.
+
 ## [3.0.3] — 2026-11-21
 
 ### Corrigé
@@ -794,6 +801,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/

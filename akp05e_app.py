@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.3"
+APP_VERSION = "3.0.4"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -931,6 +931,17 @@ class Akp05Device:
         self._keepalive_stop = threading.Event()
         self._threads = []
         self._unknown_seen = set()  # codes d'entrée inconnus déjà signalés
+        # v3.0.4 : mémoire de ce que le FIRMWARE affiche réellement
+        # (wire-key -> sha1 du dernier JPEG envoyé). Un upload IDENTIQUE
+        # est évité : poll_lms repeint les pages LMS toutes les 2 s alors
+        # que rien n'a changé -> jusqu'à 70-110 envois HID inutiles par
+        # cycle. Vidée à chaque "CLE" (l'écran est réellement effacé),
+        # mise à jour par chaque upload différent : revenir sur une page
+        # ne saute jamais l'envoi car le slot contient alors autre chose.
+        self._last_imgs = {}
+        # v3.0.4 : diagnostique [perf] enrichi (part bus HID vs dessin)
+        self._perf_hid_ms = 0.0
+        self._perf_hid_n = 0
         self.on_event = None          # callback(Event)
         self.on_disconnect = None
         self.on_reconnect = None   # v2.15.0 : callback après reconnexion
@@ -987,6 +998,10 @@ class Akp05Device:
             return  # deck fermé (Ctrl+C) : no-op silencieux — les
             # threads démons (poll_lms…) peuvent encore peindre un
             # instant pendant le shutdown, sans erreur ni traceback
+        # v3.0.4 : "CLE" efface réellement les écrans du firmware ->
+        # notre mémoire de ce qu'il affiche doit suivre
+        if len(data) >= 9 and data[6:9] == [ ord("C"), ord("L"), ord("E") ]:
+            self._last_imgs = {}
         reports = self.dev.find_output_reports()
         if not reports:
             raise IOError("Aucun rapport de sortie HID.")
@@ -1077,8 +1092,13 @@ class Akp05Device:
         Un mini-délai entre les paquets est indispensable : envoyés en
         rafale, le firmware du deck en perd certains en route et l'image
         se corrompt au milieu (zones brouillées)."""
+        import hashlib
+        _h = hashlib.sha1(jpeg).digest()
+        if self._last_imgs.get(wire_key) == _h:
+            return  # v3.0.4 : le firmware affiche déjà cette image
         header = crt_command("BAT", [0, 0, (len(jpeg) >> 8) & 0xFF,
                                     len(jpeg) & 0xFF, wire_key])
+        _t0 = time.time()
         with self.lock:
             self._send(header)
             # v2.14.3 : gros transferts (bandeau) = délai doublé — le
@@ -1091,6 +1111,11 @@ class Akp05Device:
                 self._send(packet)
                 time.sleep(delay)  # laisse le firmware du deck absorber
             self._send(crt_command("STP"))
+        # v3.0.4 : mémorise ce que le firmware affiche maintenant, et
+        # alimente le diagnostique [perf] (part bus HID vs dessin)
+        self._last_imgs[wire_key] = _h
+        self._perf_hid_ms += (time.time() - _t0) * 1000.0
+        self._perf_hid_n += 1
 
     @staticmethod
     def _pil_to_jpeg(img):
@@ -5369,14 +5394,24 @@ def main():
             time.sleep(_PAINT_COALESCE)   # fenêtre d'absorption
             _paint_dirty[which].clear()   # rafale absorbée : 1 image
             _t0 = time.time()
+            # v3.0.4 : montre la part du bus HID dans le rendu
+            _h0 = device._perf_hid_ms
+            _n0 = device._perf_hid_n
             try:
                 render()
             except Exception as e:
                 print(f"[peinture] rendu {which} a échoué : {e}")
             _dt = time.time() - _t0
+            _hid = (device._perf_hid_ms - _h0) / 1000.0
+            _hid_n = device._perf_hid_n - _n0
             if _dt > 0.30:
-                print(f"[perf] rendu {which} : {int(_dt * 1000)} ms — "
-                      "copie cette ligne si ça se répète")
+                extra = ""
+                if _hid_n:
+                    extra = (" (dessin %d ms + %d envoi(s) HID %d ms)"
+                             % (int((_dt - _hid) * 1000), _hid_n,
+                                int(_hid * 1000)))
+                print(f"[perf] rendu {which} : {int(_dt * 1000)} ms{extra}"
+                      " — copie cette ligne si ça se répète")
 
     threading.Thread(target=_paint_worker, args=("page", _paint_page_now),
                      daemon=True, name="paint-page").start()
