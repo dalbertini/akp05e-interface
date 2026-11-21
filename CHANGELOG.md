@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.7] — 2026-11-21
+
+### Corrigé
+
+- **Fin du « Vol -1% » sur le bandeau entre deux crans du knob 1 (pages Squeezebox)** — la requête « players » de Lyrion ne renvoie PAS « mixer volume » : chaque import de la liste (cycle de rafraîchissement ET fin de chaque action, donc à CHAQUE cran) faisait revenir un volume inconnu (-1) ; et comme les imports remplacent les objets « entrées lecteur », la resynchronisation (« mixer volume ? ») écrivait parfois sur une entrée déjà remplacée : l'état retombait à -1 et le bandeau affichait « Vol SBR … -1% » une frame entre deux valeurs réelles. Double remède : ① import fusionné (`adopt_players`) qui conserve le dernier volume CONNU de chaque lecteur (0-100), et ② mémoire de volumes par id de lecteur (`vol_mem`), indestructible à travers les remplacement d'entrées, alimentée par la resynchronisation ET la mise à jour optimiste du cran (qui partait parfois de -1 et écrêtait vers 0-4 %) ; une ceinture de sécurité au rendu du bandeau retombe sur cette mémoire plutôt que d'afficher -1.
+
 ## [3.0.6] — 2026-11-21
 
 ### Corrigé
@@ -550,7 +556,6 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 ## [2.6.1] — 2026-11-10
 
 ### Corrigé
-- **Radio active toujours pas surlignée au démarrage chez certains serveurs** : la détection lit désormais tous les champs du `status` LMS (`url`, `title` de `playlist_loop`, `current_title`, y compris au niveau racine — selon la version du serveur, l'un ou l'autre est renseigné).
 - **Diagnostic** : si le lecteur joue mais qu'aucun favori ne correspond, la console affiche une fois `[lms] diagnostic radio active — station=…, titre=…, url=…` avec les URL des favoris, à copier dans une issue.
 
 ## [2.6.0] — 2026-11-10
@@ -815,6 +820,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.7]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.4]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.6"
+APP_VERSION = "3.0.7"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1344,7 +1344,6 @@ KEYEVENTF_KEYUP = 0x0002
 # codes virtuels / scan codes média (usage HID 0x7C+)
 # touches média : codes virtuels Windows officiels (VK_MEDIA_* / VK_VOLUME_*)
 # — seuls ces codes-là sont vus par les applications (Qobuz, Spotify, etc.)
-MEDIA = {"volume_up": 0xAF, "volume_down": 0xAE, "volume_mute": 0xAD,
          "play_pause": 0xB3, "stop": 0xB2, "next": 0xB0, "prev": 0xB1}
 MODIFIERS = {"ctrl": 0x11, "menu": 0x12, "alt": 0x12, "shift": 0x10,
              "win": 0x5B, "lwin": 0x5B, "rwin": 0x5C}
@@ -3120,7 +3119,6 @@ def _editor_validate(new):
                     bad(f'page "{pname}" : objet attendu')
                     continue
                 for fld in ("label", "icon", "color"):
-                    if fld in pval and not isinstance(pval[fld], str):
                         bad(f'page "{pname}" : "{fld}" en texte')
                 btns = pval.get("buttons")
                 if btns is not None:
@@ -4624,7 +4622,6 @@ def run_identify():
                     tried += 1
                     raw = _hidd_get_feature(handle, rid, size)
                     if raw and raw not in seen:
-                        seen.add(raw)
                         results.append(raw)
                 if seen:
                     break
@@ -5307,6 +5304,12 @@ def main():
             # Squeezebox affichée : SON volume sur le bandeau, sous-pages LMS
             with lms_lock:
                 vol = vp["volume"]
+                # v3.0.7 : ceinture de sécurité — une entrée importée
+                # remplacee entre-temps peut encore porter -1 ; retomber
+                # sur le dernier volume CONNU (vol_mem) plutot que
+                # d'afficher « Vol -1% »
+                if not (isinstance(vol, int) and 0 <= vol <= 100):
+                    vol = lms_state.get("vol_mem", {}).get(vp.get("id"))
                 muted = lms_state["viewed_muted"]
             vol_name = "Vol " + player_code(vp)
         if vol is None and _HAS_PYCAW:
@@ -5964,7 +5967,6 @@ def main():
 
     # --- LYRION MEDIA SERVER (LMS / Squeezebox) --------------------------
     try:   # v3.0.2 : "lms": {"timeout": secondes} — 3 s par défaut
-        _lms_timeout = float((config.get("lms") or
                               {}).get("timeout") or 3.0)
     except (TypeError, ValueError):
         _lms_timeout = 3.0
@@ -5975,6 +5977,11 @@ def main():
         print("[lms] LMS non configuré — pour détecter votre serveur "
               "Lyrion :  python akp05e_app.py --setup-lms")
     lms_state = {"players": [],       # lecteurs découverts (poll)
+                 "vol_mem": {},        # v3.0.7 : dernier volume CONNU par id
+                                      # de lecteur (mémoire indestructible :
+                                      # les imports remplacent les objets
+                                      # entrées, les écritures sur une
+                                      # entrée remplacée étaient perdues)
                  "favorites": [],     # favoris radios LMS
                  "selected": 0,       # index du lecteur sélectionné
                  "viewed": None,      # id du lecteur affiché (page détail)
@@ -6037,6 +6044,10 @@ def main():
         with lms_lock:
             if v is not None:
                 vp["volume"] = v
+                # v3.0.7 : vp peut avoir été remplacé par un import
+                # concurrent pendant les requêtes — archiver le volume
+                # par id pour qu'il survive aux remplacements d'entrées
+                lms_state.setdefault("vol_mem", {})[vp.get("id")] = v
             lms_state["viewed_muted"] = muted
             lms_state["playing"] = playing
 
@@ -6275,6 +6286,35 @@ def main():
         """Joue un favori (id « url: » = webradio manuelle)."""
         lms_play_fav_entry(lms, player, fav)
 
+    def adopt_players(players):
+        """v3.0.7 : import de la liste des lecteurs en CONSERVANT le
+        dernier volume connu de chacun — la requête « players » de LMS
+        ne renvoie PAS « mixer volume » (volume = -1 à chaque import) ;
+        sans cette fusion, le bandeau affichait « Vol -1% » entre deux
+        crans du knob 1 (import par poll_lms ET par lms_action, à chaque
+        action). La vraie valeur reste resynchronisée par
+        lms_refresh_viewed (mixer volume ?). True si la liste a changé."""
+        with lms_lock:
+            if not players:
+                return False
+            _oldv = {q.get("id"): q.get("volume")
+                     for q in (lms_state["players"] or [])}
+            _mem = lms_state.setdefault("vol_mem", {})
+            for q in players:
+                if q.get("volume") == -1:
+                    # v3.0.7 : vol_mem d'abord (survit aux remplacements
+                    # d'entrées), puis l'entrée courante
+                    _ov = _mem.get(q.get("id"))
+                    if not (isinstance(_ov, int) and 0 <= _ov <= 100):
+                        _ov = _oldv.get(q.get("id"))
+                    if isinstance(_ov, int) and 0 <= _ov <= 100:
+                        q["volume"] = _ov
+                _v = q.get("volume")
+                if isinstance(_v, int) and 0 <= _v <= 100:
+                    _mem[q.get("id")] = _v
+            lms_state["players"] = players
+            return True
+
     def lms_action(action):
         """Exécutée dans un thread : commande LMS puis rafraîchissement."""
         if not lms.enabled:
@@ -6296,7 +6336,14 @@ def main():
             # jour OPTIMISTE + repaint immédiat ; le poll resynchronise
             # le volume réel du serveur (lms_refresh_viewed)
             with lms_lock:
-                tgt["volume"] = max(0, min(100, int(tgt.get("volume", 50)) + d))
+                # v3.0.7 : si l'entrée est encore -1 (import frais), partir
+                # du dernier volume connu au lieu d'écrêter vers 0/4 %
+                _base = tgt.get("volume", 50)
+                if not (isinstance(_base, int) and 0 <= _base <= 100):
+                    _base = lms_state.get("vol_mem", {}).get(tgt.get("id"), 50)
+                tgt["volume"] = max(0, min(100, int(_base) + d))
+                lms_state.setdefault("vol_mem", {})[tgt.get("id")] = \
+                    tgt["volume"]
             if current["name"] in LMS_PAGE_NAMES[1:]:
                 refresh_strip()
         elif t == "lms_mute" and tgt:
@@ -6778,9 +6825,7 @@ def main():
             switch_page("lms_player")
         # rafraîchit l'état (et l'affichage si on est sur une page LMS)
         players = lms.players()      # v3.0.2 : réseau hors verrou
-        with lms_lock:
-            if players:
-                lms_state["players"] = players
+        adopt_players(players)       # v3.0.7 : conserve le volume connu
         lms_refresh_viewed()
         if current["name"] in LMS_PAGE_NAMES:
             paint_lms_page()
@@ -6825,9 +6870,12 @@ def main():
                     # deck (qui lisent lms_state sous verrou) ne sont
                     # jamais bloqués par un serveur lent/injoignable
                     players = lms.players()
-                    with lms_lock:
-                        if players:
-                            lms_state["players"] = players
+                    # v3.0.7 : fusion + import via adopt_players (le
+                    # volume -1 de la requête « players » ne remplace
+                    # plus le dernier volume connu de chaque lecteur)
+                    _new = adopt_players(players)
+                    if _new:
+                        with lms_lock:
                             if not lms_state["favorites"]:
                                 manual = []
                                 for r in (_lms_cfg.get("radios") or []):
@@ -7200,7 +7248,6 @@ def main():
              lambda: _ui(lambda: device.set_brightness(DEFAULT_BRIGHTNESS))),
             None,
             ("Page suivante", lambda: _ui(lambda: switch_page("next"))),
-            ("Page précédente", lambda: _ui(lambda: switch_page("prev"))),
             None,
             ("Éditeur de config", lambda: _ui(_editor_open)),
             ("À propos", lambda: _ui(_about)),
