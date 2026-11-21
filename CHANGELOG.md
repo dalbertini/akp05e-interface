@@ -3,7 +3,9 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
-## [2.22.0] — 2026-11-21
+## [3.0.0] — 2026-11-21
+
+Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web + hot-reload change la manière d'utiliser l'application — plus besoin d'éditer le JSON à la main pour personnaliser pages et touches.
 
 ### Ajouté
 
@@ -773,7 +775,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
-[2.22.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
