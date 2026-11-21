@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.1"
+APP_VERSION = "3.0.2"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1740,6 +1740,17 @@ class LMSClient:
         self.timeout = timeout
         self._id = 0
         self._warned = False   # logs de diagnostic favoris déjà émis ?
+        # v3.0.2 : coupe-circuit — serveur LMS injoignable (absent du
+        # réseau, en cours de redémarrage...) : au bout de 2 échecs on
+        # cesse TOTALEMENT de le sonder pendant une fenêtre croissante
+        # (15 s, 30 s, ... plafond 60 s), pour que les écrans du deck
+        # ne ralentissent JAMAIS à attendre des timeouts HTTP. La
+        # première requête après expiration de la fenêtre re-sonde :
+        # si le serveur est revenu, tout repasse à la normale
+        # instantanément (état purement mémoire, rien de perdu).
+        self._fails = 0
+        self._dead_until = 0.0
+        self._dead_logged = False
 
     @property
     def enabled(self):
@@ -1749,6 +1760,16 @@ class LMSClient:
         """Appel slim.request ; renvoie le dict 'result' (None si erreur
         ou LMS injoignable)."""
         if not self.url:
+            return None
+        # v3.0.2 : fenêtre morte du coupe-circuit -> échec immédiat,
+        # silencieux, sans jamais toucher au réseau
+        now = time.time()
+        if now < self._dead_until:
+            if not self._dead_logged:
+                self._dead_logged = True
+                print("[lms] serveur injoignable — nouvelle tentative "
+                      f"dans {int(self._dead_until - now)} s "
+                      "(les écrans ne sont pas ralentis)")
             return None
         self._id += 1
         payload = json.dumps({"id": self._id, "method": "slim.request",
@@ -1760,8 +1781,20 @@ class LMSClient:
             with urllib.request.urlopen(
                     req, timeout=timeout or self.timeout) as r:
                 data = json.loads(r.read().decode("utf-8"))
+            # le serveur répond : coupe-circuit remis à zéro
+            self._fails = 0
+            self._dead_until = 0.0
+            self._dead_logged = False
             return data.get("result")
         except Exception as e:
+            self._fails += 1
+            if self._fails >= 2:
+                backoff = min(60, 15 * self._fails)
+                self._dead_until = time.time() + backoff
+                self._dead_logged = False
+                print(f"[lms] serveur injoignable ({e}) — coupure de "
+                      f"{backoff} s (les écrans ne sont plus ralentis ; "
+                      "retour automatique dès qu'il répond)")
             print(f"[lms] requête échouée ({e})")
             return None
 
@@ -5816,8 +5849,14 @@ def main():
     device.on_strip_refresh = refresh_strip
 
     # --- LYRION MEDIA SERVER (LMS / Squeezebox) --------------------------
+    try:   # v3.0.2 : "lms": {"timeout": secondes} — 3 s par défaut
+        _lms_timeout = float((config.get("lms") or
+                              {}).get("timeout") or 3.0)
+    except (TypeError, ValueError):
+        _lms_timeout = 3.0
     lms = LMSClient((config.get("lms") or {}).get("host", ""),
-                    (config.get("lms") or {}).get("port", 9000))
+                    (config.get("lms") or {}).get("port", 9000),
+                    timeout=_lms_timeout)
     if not lms.enabled:
         print("[lms] LMS non configuré — pour détecter votre serveur "
               "Lyrion :  python akp05e_app.py --setup-lms")
@@ -5865,22 +5904,27 @@ def main():
         vp = lms_viewed()
         if not vp:
             return
+        # v3.0.2 : requêtes HORS du verrou (un serveur LMS lent ou
+        # injoignable ne doit jamais bloquer les rendus d'écran) ;
+        # le verrou n'est pris que pour écrire l'état.
+        v = lms.volume_state(vp["id"])
+        muted = lms.mute_state(vp["id"])
+        try:
+            # v2.13.9 : info maintenue aussi EN PAUSE (lecteur
+            # allumé) -> la zone 3 garde la position « i/N »
+            playing = (lms.playing_track(vp["id"])
+                       if vp.get("power") else None)
+        except Exception as e:
+            playing = None
+            if not _Z3_DIAG["err"]:
+                _Z3_DIAG["err"] = True
+                print(f"[lms] playing_info a échoué : {e!r} — "
+                      "copie cette ligne")
         with lms_lock:
-            v = lms.volume_state(vp["id"])
             if v is not None:
                 vp["volume"] = v
-            lms_state["viewed_muted"] = lms.mute_state(vp["id"])
-            try:
-                # v2.13.9 : info maintenue aussi EN PAUSE (lecteur
-                # allumé) -> la zone 3 garde la position « i/N »
-                lms_state["playing"] = (lms.playing_track(vp["id"])
-                                         if vp.get("power") else None)
-            except Exception as e:
-                lms_state["playing"] = None
-                if not _Z3_DIAG["err"]:
-                    _Z3_DIAG["err"] = True
-                    print(f"[lms] playing_info a échoué : {e!r} — "
-                          "copie cette ligne")
+            lms_state["viewed_muted"] = muted
+            lms_state["playing"] = playing
 
     def paint_lms_button(n, entry):
         """Touche LMS : libellés dynamiques (lecteurs, favoris, états)
@@ -6619,8 +6663,8 @@ def main():
         elif t == "lms_back_player":
             switch_page("lms_player")
         # rafraîchit l'état (et l'affichage si on est sur une page LMS)
+        players = lms.players()      # v3.0.2 : réseau hors verrou
         with lms_lock:
-            players = lms.players()
             if players:
                 lms_state["players"] = players
         lms_refresh_viewed()
@@ -6663,8 +6707,11 @@ def main():
                             raw = lms.apps_raw()
                             print("[lms] diagnostic apps — réponse brute : "
                                   f"{str(raw)[:600]}")
+                    # v3.0.2 : réseau hors verrou — les peintres du
+                    # deck (qui lisent lms_state sous verrou) ne sont
+                    # jamais bloqués par un serveur lent/injoignable
+                    players = lms.players()
                     with lms_lock:
-                        players = lms.players()
                         if players:
                             lms_state["players"] = players
                             if not lms_state["favorites"]:

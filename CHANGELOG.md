@@ -3,6 +3,13 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.2] — 2026-11-21
+
+### Corrigé
+
+- **Coupe-circuit LMS (serveur injoignable = écrans sereins)** — dès que le serveur Lyrion est absent du réseau ou en cours de redémarrage, chaque requête patientait le timeout HTTP complet et la boucle de rafraîchissement réessayait en continu : le log se remplissait de `requête échouée (timed out)` et **les rendus d'écran étaient ralentis** (jusqu'à plusieurs secondes) quand ils traversaient l'état LMS. Désormais, après **2 échecs** l'appli **cesse totalement de sonder le serveur pendant une fenêtre croissante** (30 s, puis 45 s… plafond 60 s) : les requêtes échouent instantanément et silencieusement, le log n'affiche qu'une ligne par fenêtre (« serveur injoignable — nouvelle tentative dans N s »), et **la première requête après expiration re-sonde le serveur** : dès qu'il répond, tout repasse à la normale automatiquement (aucune config modifiée, aucun état perdu, totalement réversible). En parallèle, le verrou d'état LMS n'est plus tenu pendant les requêtes réseau : un serveur lent ne bloque jamais les peintures du deck.
+- **Timeout LMS configurable** — nouvelle clé `"lms": {"timeout": secondes}` (3 s par défaut) pour les réseaux lents.
+
 ## [3.0.1] — 2026-11-21
 
 ### Corrigé
@@ -781,6 +788,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/

@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> ⚡ **v3.0.1 Éditeur de config web + hot-reload et écrans réactifs : menu systray « Éditeur de config » → page locale (127.0.0.1, token d'accès) pour éditer pages, touches, encodeurs et réglages sans toucher au JSON — validation avant sauvegarde, backup .bak, application immédiate sur le deck ; écrans fluides en rotation de knobs (coalescence des peintures : 1 image par rafale au lieu de N, plus de retard de 1-5 s) ; EXE « zéro console » via build_exe.bat (logs dans akp05e_log.txt) ; synchro LMS du knob 3 sur appui long ≥ 2 s ; configuration LMS assistée (--setup-lms), icône systray, autostart.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> ⚡ **v3.0.2 Éditeur de config web + hot-reload et écrans réactifs : coalescence des peintures en rotation de knobs (1 image par rafale, plus de retard 1-5 s) ; coupe-circuit LMS : un serveur Lyrion injoignable ne ralentit plus écrans ni logs (reconnexion automatique dès son retour, timeout configurable) ; menu systray « Éditeur de config » → page locale (127.0.0.1, token d'accès), validation avant sauvegarde, backup .bak, application immédiate sur le deck ; EXE « zéro console » via build_exe.bat (logs dans akp05e_log.txt) ; synchro LMS du knob 3 sur appui long ≥ 2 s ; configuration LMS assistée (--setup-lms), icône systray, autostart.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 
