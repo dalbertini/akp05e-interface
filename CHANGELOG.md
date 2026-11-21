@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.3] — 2026-11-21
+
+### Corrigé
+
+- **Changement de page instantané (654-1200 ms → ~40 ms)** — les lignes `[perf] rendu page : 654-1185 ms` se répétaient à chaque changement de page : chaque peinture **rechargeait les polices depuis le disque** à chaque libellé (jusqu'à 26-60 chargements TTF par page, arial.ttf + MaterialIcons-Regular.ttf). Nouveau cache de polices **par thread** (`_ttf()`) : le premier rendu paie les chargements une fois, tous les suivants sont immédiats. Aucun changement visible à part la vitesse ; les objets FreeType restent propres à chaque peintre (thread-safe d'usage).
+
 ## [3.0.2] — 2026-11-21
 
 ### Corrigé
@@ -788,6 +794,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.0]: https://github.com/dalbertini/akp05e-interface/commits/main/

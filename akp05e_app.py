@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.2"
+APP_VERSION = "3.0.3"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -472,6 +472,30 @@ def parse_color(c, default=(240, 240, 240)):
     except Exception:
         return default
 
+# v3.0.3 : cache de polices PAR THREAD. Avant, chaque peinture
+# rechargeait les fichiers TTF depuis le disque à chaque libellé
+# (30 à 60 _ttf() par page -> 654-1200 ms constatés
+# sur le matériel réel, cf. lignes [perf]). Le thread de peinture ne
+# paie le chargement qu'au PREMIER rendu ; les suivants (~20-40 ms)
+# sont immédiats. Cache par thread (threading.local) : les objets
+# FreeType ne sont pas garantis thread-safe, chaque peintre garde
+# ainsi LES SIENS.
+_TTF_LOCAL = threading.local()
+
+def _ttf(path, size):
+    """ImageFont.truetype mis en cache par thread : les libellés et
+    icônes ne relisent plus le disque à chaque peinture."""
+    cache = getattr(_TTF_LOCAL, "fonts", None)
+    if cache is None:
+        cache = _TTF_LOCAL.fonts = {}
+    key = (path, size)
+    f = cache.get(key)
+    if f is None:
+        f = ImageFont.truetype(path, size)
+        cache[key] = f
+    return f
+
+
 def set_icon(device, button, name, fg="#e0e0e0", bg="#101010", label=None):
     """Dessine une icône Material (couleur fg, fond bg) + libellé optionnel,
     et l'envoie sur la touche LCD. fg/bg acceptent n'importe quel format
@@ -484,12 +508,12 @@ def set_icon(device, button, name, fg="#e0e0e0", bg="#101010", label=None):
     for y in range(BUTTON_IMAGE_SIZE[1]):
         mix = tuple(int(c * (1 - 0.25 * y / 112)) for c in bg_rgb)
         d.line([(0, y), (112, y)], fill=mix)
-    icon_font = ImageFont.truetype(font_path, 60 if label else 78)
+    icon_font = _ttf(font_path, 60 if label else 78)
     d.text((56, 38 if label else 56), _icon_char(name),
            font=icon_font, fill=fg_rgb, anchor="mm")
     if label:
         try:
-            text_font = ImageFont.truetype("arial.ttf", 14)
+            text_font = _ttf("arial.ttf", 14)
         except OSError:
             text_font = ImageFont.load_default()
         dim = tuple(int(c * 0.75 + 60) if c < 128 else int(c * 0.75 + 20)
@@ -507,7 +531,7 @@ def draw_vu_zone(img, peak, hold, muted=False):
     d = ImageDraw.Draw(img)
     d.rectangle([404, 6, 596, 106], fill=(16, 16, 16))  # efface la zone
     try:
-        f_t = ImageFont.truetype("arial.ttf", 14)
+        f_t = _ttf("arial.ttf", 14)
     except OSError:
         f_t = ImageFont.load_default()
     d.text((500, 12), "VU", font=f_t, fill=(129, 212, 250), anchor="mm")
@@ -664,10 +688,10 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
     img = Image.new("RGB", (w, h), (16, 16, 16))
     d = ImageDraw.Draw(img)
     try:
-        font = ImageFont.truetype("arial.ttf", 17)
-        font_big = ImageFont.truetype("arial.ttf", 26)
-        font_mid = ImageFont.truetype("arial.ttf", 20)
-        font_small = ImageFont.truetype("arial.ttf", 15)
+        font = _ttf("arial.ttf", 17)
+        font_big = _ttf("arial.ttf", 26)
+        font_mid = _ttf("arial.ttf", 20)
+        font_small = _ttf("arial.ttf", 15)
     except OSError:
         font = font_big = font_mid = font_small = ImageFont.load_default()
 
@@ -720,7 +744,7 @@ def show_strip(device, brightness, volume=None, muted=None, extras=("K2", "K3"),
             glyph = None
             if page_icon:
                 try:
-                    ifont = ImageFont.truetype(
+                    ifont = _ttf(
                         os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"), 24)
                     glyph = _icon_char(page_icon)
                 except Exception:
@@ -806,9 +830,9 @@ def paint_hw_button(device, button, label, reading, thresholds=(70, 85)):
     img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 16, 16))
     d = ImageDraw.Draw(img)
     try:
-        f_small = ImageFont.truetype("arial.ttf", 15)
-        f_big = ImageFont.truetype("arial.ttf", 34)
-        f_unit = ImageFont.truetype("arial.ttf", 13)
+        f_small = _ttf("arial.ttf", 15)
+        f_big = _ttf("arial.ttf", 34)
+        f_unit = _ttf("arial.ttf", 13)
     except OSError:
         f_small = f_big = f_unit = ImageFont.load_default()
     d.text((56, 22), (label or "?")[:10], font=f_small, fill=(150, 150, 150),
@@ -852,9 +876,9 @@ def paint_timer_button(device, button, label, remaining=None, total=300,
     img = Image.new("RGB", BUTTON_IMAGE_SIZE, (16, 16, 16))
     d = ImageDraw.Draw(img)
     try:
-        f_small = ImageFont.truetype("arial.ttf", 15)
-        f_big = ImageFont.truetype("arial.ttf", 31)
-        f_unit = ImageFont.truetype("arial.ttf", 13)
+        f_small = _ttf("arial.ttf", 15)
+        f_big = _ttf("arial.ttf", 31)
+        f_unit = _ttf("arial.ttf", 13)
     except OSError:
         f_small = f_big = f_unit = ImageFont.load_default()
     d.text((56, 20), (label or "?")[:10], font=f_small,
@@ -1163,8 +1187,8 @@ class Akp05Device:
             img = Image.new("RGB", BUTTON_IMAGE_SIZE, bg)
             d = ImageDraw.Draw(img)
         try:
-            font_big = ImageFont.truetype("arial.ttf", 20)
-            font_small = ImageFont.truetype("arial.ttf", 13)
+            font_big = _ttf("arial.ttf", 20)
+            font_small = _ttf("arial.ttf", 13)
         except OSError:
             font_big = font_small = ImageFont.load_default()
         if icon:
@@ -1173,7 +1197,7 @@ class Akp05Device:
                 ipath = _download(
                     ICON_FONT_URL,
                     os.path.join(ICON_CACHE, "MaterialIcons-Regular.ttf"))
-                ifont = ImageFont.truetype(ipath, 30)
+                ifont = _ttf(ipath, 30)
                 base = fg if isinstance(fg, (tuple, list)) \
                     else (240, 240, 240)
                 dim = tuple(min(255, int(c * 0.75) + 45)
@@ -1191,7 +1215,7 @@ class Akp05Device:
 
         def _fnt(sz):
             try:
-                return ImageFont.truetype("arial.ttf", sz)
+                return _ttf("arial.ttf", sz)
             except OSError:
                 return ImageFont.load_default()
 
@@ -4303,7 +4327,7 @@ def _calib_strip_image(w, h):
                        fill=(129, 212, 250))
                 y += 8
     try:
-        font = ImageFont.truetype("arial.ttf", 24)
+        font = _ttf("arial.ttf", 24)
     except OSError:
         font = ImageFont.load_default()
     # repère "0" dessiné UNE fois à l'origine ; colonnes à partir de 100,
@@ -5707,8 +5731,8 @@ def main():
                             width=1)
         now = time.localtime()
         try:
-            f_big = ImageFont.truetype("arial.ttf", 30)
-            f_date = ImageFont.truetype("arial.ttf", 13)
+            f_big = _ttf("arial.ttf", 30)
+            f_date = _ttf("arial.ttf", 13)
         except OSError:
             f_big = f_date = ImageFont.load_default()
         d.text((56, 44), time.strftime("%H:%M", now), font=f_big,
@@ -5734,9 +5758,9 @@ def main():
         d.rounded_rectangle([3, 3, 108, 108], radius=16,
                             outline=(129, 212, 250), width=2)
         try:
-            f_tiny = ImageFont.truetype("arial.ttf", 11)
-            f_big = ImageFont.truetype("arial.ttf", 26)
-            f_small = ImageFont.truetype("arial.ttf", 12)
+            f_tiny = _ttf("arial.ttf", 11)
+            f_big = _ttf("arial.ttf", 26)
+            f_small = _ttf("arial.ttf", 12)
         except OSError:
             f_tiny = f_big = f_small = ImageFont.load_default()
         d.text((56, 18), "AKP05E", font=f_small,
