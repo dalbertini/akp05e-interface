@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.5"
+APP_VERSION = "3.0.6"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -939,9 +939,13 @@ class Akp05Device:
         # mise à jour par chaque upload différent : revenir sur une page
         # ne saute jamais l'envoi car le slot contient alors autre chose.
         self._last_imgs = {}
-        # v3.0.4 : diagnostique [perf] enrichi (part bus HID vs dessin)
-        self._perf_hid_ms = 0.0
-        self._perf_hid_n = 0
+        # v3.0.6 : diagnostique [perf] PAR THREAD — les compteurs
+        # globaux attribuaient au worker « page » la totalité d'un
+        # upload « bandeau » démarré juste avant sa fenêtre de mesure,
+        # d'où des « dessin » négatifs (ex. -41 ms) quand les deux
+        # rendus se chevauchaient. Chaque thread cumule maintenant
+        # ses propres envois HID et son attente du verrou.
+        self._perf_tl = threading.local()
         self.on_event = None          # callback(Event)
         self.on_disconnect = None
         self.on_reconnect = None   # v2.15.0 : callback après reconnexion
@@ -1094,8 +1098,8 @@ class Akp05Device:
         se corrompt au milieu (zones brouillées)."""
         import hashlib
         _h = hashlib.sha1(jpeg).digest()
-        if self._last_imgs.get(wire_key) == _h:
-            return  # v3.0.4 : le firmware affiche déjà cette image
+        # v3.0.6 : plus de test AVANT le verrou — le skip est vérifié
+        # sous le verrou (voir plus bas) pour être atomique
         header = crt_command("BAT", [0, 0, (len(jpeg) >> 8) & 0xFF,
                                     len(jpeg) & 0xFF, wire_key])
         # v3.0.5 : chronomètre uniquement la section SOUS verrou —
@@ -1103,9 +1107,21 @@ class Akp05Device:
         # thread, bandeau/touche) était comptée et le [perf] affichait
         # des « dessin » négatifs. On acquiert le verrou AVANT de
         # démarrer le chronomètre.
+        # v3.0.6 : l'attente ÉVENTUELLE du verrou est mesurée à part
+        # (per-thread) pour que le [perf] reste exact même quand un
+        # autre thread occupe le bus.
+        # v3.0.6 : le test de mémoire se fait SOUS verrou — découvert
+        # par le harnais : au changement de page, le rendu bandeau du
+        # worker page et le worker bandeau passaient TOUS LES DEUX la
+        # barrière avant qu'aucun n'ait terminé son envoi → le bandeau
+        # partait DEUX FOIS (envoi identique gaspillé, ~70 ms de bus).
+        _ta = time.time()
         self.lock.acquire()
-        _t0 = time.time()
+        _hold_wait = time.time() - _ta
         try:
+            if self._last_imgs.get(wire_key) == _h:
+                return  # skip : vérifié SOUS verrou à présent
+            _t0 = time.time()
             self._send(header)
             # v2.14.3 : gros transferts (bandeau) = délai doublé — le
             # firmware perd des paquets quand la trame est longue
@@ -1117,13 +1133,20 @@ class Akp05Device:
                 self._send(packet)
                 time.sleep(delay)  # laisse le firmware absorber
             self._send(crt_command("STP"))
+            # v3.0.4 : mémorise ce que le firmware affiche maintenant
+            # (sous verrou : un envoi concurrent identique sera skippé)
+            self._last_imgs[wire_key] = _h
         finally:
             self.lock.release()
-        # v3.0.4 : mémorise ce que le firmware affiche maintenant, et
-        # alimente le diagnostic [perf] (part bus HID vs dessin)
-        self._last_imgs[wire_key] = _h
-        self._perf_hid_ms += (time.time() - _t0) * 1000.0
-        self._perf_hid_n += 1
+        # v3.0.6 : cumuls PAR THREAD (v3.0.4-3.0.5 : compteurs
+        # globaux — un upload « bandeau » à cheval sur la fenêtre de
+        # mesure du worker page y était compté ENTIÈREMENT, d'où des
+        # « dessin » négatifs : -41 ms v3.0.5, -683 ms v3.0.4)
+        _tl = self._perf_tl
+        _tl.hid_ms = (getattr(_tl, "hid_ms", 0.0)
+                      + (time.time() - _t0) * 1000.0)
+        _tl.hid_n = getattr(_tl, "hid_n", 0) + 1
+        _tl.wait_ms = getattr(_tl, "wait_ms", 0.0) + _hold_wait * 1000.0
 
     @staticmethod
     def _pil_to_jpeg(img):
@@ -4950,7 +4973,17 @@ def main():
         """(Re)peint les 10 touches pour la page courante — rendu réel ;
         v3.0.1 : appeler via paint_page() (demande coalescée)."""
         if getattr(device, "_sleeping", False):
+            page_paint.pop("strip_first", None)
             return  # v2.14.8 : veille complète — rien ne se repeint
+        # v3.0.6 : bandeau d'abord (uniquement sur un changement de
+        # page, le drapeau est posé par switch_page) — le rendu
+        # bandeau qui suivra trouvera l'image identique et sautera
+        # l'envoi (mémoire d'écran v3.0.4) : aucun coût bus en plus.
+        if page_paint.pop("strip_first", False):
+            try:
+                _render_strip_now()
+            except Exception as e:
+                print(f"[peinture] bandeau d'abord a échoué : {e}")
         buttons = page_cfg().get("buttons") or {}
         gen = page_paint["gen"]
         for n in range(1, 11):
@@ -5013,8 +5046,14 @@ def main():
             current["name"] = name
             print(f"[page] {name}")
             device._page_label = (page_cfg().get("label") or name)[:9]
+            # v3.0.6 : bandeau AVANT les touches — à un changement de
+            # page, le titre/contexte du bandeau (~1 envoi) s'affiche
+            # immédiatement pendant que les touches se remplissent ;
+            # PAS de refresh_strip() ici : le bandeau est déjà rendu
+            # par le rendu de page (strip_first) — sinon le worker
+            # bandeau partait en parallèle doubler l'envoi.
+            page_paint["strip_first"] = True
             paint_page()
-            refresh_strip()
         else:
             print(f"Page inconnue : {name} (disponibles : {page_names})")
 
@@ -5402,22 +5441,30 @@ def main():
             time.sleep(_PAINT_COALESCE)   # fenêtre d'absorption
             _paint_dirty[which].clear()   # rafale absorbée : 1 image
             _t0 = time.time()
-            # v3.0.4 : montre la part du bus HID dans le rendu
-            _h0 = device._perf_hid_ms
-            _n0 = device._perf_hid_n
+            # v3.0.6 : cumuls PAR THREAD (les envois de CE worker) :
+            # un upload « bandeau » à cheval sur la fenêtre ne peut
+            # plus y être compté en entier (fini les « dessin » négatifs)
+            _tl = device._perf_tl
+            _h0 = getattr(_tl, "hid_ms", 0.0)
+            _n0 = getattr(_tl, "hid_n", 0)
+            _w0 = getattr(_tl, "wait_ms", 0.0)
             try:
                 render()
             except Exception as e:
                 print(f"[peinture] rendu {which} a échoué : {e}")
             _dt = time.time() - _t0
-            _hid = (device._perf_hid_ms - _h0) / 1000.0
-            _hid_n = device._perf_hid_n - _n0
+            _hid = (getattr(_tl, "hid_ms", 0.0) - _h0) / 1000.0
+            _hid_n = getattr(_tl, "hid_n", 0) - _n0
+            _wait = (getattr(_tl, "wait_ms", 0.0) - _w0) / 1000.0
             if _dt > 0.30:
                 extra = ""
                 if _hid_n:
                     extra = (" (dessin %d ms + %d envoi(s) HID %d ms)"
-                             % (int((_dt - _hid) * 1000), _hid_n,
+                             % (int((_dt - _hid - _wait) * 1000), _hid_n,
                                 int(_hid * 1000)))
+                    if _wait > 0.05:
+                        extra += (" + attente bus %d ms"
+                                  % int(_wait * 1000))
                 print(f"[perf] rendu {which} : {int(_dt * 1000)} ms{extra}"
                       " — copie cette ligne si ça se répète")
 

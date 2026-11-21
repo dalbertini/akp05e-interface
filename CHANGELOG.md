@@ -3,6 +3,14 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.6] — 2026-11-21
+
+### Corrigé
+
+- **Adieu le dernier « dessin négatif »** — le log réel de la v3.0.5 montrait encore « dessin -41 ms » au premier rendu de session : les compteurs HID étaient globaux, et un upload bandeau démarrant juste avant la fenêtre de mesure du worker page y était compté ENTIÈREMENT. Les compteurs sont désormais **par thread** (chaque worker cumule ses propres envois), et l'attente éventuelle du verrou USB est mesurée à part (« + attente bus X ms » quand un autre rendu occupe le bus). La répartition dessin / bus HID du `[perf]` est exacte en toutes circonstances.
+- **Bandeau affiché en premier à chaque changement de page** — le rendu bandeau (titre, volume, page courante : ~1 envoi) part maintenant AVANT les touches : le haut du deck réagit instantanément pendant que les touches se remplissent. Le total est inchangé, seul l'ordre sert la perception.
+- **Bandeau envoyé une seule fois (course corrigée)** — découvert par le harnais de tests : au changement de page, le rendu bandeau « en premier » et le worker bandeau passaient TOUS LES DEUX la barrière « image identique ? » avant qu'aucun n'ait terminé son envoi : le bandeau partait DEUX FOIS (~70 ms de bus USB gaspillés à chaque changement de page). Le test de mémoire est désormais fait **sous le verrou USB** : atomique, un rendu identique levé par deux threads ne peut plus partir qu'une fois.
+
 ## [3.0.5] — 2026-11-21
 
 ### Corrigé
@@ -807,6 +815,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.6]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
