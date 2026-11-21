@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "3.0.4"
+APP_VERSION = "3.0.5"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -1098,8 +1098,14 @@ class Akp05Device:
             return  # v3.0.4 : le firmware affiche déjà cette image
         header = crt_command("BAT", [0, 0, (len(jpeg) >> 8) & 0xFF,
                                     len(jpeg) & 0xFF, wire_key])
+        # v3.0.5 : chronomètre uniquement la section SOUS verrou —
+        # avant, l'attente du verrou (pendant l'upload d'un autre
+        # thread, bandeau/touche) était comptée et le [perf] affichait
+        # des « dessin » négatifs. On acquiert le verrou AVANT de
+        # démarrer le chronomètre.
+        self.lock.acquire()
         _t0 = time.time()
-        with self.lock:
+        try:
             self._send(header)
             # v2.14.3 : gros transferts (bandeau) = délai doublé — le
             # firmware perd des paquets quand la trame est longue
@@ -1109,10 +1115,12 @@ class Akp05Device:
                 packet = [0] * TOTAL_LEN
                 packet[1:1 + len(chunk)] = list(chunk)
                 self._send(packet)
-                time.sleep(delay)  # laisse le firmware du deck absorber
+                time.sleep(delay)  # laisse le firmware absorber
             self._send(crt_command("STP"))
+        finally:
+            self.lock.release()
         # v3.0.4 : mémorise ce que le firmware affiche maintenant, et
-        # alimente le diagnostique [perf] (part bus HID vs dessin)
+        # alimente le diagnostic [perf] (part bus HID vs dessin)
         self._last_imgs[wire_key] = _h
         self._perf_hid_ms += (time.time() - _t0) * 1000.0
         self._perf_hid_n += 1

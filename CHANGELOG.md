@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [3.0.5] — 2026-11-21
+
+### Corrigé
+
+- **Diagnostic `[perf]` exact** — le chronomètre HID comptait l'attente du verrou USB (quand le bandeau et les touches se peignent en même temps), d'où des « dessin -683 ms » absurdes dans le log. Le temps mesuré couvre désormais uniquement la section réellement sous verrou : la répartition dessin / bus HID est juste, et le log réel confirme ce qu'on soupçonnait : le dessin est quasi instantané depuis la 3.0.3, le temps restant par changement de page est le **bus USB du deck lui-même** (~70-110 ms par image envoyée, 7-21 envois par page) — un plancher matériel, pas un bug.
+
 ## [3.0.4] — 2026-11-21
 
 ### Corrigé
@@ -801,6 +807,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[3.0.5]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.4]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.3]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [3.0.2]: https://github.com/dalbertini/akp05e-interface/commits/main/
