@@ -1,6 +1,6 @@
 # AKP05E Interface
 
-> 🎚️ **v2.21.0 EXE Windows « zéro console » : build par double-clic de `build_exe.bat` (PyInstaller --noconsole), lancement de l'app sans terminal ni console — les logs et diagnostics « copie cette ligne » sont écrits dans `akp05e_log.txt` à côté de l'EXE ; synchro LMS du knob 3 sur appui long ≥ 2 s déclenchée pendant l'appui, clic court silencieux, seuil réglable « k3_long_press » ; rotation : cycler les lecteurs allumés avec titre ET artiste ; écran d'info du lecteur au tap sur le titre (10 s) ; morceau en cours sur le bandeau ; configuration LMS assistée (--setup-lms), icône systray, autostart.** Détails dans le [CHANGELOG](CHANGELOG.md).
+> 🎚️ **v2.22.0 Éditeur de config web + hot-reload : menu systray « Éditeur de config » → page locale (127.0.0.1, token d'accès) pour éditer pages, touches, encodeurs et réglages sans toucher au JSON — validation avant sauvegarde, backup .bak, application immédiate sur le deck, relance proposée pour les clés non appliquables à chaud ; EXE « zéro console » via build_exe.bat (logs dans akp05e_log.txt) ; synchro LMS du knob 3 sur appui long ≥ 2 s ; configuration LMS assistée (--setup-lms), icône systray, autostart.** Détails dans le [CHANGELOG](CHANGELOG.md).
 
 **FR** — Application de contrôle **open source** (Python, Windows) pour le deck **Ajazz AKP05E / AKP05** — sans le logiciel propriétaire. *(English below)*
 

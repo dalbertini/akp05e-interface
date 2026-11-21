@@ -392,7 +392,7 @@ STRIP_WIRE_KEY = 1
 STRIP_MAX_JPEG = 9000
 STRIP_JPEG_QUALITIES = (80, 65, 50, 35, 25, 20)
 DEFAULT_BRIGHTNESS = 30
-APP_VERSION = "2.21.0"
+APP_VERSION = "2.22.0"
 
 # cache de la dernière image du bandeau SANS le VU-mètre : le fil poll_vu
 # la recopie puis dessine la zone 3 par-dessus, sans tout recalculer
@@ -2876,6 +2876,803 @@ def load_config():
         return json.load(f)
 
 # ---------------------------------------------------------------------------
+# Éditeur de config web + hot-reload — v2.22.0
+# ---------------------------------------------------------------------------
+# Petite page locale (127.0.0.1 uniquement, jamais exposée sur le réseau)
+# pour éditer pages/touches/réglages sans toucher au JSON. Le serveur tourne
+# dans un thread daemon ; l'accès se fait par le bouton systray « Éditeur de
+# config » (URL avec un token aléatoire généré au démarrage).
+import copy as _copy_mod
+import secrets as _secrets_mod
+import urllib.parse as _urlparse_mod
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+_LMS_PAGES = ("lms", "lms_player", "lms_favs", "lms_apps",
+              "lms_browse", "lms_album")
+# clés dont la modification ne peut pas être appliquée à chaud (threads /
+# boucles qui capturent la valeur au démarrage) -> relance proposée
+_EDITOR_RESTART_KEYS = ("lms", "vu_meter", "auto_pages", "startup_delay")
+
+# types d'action connus (pour le menu déroulant) ; l'éditeur accepte aussi
+# les types LMS et tout type inconnu (paramètres libres)
+_EDITOR_ACTION_TYPES = [
+    "", "page", "open", "url", "keys", "text", "run", "volume", "clock",
+    "mediaplay", "medianext", "mediaprev", "mediastop", "sysvolume",
+    "brightness", "brightness_toggle", "sleep", "zoom", "timer", "stopwatch",
+    "hw", "nosleep",
+] + [
+    "lms_open_player", "lms_player_id", "lms_player_power",
+    "lms_player_playpause", "lms_open_favs", "lms_open_apps",
+    "lms_fav_press", "lms_favorite", "lms_favs_scroll", "lms_app_press",
+    "lms_apps_scroll", "lms_item_press", "lms_browse_back",
+    "lms_browse_scroll", "lms_album_play", "lms_album_play_sel",
+    "lms_volume", "lms_mute", "lms_sync", "lms_sync_all", "lms_power_all",
+    "lms_power_selected", "lms_playpause", "lms_select_player",
+    "lms_cycle_player", "lms_play_url", "lms_back", "lms_back_player",
+    "lms_play_level",
+]
+
+_EDITOR_PARAM_SELECT = {
+    "dir": ["up", "down", "mute", "next", "prev", "toggle"],
+}
+
+_EDITOR_STATE = {"server": None, "url": None, "lock": threading.Lock()}
+
+def _editor_open():
+    """Ouvre l'éditeur dans le navigateur par défaut (bouton systray)."""
+    url = _EDITOR_STATE.get("url")
+    if url:
+        webbrowser.open(url)
+    else:
+        print("[éditeur] serveur non démarré")
+
+def _editor_meta():
+    return {
+        "version": APP_VERSION,
+        "lms_pages": list(_LMS_PAGES),
+        "action_types": _EDITOR_ACTION_TYPES,
+        "param_select": _EDITOR_PARAM_SELECT,
+        "restart_keys": list(_EDITOR_RESTART_KEYS),
+    }
+
+def _editor_validate(new):
+    """Vérifie la config soumise ; renvoie une liste d'erreurs (vide = OK).
+    Volontairement permissif sur les valeurs (l'app est tolérante à
+    l'exécution) mais strict sur la structure : aucune sauvegarde si la
+        forme est invalide."""
+    errs = []
+
+    def bad(msg):
+        errs.append(msg)
+
+    if not isinstance(new, dict):
+        return ["la config doit être un objet JSON"]
+    scal = {"brightness": "entier 0-100",
+            "startup_delay": "nombre",
+            "resume_repaint_delay": "nombre",
+            "k3_long_press": "nombre"}
+    for k, hint in scal.items():
+        if k in new:
+            v = new[k]
+            ok = isinstance(v, (int, float)) and not isinstance(v, bool)
+            if k == "brightness":
+                ok = ok and 0 <= v <= 100
+            if not ok:
+                bad(f'"{k}" attend un {hint}')
+    if "page" in new and not isinstance(new["page"], str):
+        bad('"page" attend un nom de page (texte)')
+    lms = new.get("lms")
+    if lms is not None:
+        if not isinstance(lms, dict):
+            bad('"lms" attend un objet')
+        else:
+            host = lms.get("host", "")
+            if host and not isinstance(host, str):
+                bad('"lms.host" attend un texte')
+            port = lms.get("port", 9000)
+            if not isinstance(port, int) or not (1 <= port <= 65535):
+                bad('"lms.port" attend un entier 1-65535')
+    vu = new.get("vu_meter")
+    if vu is not None:
+        if not isinstance(vu, dict):
+            bad('"vu_meter" attend un objet')
+        else:
+            if "enabled" in vu and not isinstance(vu["enabled"], bool):
+                bad('"vu_meter.enabled" attend true/false')
+            fps = vu.get("fps", 12)
+            if not isinstance(fps, int) or not (1 <= fps <= 60):
+                bad('"vu_meter.fps" attend un entier 1-60')
+    ap = new.get("auto_pages")
+    if ap is not None:
+        if not isinstance(ap, dict):
+            bad('"auto_pages" attend un objet {application: page}')
+        else:
+            for k, v in ap.items():
+                if not isinstance(k, str) or not isinstance(v, str):
+                    bad('"auto_pages" : clés et valeurs en texte')
+    st = new.get("strip_title")
+    if st is not None and not isinstance(st, dict):
+        bad('"strip_title" attend un objet')
+    pages = new.get("pages")
+    if pages is not None:
+        if not isinstance(pages, dict):
+            bad('"pages" attend un objet')
+        else:
+            for pname, pval in pages.items():
+                if not re.fullmatch(r"[a-z0-9_]{1,24}", pname or ""):
+                    bad(f'page "{pname}" : nom invalide '
+                        "(minuscules/chiffres/_ uniquement, 24 car. max)")
+                    continue
+                if not isinstance(pval, dict):
+                    bad(f'page "{pname}" : objet attendu')
+                    continue
+                for fld in ("label", "icon", "color"):
+                    if fld in pval and not isinstance(pval[fld], str):
+                        bad(f'page "{pname}" : "{fld}" en texte')
+                btns = pval.get("buttons")
+                if btns is not None:
+                    if not isinstance(btns, dict):
+                        bad(f'page "{pname}" : "buttons" attend un objet')
+                    else:
+                        for bk, bv in btns.items():
+                            if str(bk) not in [str(i) for i in range(1, 11)]:
+                                bad(f'page "{pname}" : touche "{bk}" '
+                                    "(1-10 uniquement)")
+                                continue
+                            _editor_validate_entry(bv, f'page "{pname}" '
+                               f'touche {bk}', errs)
+                encs = pval.get("encoders")
+                if encs is not None:
+                    if not isinstance(encs, dict):
+                        bad(f'page "{pname}" : "encoders" attend un objet')
+                    else:
+                        for ek, ev in encs.items():
+                            if not re.fullmatch(r"encoder_[1-4]_(cw|ccw|button)",
+                                                str(ek)):
+                                bad(f'page "{pname}" : encodeur "{ek}" inconnu')
+                                continue
+                            _editor_validate_entry(ev, f'page "{pname}" '
+                               f'{ek}', errs)
+    btns0 = new.get("buttons")
+    if btns0 is not None:
+        if not isinstance(btns0, dict):
+            bad('"buttons" (accueil) attend un objet')
+        else:
+            for bk, bv in btns0.items():
+                if str(bk) not in [str(i) for i in range(1, 11)]:
+                    bad(f'touche accueil "{bk}" (1-10 uniquement)')
+                    continue
+                _editor_validate_entry(bv, f'accueil touche {bk}', errs)
+    encs0 = new.get("encoders")
+    if encs0 is not None:
+        if not isinstance(encs0, dict):
+            bad('"encoders" (accueil) attend un objet')
+        else:
+            for ek, ev in encs0.items():
+                if not re.fullmatch(r"encoder_[1-4]_(cw|ccw|button)", str(ek)):
+                    bad(f'encodeur accueil "{ek}" inconnu')
+                    continue
+                _editor_validate_entry(ev, f'accueil {ek}', errs)
+    return errs
+
+def _editor_validate_entry(entry, where, errs):
+    """Valide une entrée de touche {label, icon, color, bg, action, ...}."""
+    if entry is None:
+        return
+    if not isinstance(entry, dict):
+        errs.append(f"{where} : objet attendu")
+        return
+    for fld in ("label", "sub", "icon", "color", "bg"):
+        if fld in entry and not isinstance(entry[fld], str):
+            errs.append(f'{where} : champ "{fld}" en texte')
+    act = entry.get("action")
+    if act is None:
+        return
+    if not isinstance(act, dict):
+        errs.append(f'{where} : "action" attend un objet')
+        return
+    t = act.get("type")
+    if not isinstance(t, str) or not t:
+        errs.append(f'{where} : "action.type" manquant')
+
+def _editor_apply(config, pages, new, repaint):
+    """Applique la nouvelle config À CHAUD, en place :
+    - les clés lisible dynamiquement (touches, pages, encodeurs) prennent
+      effet immédiatement via paint_page() (repaint) ;
+    - les pages LMS générées par le code (pages["lms"]...) sont
+      intouchables : elles ne sont ni supprimées ni modifiées ;
+    - renvoie la liste des clés nécessitant une relance."""
+    restart = []
+    for k in _EDITOR_RESTART_KEYS:
+        if k in new and new.get(k) != config.get(k):
+            restart.append(k)
+    had_pages = "pages" in config
+    # 1) tout sauf "pages" : écriture en place (jamais de suppression de clé)
+    for k, v in new.items():
+        if k == "pages":
+            continue
+        config[k] = _copy_mod.deepcopy(v)
+    # 2) pages : mutation de l'objet existant pour que le dictionnaire
+    #    local `pages` de main() (les pages LMS y vivent aussi) reste valide
+    newp = new.get("pages") or {}
+    if had_pages:
+        tgt = config["pages"]
+        for name in list(tgt):
+            if name not in _LMS_PAGES and name not in newp:
+                del tgt[name]
+        for name, val in newp.items():
+            if name in _LMS_PAGES:
+                continue  # pages générées : protégées
+            tgt[name] = _copy_mod.deepcopy(val)
+    elif newp:
+        config["pages"] = _copy_mod.deepcopy(newp)
+        restart.append("pages")
+    # 3) repaint immédiat (page courante)
+    try:
+        if repaint:
+            repaint()
+    except Exception as e:
+        print(f"[éditeur] repaint a échoué : {e}")
+    return restart
+
+EDITOR_HTML = """<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>AKP05E — Éditeur de config</title>
+<style>
+:root { --bg:#14161a; --card:#1e2228; --line:#333a44; --txt:#e8ecf1;
+        --mut:#9aa4b0; --acc:#6ea8fe; --ok:#69d58f; --err:#ff7a7a; }
+* { box-sizing:border-box; }
+body { margin:0; font:14px/1.45 system-ui, sans-serif; background:var(--bg);
+       color:var(--txt); }
+header { position:sticky; top:0; z-index:5; display:flex; gap:12px;
+         align-items:center; padding:10px 16px; background:var(--card);
+         border-bottom:1px solid var(--line); }
+header h1 { font-size:16px; margin:0; flex:1; font-weight:600; }
+button { background:var(--acc); color:#0c1220; border:0; border-radius:6px;
+         padding:7px 14px; font-weight:600; cursor:pointer; }
+button.ghost { background:transparent; color:var(--txt);
+               border:1px solid var(--line); }
+button.danger { background:transparent; color:var(--err);
+                border:1px solid var(--err); }
+main { padding:16px; max-width:1080px; margin:0 auto; }
+section { background:var(--card); border:1px solid var(--line);
+          border-radius:10px; padding:14px; margin:14px 0; }
+h2 { font-size:15px; margin:0 0 10px; }
+h3 { font-size:13px; margin:14px 0 8px; color:var(--mut);
+     text-transform:uppercase; letter-spacing:.05em; }
+label { display:block; color:var(--mut); font-size:12px; margin:6px 0 2px; }
+input, select { width:100%; background:#101317; color:var(--txt);
+               border:1px solid var(--line); border-radius:6px;
+               padding:6px 8px; font:inherit; }
+.tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.tabs button { background:transparent; color:var(--txt);
+               border:1px solid var(--line); }
+.tabs button.on { background:var(--acc); color:#0c1220; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,
+        minmax(230px,1fr)); gap:10px; }
+.btn { background:#101317; border:1px solid var(--line);
+       border-radius:8px; padding:8px; }
+.btn .num { color:var(--acc); font-weight:700; margin-bottom:4px; }
+.row { display:flex; gap:8px; } .row > * { flex:1; }
+.params .row { margin-top:4px; }
+#toast { position:fixed; left:50%; transform:translateX(-50%); bottom:18px;
+         max-width:90%; background:var(--card); border:1px solid var(--ok);
+         color:var(--txt); border-radius:8px; padding:10px 16px;
+         display:none; white-space:pre-wrap; z-index:10; }
+#toast.err { border-color:var(--err); }
+.muted { color:var(--mut); font-size:12px; }
+.pdel { flex:0 !important; width:36px; }
+</style></head><body>
+<header><h1>AKP05E &mdash; Éditeur de config <span class="muted" id="ver"></span></h1>
+<button class="ghost" onclick="location.reload()">Recharger</button>
+<button onclick="save()">💾 Enregistrer &amp; appliquer</button></header>
+<main>
+<section><h2>Réglages globaux</h2>
+  <div class="grid" id="globals"></div>
+  <h3>Bascule automatique de page (application &rarr; page)</h3>
+  <div id="auto_pages"></div>
+</section>
+<section><h2>Pages</h2>
+  <div class="tabs" id="tabs"></div>
+  <div id="page_panel"></div>
+</section>
+</main><div id="toast"></div>
+<script>
+"use strict";
+var TOKEN = new URLSearchParams(location.search).get("t") || "";
+var META = null, STATE = null, CUR = "accueil";
+
+function toast(msg, err) {
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = err ? "err" : "";
+  el.style.display = "block";
+  setTimeout(function () { el.style.display = "none"; },
+             err ? 9000 : 5000);
+}
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+}
+function api(path, opts) {
+  return fetch(path + "?t=" + encodeURIComponent(TOKEN), opts)
+    .then(function (r) { return r.json().then(function (j) { return j; }); });
+}
+function pageNames() {
+  return ["accueil"].concat(Object.keys(STATE.pages || {})
+    .filter(function (n) { return n !== "accueil" &&
+      (META.lms_pages || []).indexOf(n) < 0; }));
+}
+function pageObj(pg) { return pg === "accueil" ? STATE : STATE.pages[pg]; }
+function touchStore(pg, btn) {
+  var o = pageObj(pg);
+  if (btn.indexOf("encoder_") === 0) {
+    if (!o.encoders) o.encoders = {};
+    return [o.encoders, btn];
+  }
+  if (pg === "accueil") { if (!STATE.buttons) STATE.buttons = {};
+                          return [STATE.buttons, btn]; }
+  if (!o.buttons) o.buttons = {};
+  return [o.buttons, btn];
+}
+function touchGet(pg, btn) {
+  var st = touchStore(pg, btn);
+  if (!st[0][st[1]]) st[0][st[1]] = {};
+  return st[0][st[1]];
+}
+function touchAct(pg, btn) {
+  var e = touchGet(pg, btn);
+  if (!e.action) e.action = {};
+  return e.action;
+}
+function optList(sel, cur) {
+  var out = "";
+  pageNames().forEach(function (n) {
+    out += '<option value="' + esc(n) + '"' +
+      (n === cur ? " selected" : "") + ">" + esc(n) + "</option>";
+  });
+  return out;
+}
+function inAttr(o) {
+  var out = "";
+  Object.keys(o).forEach(function (k) {
+    out += ' data-' + k + '="' + esc(o[k]) + '"';
+  });
+  return out;
+}
+
+// ---------------- réglages globaux ----------------
+var GLOBALS = [
+  ["brightness", "Luminosité par défaut (0-100)", "num"],
+  ["startup_delay", "Délai avant veille auto (secondes)", "num"],
+  ["resume_repaint_delay", "Re-peinture après réveil USB (secondes)", "num"],
+  ["k3_long_press", "Synchro LMS knob 3 : appui long (secondes)", "num"],
+  ["page", "Page au démarrage", "page"],
+  ["lms.host", "LMS : hôte (IP ou nom)", "text"],
+  ["lms.port", "LMS : port JSON", "num"],
+  ["vu_meter.enabled", "VU-mètre activé", "check"],
+  ["vu_meter.fps", "VU-mètre : images/seconde", "num"],
+  ["strip_title.enabled", "Écran info LMS (appui zone 3)", "check"]
+];
+function getV(path) {
+  var o = STATE, parts = path.split(".");
+  for (var i = 0; i < parts.length - 1; i++) {
+    if (!o[parts[i]]) return undefined;
+    o = o[parts[i]];
+  }
+  return o[parts[parts.length - 1]];
+}
+function setV(path, v) {
+  var o = STATE, parts = path.split(".");
+  for (var i = 0; i < parts.length - 1; i++) {
+    if (!o[parts[i]]) { return false; }   // ne crée jamais une clé absente
+    o = o[parts[i]];
+  }
+  o[parts[parts.length - 1]] = v;
+  return true;
+}
+function renderGlobals() {
+  var h = "";
+  GLOBALS.forEach(function (g) {
+    var path = g[0], label = g[1], kind = g[2];
+    var v = getV(path);
+    if (v === undefined && kind !== "page") return;  // clé absente : cachée
+    if (kind === "check") {
+      var on = getV(path); on = !(on === false);
+      h += '<div><label>' + esc(label) + '</label><input type="checkbox"' +
+        (on ? " checked" : "") + inAttr({act: "g", path: path}) + "></div>";
+    } else {
+      h += '<div><label>' + esc(label) + "</label>" +
+        '<input value="' + esc(v === undefined ? "" : v) + '"' +
+        inAttr({act: "g", path: path}) + "></div>";
+    }
+  });
+  document.getElementById("globals").innerHTML = h;
+  renderAp();
+}
+function renderAp() {
+  var ap = STATE.auto_pages;
+  var h = "";
+  if (ap) {
+    var rows = "";
+    Object.keys(ap).forEach(function (k) {
+      rows += '<div class="row" style="margin-top:6px">' +
+        '<input value="' + esc(k) + '"' + inAttr({act: "apk", pkey: k}) + ">" +
+        "<select" + inAttr({act: "apv", pkey: k}) + ">" +
+        optList(ap[k]) + "</select>" +
+        '<button class="danger pdel" data-act="apdel" data-pkey="' + esc(k) +
+        '">&times;</button></div>';
+    });
+    h = '<div class="row" style="margin-top:6px"><button class="ghost" ' +
+        'id="apadd">+ ajouter une application</button></div>' + rows;
+  } else {
+    h = '<p class="muted">Clé "auto_pages" absente de la config.</p>';
+  }
+  document.getElementById("auto_pages").innerHTML = h;
+}
+
+// ---------------- pages ----------------
+function renderTabs() {
+  var h = "";
+  pageNames().forEach(function (n) {
+    h += '<button class="' + (n === CUR ? "on" : "ghost") + '"' +
+      inAttr({act: "tab", pg: n}) + ">" + esc(n) + "</button>";
+  });
+  h += '<button class="ghost" id="padd">+ nouvelle page</button>';
+  document.getElementById("tabs").innerHTML = h;
+}
+function btnCard(pg, key, entry, isEnc) {
+  var act = entry.action || {};
+  var h = '<div class="btn"><div class="num">' +
+    (isEnc ? esc(key) : "Touche " + esc(key)) + "</div>";
+  ["label", "icon", "color", "bg"].forEach(function (fld) {
+    h += '<div><label>' + fld + '</label><input value="' +
+      esc(entry[fld] || "") + '"' +
+      inAttr({act: "touch", pg: pg, btn: key, fld: fld}) + "></div>";
+  });
+  var cur = act.type || "";
+  h += '<label>Type d&#39;action</label><select' +
+    inAttr({act: "ttype", pg: pg, btn: key}) + '><option value="">(aucune)</option>';
+  var types = (META.action_types || []).slice();
+  if (cur && types.indexOf(cur) < 0) types.push(cur);
+  types.forEach(function (t) {
+    if (!t) return;
+    h += '<option value="' + esc(t) + '"' + (t === cur ? " selected" : "") +
+      ">" + esc(t) + "</option>";
+  });
+  h += "</select>";
+  h += '<div class="params">';
+  Object.keys(act).forEach(function (k) {
+    if (k === "type") return;
+    var v = act[k];
+    h += '<div class="row" style="margin-top:4px">';
+    var sel = (META.param_select || {})[k];
+    if (sel && typeof v === "string") {
+      h += "<select" + inAttr({act: "tset", pg: pg, btn: key, pk: k}) + ">";
+      var opts = sel.slice();
+      if (opts.indexOf(v) < 0) opts.push(v);
+      opts.forEach(function (o) {
+        h += '<option value="' + esc(o) + '"' + (o === v ? " selected" : "") +
+          ">" + esc(o) + "</option>";
+      });
+      h += "</select>";
+    } else if (typeof v === "object") {
+      h += '<input value="' + esc(JSON.stringify(v)) + '"' +
+        inAttr({act: "tset", pg: pg, btn: key, pk: k, kind: "json"}) + ">";
+    } else {
+      h += '<input value="' + esc(v) + '"' +
+        (typeof v === "number" ? ' data-kind="num"' : "") +
+        inAttr({act: "tset", pg: pg, btn: key, pk: k}) + ">";
+    }
+    h += '<button class="danger pdel" data-act="tpdel" data-pg="' + esc(pg) +
+      '" data-btn="' + esc(key) + '" data-pk="' + esc(k) + '">&times;</button>';
+    h += '<div style="flex:0;width:20px" class="muted">' + esc(k) +
+      "</div></div>";
+  });
+  h += '<button class="ghost" data-act="tpadd" data-pg="' + esc(pg) +
+    '" data-btn="' + esc(key) + '" style="margin-top:6px">+ paramètre</button>';
+  h += "</div></div>";
+  return h;
+}
+function renderPanel() {
+  var home = CUR === "accueil";
+  var p = pageObj(CUR) || {};
+  var h = "";
+  if (home) {
+    h += '<p class="muted">La page d&#39;accueil utilise les touches et encodeurs de base de la config (clés "buttons" / "encoders").</p>';
+  } else {
+    h += '<div class="grid">';
+    ["label", "icon", "color"].forEach(function (fld) {
+      h += '<div><label>' + fld + '</label><input value="' +
+        esc(p[fld] || "") + '"' + inAttr({act: "setpg", pg: CUR, fld: fld}) +
+        "></div>";
+    });
+    h += '<div><label>&nbsp;</label><button class="danger" data-act="pdel" ' +
+      'data-pg="' + esc(CUR) + '">Supprimer la page</button></div></div>';
+  }
+  var btns = (home ? STATE.buttons : p.buttons) || {};
+  h += "<h3>Touches</h3><div class=grid>";
+  for (var i = 1; i <= 10; i++) {
+    h += btnCard(CUR, String(i), btns[String(i)] || {}, false);
+  }
+  h += "</div><h3>Encoders (knobs 1 à 4, horaire / anti-horaire / clic)</h3><div class=grid>";
+  ["encoder_1_cw", "encoder_1_ccw", "encoder_1_button",
+   "encoder_2_cw", "encoder_2_ccw", "encoder_2_button",
+   "encoder_3_cw", "encoder_3_ccw", "encoder_3_button",
+   "encoder_4_cw", "encoder_4_ccw", "encoder_4_button"]
+    .forEach(function (n) {
+      var encs = (home ? STATE.encoders : p.encoders) || {};
+      h += btnCard(CUR, n, encs[n] || {}, true);
+    });
+  h += "</div>";
+  document.getElementById("page_panel").innerHTML = h;
+}
+function show(pg) { CUR = pg; renderTabs(); renderPanel(); }
+
+// ---------------- sauvegarde ----------------
+function save() {
+  api("/api/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ config: STATE })
+  }).then(function (j) {
+    if (j && j.ok) {
+      var msg = "Enregistré et appliqué ✅";
+      if (j.backup) msg += "\\nSauvegarde de l&#39;ancienne config : akp05e_config.json.bak";
+      if (j.restart && j.restart.length)
+        msg += "\\nRelance recommandée pour : " + j.restart.join(", ");
+      toast(msg);
+    } else {
+      toast("Refusé :\\n" + ((j && j.errors) || [JSON.stringify(j)]).join("\\n"),
+            true);
+    }
+  }).catch(function (e) { toast("Erreur réseau : " + e, true); });
+}
+
+// ---------------- délégation d événements ----------------
+function parseVal(inp) {
+  var raw = inp.value;
+  var kind = inp.getAttribute("data-kind");
+  if (kind === "json") {
+    try { return JSON.parse(raw); } catch (e) {
+      toast("Paramètre : JSON invalide — laisse la valeur inchangée", true);
+      return undefined; }
+  }
+  if (kind === "num" && raw !== "" && !isNaN(raw)) return Number(raw);
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return raw;
+}
+document.addEventListener("click", function (e) {
+  var t = e.target.closest ? e.target.closest("[data-act],#padd,#apadd") : null;
+  if (!t) return;
+  if (t.id === "padd") {
+    var name = prompt("Nom de la page (minuscules, chiffres ou _, sans espaces) :");
+    if (!name) return;
+    if (!/^[a-z0-9_]{1,24}$/.test(name)) { toast("Nom invalide", true); return; }
+    if (pageNames().indexOf(name) >= 0) { toast("Page déjà existante", true); return; }
+    if (!STATE.pages) STATE.pages = {};
+    STATE.pages[name] = { label: name, icon: "apps", color: "#90CAF9",
+                          buttons: {}, encoders: {} };
+    show(name); return;
+  }
+  if (t.id === "apadd") {
+    var k = prompt("Nom de l&#39;application (ex : spotify, vlc) :");
+    if (!k) return;
+    if (!STATE.auto_pages) STATE.auto_pages = {};
+    STATE.auto_pages[k] = "accueil";
+    renderAp(); return;
+  }
+  var act = t.getAttribute("data-act");
+  if (act === "tab") { show(t.getAttribute("data-pg")); }
+  else if (act === "pdel") {
+    if (confirm("Supprimer cette page ?")) {
+      delete STATE.pages[t.getAttribute("data-pg")];
+      show("accueil");
+    }
+  } else if (act === "tpdel") {
+    delete touchAct(t.getAttribute("data-pg"),
+                   t.getAttribute("data-btn"))[t.getAttribute("data-pk")];
+    renderPanel();
+  } else if (act === "apdel") {
+    delete STATE.auto_pages[t.getAttribute("data-pkey")];
+    renderAp();
+  } else if (act === "tpadd") {
+    var pk = prompt("Nom du paramètre (ex : minutes, cmd, url, page...) :");
+    if (!pk) return;
+    var a = touchAct(t.getAttribute("data-pg"), t.getAttribute("data-btn"));
+    if (pk in a) { toast("Ce paramètre existe déjà", true); return; }
+    a[pk] = "";
+    renderPanel();
+  }
+});
+document.addEventListener("change", function (e) {
+  var t = e.target;
+  var act = t.getAttribute && t.getAttribute("data-act");
+  if (!act) return;
+  if (act === "g") {
+    var path = t.getAttribute("data-path");
+    var v;
+    if (t.type === "checkbox") v = t.checked;
+    else {
+      v = t.value;
+      if (v !== "" && !isNaN(v) && v.indexOf(".") < 0 &&
+          (path.indexOf("port") >= 0 || path.indexOf("fps") >= 0 ||
+           path === "brightness" || path === "startup_delay" ||
+           path === "resume_repaint_delay" || path === "k3_long_press"))
+        v = (path === "k3_long_press") ? Number(v) : Number(v);
+    }
+    if (!setV(path, v)) toast("Clé absente de la config : non enregistrée", true);
+  } else if (act === "touch") {
+    touchGet(t.getAttribute("data-pg"),
+             t.getAttribute("data-btn"))[t.getAttribute("data-fld")] = t.value;
+  } else if (act === "setpg") {
+    var po = pageObj(t.getAttribute("data-pg"));
+    po[t.getAttribute("data-fld")] = t.value;
+  } else if (act === "ttype") {
+    var en = touchGet(t.getAttribute("data-pg"), t.getAttribute("data-btn"));
+    if (!t.value) delete en.action;
+    else en.action = { type: t.value };
+    renderPanel();
+  } else if (act === "tset") {
+    var v2 = parseVal(t);
+    if (v2 !== undefined)
+      touchAct(t.getAttribute("data-pg"),
+               t.getAttribute("data-btn"))[t.getAttribute("data-pk")] = v2;
+  } else if (act === "apk") {
+    var oldk = t.getAttribute("data-pkey"), nk = t.value.trim();
+    if (nk && !(nk in STATE.auto_pages)) {
+      STATE.auto_pages[nk] = STATE.auto_pages[oldk];
+      delete STATE.auto_pages[oldk];
+      renderAp();
+    }
+  } else if (act === "apv") {
+    STATE.auto_pages[t.getAttribute("data-pkey")] = t.value;
+  }
+});
+
+// ---------------- init ----------------
+api("/api/config").then(function (j) {
+  if (!j || !j.ok) { toast("Impossible de charger la config", true); return; }
+  META = j.meta; STATE = j.config;
+  document.getElementById("ver").textContent = "v" + META.version;
+  renderGlobals(); show("accueil");
+}).catch(function (e) { toast("Erreur réseau : " + e, true); });
+</script></body></html>
+"""
+
+
+def _editor_start(config, pages, repaint):
+    """Démarre (une seule fois) le serveur HTTP local de l'éditeur et
+    renvoie l'URL avec le token."""
+    with _EDITOR_STATE["lock"]:
+        if _EDITOR_STATE.get("server"):
+            return _EDITOR_STATE["url"]
+        token = _secrets_mod.token_hex(16)
+        holder = {"config": config, "pages": pages,
+                  "repaint": repaint, "token": token}
+
+        class _Handler(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def _send(self, code, body,
+                      ctype="application/json; charset=utf-8"):
+                data = (body if isinstance(body, bytes)
+                        else json.dumps(body, ensure_ascii=False)
+                        .encode("utf-8"))
+                self.send_response(code)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def _authed(self):
+                q = _urlparse_mod.parse_qs(
+                    _urlparse_mod.urlparse(self.path).query)
+                return (q.get("t") or [""])[0] == holder["token"]
+
+            def do_GET(self):
+                try:
+                    if not self._authed():
+                        self._send(401, {"ok": False,
+                                         "error": "token invalide"})
+                        return
+                    path = _urlparse_mod.urlparse(self.path).path
+                    if path in ("/", "/index.html"):
+                        self._send(200, EDITOR_HTML.encode("utf-8"),
+                                   "text/html; charset=utf-8")
+                        return
+                    if path == "/api/config":
+                        with _EDITOR_STATE["lock"]:
+                            cfg = _copy_mod.deepcopy(holder["config"])
+                        vp = dict(cfg.get("pages") or {})
+                        for n in _LMS_PAGES:
+                            vp.pop(n, None)  # pages LMS générées : cachées
+                        cfg["pages"] = vp
+                        self._send(200, {"ok": True, "config": cfg,
+                                         "meta": _editor_meta()})
+                        return
+                    self._send(404, {"ok": False, "error": "inconnu"})
+                except Exception as e:
+                    try:
+                        self._send(500, {"ok": False, "error": str(e)})
+                    except Exception:
+                        pass
+
+            def do_POST(self):
+                try:
+                    if not self._authed():
+                        self._send(401, {"ok": False,
+                                         "error": "token invalide"})
+                        return
+                    path = _urlparse_mod.urlparse(self.path).path
+                    if path != "/api/config":
+                        self._send(404, {"ok": False, "error": "inconnu"})
+                        return
+                    length = int(self.headers.get("Content-Length") or 0)
+                    raw = self.rfile.read(length) if length else b""
+                    try:
+                        body = json.loads(raw.decode("utf-8") or "{}")
+                    except Exception:
+                        self._send(400, {"ok": False,
+                                         "errors": ["JSON invalide"]})
+                        return
+                    new = body.get("config")
+                    errs = _editor_validate(new)
+                    if errs:
+                        self._send(400, {"ok": False, "errors": errs})
+                        return
+                    with _EDITOR_STATE["lock"]:
+                        # sauvegarde AVANT écrasement (akp05e_config.json.bak)
+                        # NB : les pages LMS générées par le code ne sont
+                        # jamais écrites dans le fichier (elles n'y sont
+                        # pas non plus au démarrage) — la protection en
+                        # mémoire suffit ; main() les recrée au lancement.
+                        backup = False
+                        try:
+                            if os.path.exists(CONFIG_PATH):
+                                import shutil as _shutil
+                                _shutil.copy2(CONFIG_PATH,
+                                              CONFIG_PATH + ".bak")
+                                backup = True
+                        except Exception as e:
+                            self._send(500, {"ok": False,
+                                             "errors": [
+                                f"impossible de créer la sauvegarde : {e}"]})
+                            return
+                        try:
+                            with open(CONFIG_PATH, "w",
+                                      encoding="utf-8") as f:
+                                json.dump(new, f, indent=2,
+                                          ensure_ascii=False)
+                        except Exception as e:
+                            self._send(500, {"ok": False,
+                                             "errors": [
+                                f"écriture impossible : {e}"]})
+                            return
+                        restart = _editor_apply(holder["config"],
+                                                holder["pages"], new,
+                                                holder["repaint"])
+                        self._send(200, {"ok": True,
+                                         "restart": restart,
+                                         "backup": backup})
+                except Exception as e:
+                    try:
+                        self._send(500, {"ok": False, "error": str(e)})
+                    except Exception:
+                        pass
+
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+        srv.daemon_threads = True
+        threading.Thread(target=srv.serve_forever, daemon=True,
+                         name="cfg-editor").start()
+        url = "http://127.0.0.1:%d/?t=%s" % (srv.server_address[1], token)
+        _EDITOR_STATE.update({"server": srv, "url": url})
+        print(f"[éditeur] config éditable : {url}")
+        return url
+
+# ---------------------------------------------------------------------------
 # Configuration assistée LMS (--setup-lms) — v2.12.0
 # ---------------------------------------------------------------------------
 _RE_LMS_IPAD = re.compile(r"IPAD:(\d{1,3}(?:\.\d{1,3}){3})")
@@ -4359,6 +5156,10 @@ def main():
 
     # v2.15.0 : après une reconnexion automatique, on repeint tout
     device.on_reconnect = lambda: _repaint_all()
+
+    # v2.22.0 : éditeur de config web local (127.0.0.1 uniquement),
+    # accessible depuis le systray ; hot-reload sur les touches/pages
+    _editor_start(config, pages, _repaint_all)
 
     def refresh_strip():
         """Redessine le bandeau : volume système + luminosité en direct,
@@ -6196,6 +6997,7 @@ def main():
             ("Page suivante", lambda: _ui(lambda: switch_page("next"))),
             ("Page précédente", lambda: _ui(lambda: switch_page("prev"))),
             None,
+            ("Éditeur de config", lambda: _ui(_editor_open)),
             ("À propos", lambda: _ui(_about)),
             ("Quitter", lambda: _quit.set()),
         ]

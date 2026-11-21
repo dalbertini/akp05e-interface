@@ -3,6 +3,12 @@
 Historique des versions de l'application. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALITÉ**.**CORRECTIF**.
 
+## [2.22.0] — 2026-11-21
+
+### Ajouté
+
+- **Éditeur de config web + hot-reload** — une page locale dans le navigateur pour éditer **pages, touches, encodeurs et réglages globaux sans jamais toucher au JSON**. Accès par le menu systray **« Éditeur de config »** : l'URL (`http://127.0.0.1:PORT/?t=…`) s'ouvre directement, un **token aléatoire** régénéré à chaque lancement protège l'accès et le serveur HTTP écoute **uniquement sur 127.0.0.1** (jamais exposé sur le réseau). La page reste **embarquée dans `akp05e_app.py`** (monofichier, aucun asset externe). Fonctionnement : réglages globaux usuels (luminosité, délais, LMS, VU-mètre, seuil du knob 3…), pages supplémentaires et leurs 10 touches, 12 actions d'encodeurs — libellé, icône Material, couleurs, type d'action dans une liste prête et paramètres éditables ; ajouter/supprimer pages, touches et paramètres. « **Enregistrer & appliquer** » **valide la config avant d'écrire** (aucune sauvegarde possible d'une config cassée), crée une **sauvegarde `akp05e_config.json.bak`**, puis applique **à chaud** : les touches/pages/encodeurs prennent effet **immédiatement** (peinture immédiate du deck, lues dynamiquement au clic) ; les clés qui ne peuvent pas être appliquées à chaud (`lms`, `vu_meter`, `auto_pages`, `startup_delay`…) sont listées avec une **relance recommandée**. Les **pages LMS générées par le code** (lms, lecteur, favoris, applis…) ne sont **ni éditables ni perdibles** ; les clés inconnues de la config sont **préservées** (lecture-modification-écriture, jamais de fusion avec des défauts).
+
 ## [2.21.0] — 2026-11-20
 
 ### Ajouté
@@ -767,6 +773,7 @@ numérotation [SemVer](https://semver.org/lang/fr/) : **MAJEURE**.**FONCTIONNALI
 [2.19.10]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.11]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.12]: https://github.com/dalbertini/akp05e-interface/commits/main/
+[2.22.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.19.13]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.0]: https://github.com/dalbertini/akp05e-interface/commits/main/
 [2.20.1]: https://github.com/dalbertini/akp05e-interface/commits/main/
