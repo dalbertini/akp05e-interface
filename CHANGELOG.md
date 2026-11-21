@@ -556,6 +556,7 @@ Passage en version **3.0.0** (majeure) : l'arrivée de l'éditeur de config web 
 ## [2.6.1] — 2026-11-10
 
 ### Corrigé
+- **Radio active toujours pas surlignée au démarrage chez certains serveurs** : la détection lit désormais tous les champs du `status` LMS (`url`, `title` de `playlist_loop`, `current_title`, y compris au niveau racine — selon la version du serveur, l'un ou l'autre est renseigné).
 - **Diagnostic** : si le lecteur joue mais qu'aucun favori ne correspond, la console affiche une fois `[lms] diagnostic radio active — station=…, titre=…, url=…` avec les URL des favoris, à copier dans une issue.
 
 ## [2.6.0] — 2026-11-10

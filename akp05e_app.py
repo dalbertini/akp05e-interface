@@ -1344,6 +1344,7 @@ KEYEVENTF_KEYUP = 0x0002
 # codes virtuels / scan codes média (usage HID 0x7C+)
 # touches média : codes virtuels Windows officiels (VK_MEDIA_* / VK_VOLUME_*)
 # — seuls ces codes-là sont vus par les applications (Qobuz, Spotify, etc.)
+MEDIA = {"volume_up": 0xAF, "volume_down": 0xAE, "volume_mute": 0xAD,
          "play_pause": 0xB3, "stop": 0xB2, "next": 0xB0, "prev": 0xB1}
 MODIFIERS = {"ctrl": 0x11, "menu": 0x12, "alt": 0x12, "shift": 0x10,
              "win": 0x5B, "lwin": 0x5B, "rwin": 0x5C}
@@ -3119,6 +3120,7 @@ def _editor_validate(new):
                     bad(f'page "{pname}" : objet attendu')
                     continue
                 for fld in ("label", "icon", "color"):
+                    if fld in pval and not isinstance(pval[fld], str):
                         bad(f'page "{pname}" : "{fld}" en texte')
                 btns = pval.get("buttons")
                 if btns is not None:
@@ -4622,6 +4624,7 @@ def run_identify():
                     tried += 1
                     raw = _hidd_get_feature(handle, rid, size)
                     if raw and raw not in seen:
+                        seen.add(raw)
                         results.append(raw)
                 if seen:
                     break
@@ -5967,6 +5970,7 @@ def main():
 
     # --- LYRION MEDIA SERVER (LMS / Squeezebox) --------------------------
     try:   # v3.0.2 : "lms": {"timeout": secondes} — 3 s par défaut
+        _lms_timeout = float((config.get("lms") or
                               {}).get("timeout") or 3.0)
     except (TypeError, ValueError):
         _lms_timeout = 3.0
@@ -7248,6 +7252,7 @@ def main():
              lambda: _ui(lambda: device.set_brightness(DEFAULT_BRIGHTNESS))),
             None,
             ("Page suivante", lambda: _ui(lambda: switch_page("next"))),
+            ("Page précédente", lambda: _ui(lambda: switch_page("prev"))),
             None,
             ("Éditeur de config", lambda: _ui(_editor_open)),
             ("À propos", lambda: _ui(_about)),
